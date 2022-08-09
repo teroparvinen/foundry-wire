@@ -1,0 +1,63 @@
+{
+    "wire": {
+        "concentrating": "Concentrating",
+        "button": {
+            "remove-template": "Remove Measured Template"
+        },
+        "ui": {
+            "attack-roll-label": "Attack",
+            "damage-roll-label": "Damage",
+            "apply-damage": "Apply",
+            "undo-damage": "Undo",
+            "saving-throw-heading": "{ability} Saving Throw",
+            "roll-all-saves": "Roll all",
+            "roll-npc-saves": "Roll NPCs",
+            "dc": "DC {value}",
+            "confirm-targets": "Confirm targets",
+            "di": "Immunity",
+            "dr": "Resistance",
+            "dv": "Vulnerability",
+            "no-damage": "No damage was done"
+        },
+        "item": {
+            "damage-none": "None on save/miss",
+            "damage-half": "Half on save/miss",
+            "damage-full": "Always full",
+            "application-immediate": "Immediate",
+            "application-delayed": "Delayed",
+            "application-overtime": "Over time",
+            "activation-header": "Effect application",
+            "conditions-and-effects": "Conditions and effects",
+            "condition-enters-area": "Creature first enters the area on its turn",
+            "condition-starts-turn-inside-area": "Creature starts its turn inside the area",
+            "condition-ends-turn-inside-area": "Creature ends its turn inside the area",
+            "condition-area-placed-over": "The area is placed over the creature",
+            "condition-start-of-turn-caster": "Start of caster's turn",
+            "condition-end-of-turn-caster": "End of caster's turn",
+            "condition-start-of-turn-target": "Start of target's turn",
+            "condition-end-of-turn-target": "End of target's turn",
+            "condition-as-action": "As an action",
+            "condition-as-reaction": "As a reaction",
+            "condition-target-attacks.all": "Target makes any attack",
+            "condition-target-hit.all": "Target is hit with any attack",
+            "update-apply-delayed": "Apply delayed effects",
+            "update-apply-overtime": "Apply over time effects",
+            "update-end": "End the effect",
+            "update-end-on-save": "End the effect on a save",
+            "update-attack-target": "Make an attack against the target",
+            "update-target-and-attack": "Select a target and make an attack",
+            "move-template": "Move the template",
+            "splash-delayed": "Splash delayed effects in a radius"
+        },
+        "active-effect": {
+            "apply-on-save-or-miss": "Apply the effect if the save succeeds or the attack misses",
+            "application-phase": "Application phase",
+            "application-phase-hint": "The conditions for the activation are determined on the main item sheet"
+        },
+        "warn": {
+            "attack-must-have-single-target": "An attack must have a single creature type target",
+            "select-single-target-for-attack": "Select a target for the attack",
+            "select-targets-for-effect": "Select (a) target(s) for the effect"
+        }
+    }
+}

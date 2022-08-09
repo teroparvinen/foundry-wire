@@ -1,0 +1,318 @@
+.chat-message.wire-gm-hide {
+    display: none;
+}
+
+
+.item-card .dice-roll .dice-label {
+    align-self: center;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+.item-card .card-phases .dice-tooltip {
+    padding-top: 10px;
+}
+
+.item-card .flexrow {
+    align-items: center;
+    gap: 10px;
+}
+
+.item-card .token-image {
+    width: 70px;
+    height: 70px;
+    border: 0;
+}
+
+.item-card .phase-attack .token-info {
+    font-size: 15px;
+    align-items: flex-start;
+}
+
+.item-card .phase-attack .token-name {
+    padding: 3px;
+}
+
+.item-card .phase-attack .token-ac {
+    color: var(--secondary-color);
+    border: 1px solid var(--color-border-light-primary);
+    padding: 5px;
+    border-radius: 3px;
+    background: var(--faint-white);
+}
+
+.item-card .confirm-buttons {
+    display: flex;
+    flex: 0 110px;
+    justify-content: flex-end;
+    gap: 0;
+}
+
+.item-card .confirm-buttons > * {
+    flex: 1 50px;
+    margin: 0;
+    border: 1px solid var(--color-border-light-tertiary);
+    background-color: rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.item-card .confirm-buttons > * > i {
+    line-height: 44px;
+    margin: 0;
+}
+
+.item-card .confirm-buttons .confirm-yes {
+    border-radius: 20px 0 0 20px;
+    border-right: 0;
+    padding-left: 5px;
+}
+
+.item-card .confirm-buttons .confirm-no {
+    border-radius: 0 20px 20px 0;
+    padding-right: 5px;
+}
+
+.item-card .confirm-buttons .recommended {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.item-card .attack-result {
+    padding: 0 10px;
+}
+
+.item-card .attack-result .hit {
+    color: green;
+}
+
+.item-card .attack-result .miss {
+    color: red;
+}
+
+.item-card .phase-waiting-for-roll {
+    padding: 10px;
+    text-align: center;
+    color: var(--icon-font);    
+}
+
+@keyframes beat {
+    0% {
+        transform: scale(1);
+    }
+
+    15% {
+        transform: scale(1.2);
+    }
+
+    30% {
+        transform: scale(1);
+    }
+}
+
+.item-card .anim-beat {
+    animation-duration: 2s;
+    animation-name: beat;
+    animation-iteration-count: infinite;
+}
+
+.item-card .waiting-for-hit {
+    color: var(--color-text-dark-3);
+    padding: 0 20px;
+}
+
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+.item-card .anim-pulse {
+    animation-duration: 0.8s;
+    animation-name: pulse;
+    animation-iteration-count: infinite;
+}
+
+.phase-saving-throws {
+    margin: 0 5px;
+}
+
+.phase-saving-throws .phase-heading {
+    font-weight: bold;
+    font-size: 20px;
+    font-family: "Modesto Condensed", "Palatino Linotype", serif;
+    line-height: 36px;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.item-card .saving-throw-target {
+    border-top: 1px solid rgba(0, 0, 0, 0.3);
+}
+
+.item-card .saving-throw-target:first-of-type {
+    border-top-width: 0;
+}
+
+.item-card .saving-throw-target .target-image {
+    width: 50px;
+    height: 50px;
+    border: 0;
+}
+
+.item-card .saving-throw-target .target-name {
+    font-size: 14px;
+}
+
+.item-card .saving-throw-target .target-save {
+    width: 50px;
+    height: 50px;
+    flex: 0 50px;
+    background: url(/icons/svg/d20-grey.svg) no-repeat 50% 50%;
+    background-size: 32px;
+}
+
+.item-card .saving-throw-target .target-save:hover {
+    background-image: url(/icons/svg/d20-highlight.svg);
+}
+
+.item-card .saving-throw-target .target-save-result {
+    white-space: nowrap;
+    flex: 0 50px;
+    font-size: 17px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.item-card .saving-throw-target .target-save-result.success {
+    color: green;
+}
+
+.item-card .saving-throw-target .target-save-result.fail {
+    color: red;
+}
+
+.damage-card .damage-card-target-details {
+    align-items: center;
+    font-size: 15px;
+}
+
+.damage-card .target-image {
+    width: 50px;
+    height: 50px;
+    border: 0;
+}
+
+.damage-card .target-damage-info {
+    align-items: center;
+}
+
+.damage-card .target-damage-info .damage-state {
+    padding: 0 10px;
+}
+
+.damage-card .target-damage-info .damage-state:first-of-type {
+    text-align: right;
+}
+
+.damage-card .target-damage-info .icon {
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 12px;
+}
+
+.damage-card .target-damage-info .hp, .damage-card .target-damage-info .heal {
+    color: #4e9d09;
+    font-weight: bold;
+}
+
+.damage-card .target-damage-info .temphp {
+    color: #4397cd;
+    font-weight: bold;
+}
+
+.damage-card .target-damage-info .damage {
+    color: red;
+    font-weight: bold;
+}
+
+.damage-card .target-buttons {
+    flex: 0 70px;
+    gap: 5px;
+}
+
+.damage-card .target-buttons > * {
+    flex: 1 32px;
+    height: 32px;
+    margin: 0;
+    border: 1px solid var(--color-border-light-tertiary);
+    background: rgba(0, 0, 0, 0.1);
+    text-align: center;
+    padding-left: 2px;
+}
+
+.damage-card .target-buttons > * i {
+    margin: 0;
+    line-height: 30px;
+}
+
+.damage-card-target-modifiers {
+    padding-left: 50px;
+    padding-right: 70px;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+.damage-card-empty {
+    text-align: center;
+    padding: 10px;
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.5);
+}
+
+
+.sheet ol.condition-parts {
+    padding-bottom: 20px !important;
+}
+
+.sheet .condition-control {
+    width: 18px;
+    flex: 0 0 18px;
+    line-height: 24px;
+    float: right;
+    text-align: right;
+    color: #7a7971;
+}
+
+.sheet .condition-header {
+    margin: 0;
+    padding: 0;
+    font-weight: bold;
+    line-height: 24px;
+    color: #4b4a44;
+}
+
+.sheet .condition-parts {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.sheet .condition-parts .condition-part {
+    flex: 0 0 100%;
+    padding: 0;
+}
+
+.sheet .condition-parts .condition-part select, .sheet .condition-parts .condition-part input {
+    margin-left: 5px;
+    flex: 1;
+}
+
+.sheet .condition-parts .condition-part select:first-of-type {
+    margin-left: 0;
+}

@@ -1,0 +1,165 @@
+<div class="dnd5e chat-card item-card" data-actor-id="{{actor._id}}" data-item-id="{{item._id}}"
+    {{#if tokenId}}data-token-id="{{tokenId}}"{{/if}} {{#if isSpell}}data-spell-level="{{item.data.level}}"{{/if}}>
+    {{#unless isPlayerView}}
+        <header class="card-header flexrow">
+            <img src="{{item.img}}" title="{{item.name}}" width="36" height="36"/>
+            <h3 class="item-name">{{item.name}}</h3>
+        </header>
+
+        <div class="card-content">
+            {{{data.description.value}}}
+            {{#if data.materials.value}}
+            <p><strong>{{ localize "DND5E.RequiredMaterials" }}.</strong> {{data.materials.value}}</p>
+            {{/if}}
+        </div>
+    {{/unless}}
+
+    <div class="card-phases">
+        {{#unless isPlayerView}}
+            {{#if (eq activation.state "waiting-for-attack")}}
+                <div class="phase-waiting-for-roll">
+                    <i class="fas fa-dice-d20 fa-3x anim-pulse"></i>
+                </div>
+            {{/if}}
+            {{#if activation.attack.roll}}
+                <div class="phase-attack roll-container">
+                    <div class="dice-roll flexrow">
+                        <div class="flex1 dice-label"><i class="fas fa-dice-d20"></i> {{localize "wire.ui.attack-roll-label"}}</div>
+                        <div class="flex1 dice-total {{activation.attack.resultType}}">{{activation.attack.roll.total}}</div>
+                    </div>
+                    <div class="dice-roll">
+                        {{{activation.attack.tooltip}}}
+                    </div>
+
+                    <div class="flexrow">
+                        <img class="flex0 token-image" src="{{activation.singleTarget.token.data.img}}" />
+                        <div class="flex1 token-info flexcol">
+                            <div class="token-name">{{activation.singleTarget.token.name}}</div>
+                            {{#if isGM}}
+                                <div class="token-ac"><i class="fas fa-shield-alt"></i> {{activation.singleTarget.actor.data.data.attributes.ac.value}}</div>
+                            {{/if}}
+                        </div>
+                        {{#if activation.attack.result}}
+                            <div class="flex0 attack-result">
+                                {{#if (eq activation.attack.result 'hit')}}<i class="fas fa-check fa-2x hit"></i>{{/if}}
+                                {{#if (eq activation.attack.result 'miss')}}<i class="fas fa-times fa-2x miss"></i>{{/if}}
+                            </div>
+                        {{else}}
+                            {{#if isGM}}
+                                <div class="flex0 confirm-buttons flexrow">
+                                    <a data-action="confirm-attack-hit" class="flex0 confirm-yes {{#if (gte activation.attack.roll.total activation.singleTarget.actor.data.data.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-check fa-2x"></i></a>
+                                    <a data-action="confirm-attack-miss" class="flex0 confirm-no {{#if (lt activation.attack.roll.total activation.singleTarget.actor.data.data.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-times fa-2x"></i></a>
+                                </div>
+                            {{else}}
+                                <div class="flex0 waiting-for-hit"><i class="fas fa-shield-alt fa-2x anim-beat"></i></div>
+                            {{/if}}
+                        {{/if}}
+                    </div>
+                </div>
+            {{/if}}
+            {{#if (eq activation.state "waiting-for-attack-damage")}}
+                <div class="phase-waiting-for-roll">
+                    <i class="fas fa-dice-d20 fa-3x anim-pulse"></i>
+                </div>
+            {{/if}}
+            {{#if activation.damage.roll}}
+                <div class="phase-damage roll-container">
+                    <div class="dice-roll flexrow">
+                        <div class="flex1 dice-label"><i class="fas fa-dice-d20"></i> {{localize "wire.ui.damage-roll-label"}}</div>
+                        <div class="flex1 dice-total">{{activation.damage.roll.total}}</div>
+                    </div>
+                    <div class="dice-roll">
+                        {{{activation.damage.tooltip}}}
+                    </div>
+                </div>
+            {{/if}}
+        {{/unless}}
+
+        {{#if (or (eq activation.state "waiting-for-saves") activation.saves)}}
+            {{#*inline "target-save-row"}}
+                <div class="saving-throw-target flexrow" data-actor-id="{{actor.uuid}}">
+                    <img class="flex0 target-image" src="{{token.data.img}}" />
+                    <div class="flex1 target-name">{{token.name}}</div>
+                    {{#if (arrayLookup ../activation.saves "actorUuid" actor.uuid)}}
+                        {{#with (arrayLookup ../activation.saves "actorUuid" actor.uuid)}}
+                            <div class="flex0 target-save-result {{#if (gte roll.total ../../item.data.save.dc)}}success{{else}}fail{{/if}}">
+                                {{#if (or ../../isGM isPC)}}
+                                    {{roll.total}}
+                                {{else}}
+                                    {{#if (gte roll.total ../../item.data.save.dc)}}
+                                        <i class="fas fa-check"></i>
+                                    {{else}}
+                                        <i class="fas fa-times"></i>
+                                    {{/if}}
+                                {{/if}}
+                            </div>
+                        {{/with}}
+                    {{else}}
+                        {{#if (or ../isGM actor.isOwner)}}
+                            <a data-action="wire-save" class="flex0 target-save"></a>
+                        {{/if}}
+                    {{/if}}
+                </div>
+            {{/inline}}
+
+            <div class="phase-saving-throws">
+                <div class="flexrow">
+                    <h3 class="phase-heading">
+                        {{localize "wire.ui.saving-throw-heading" ability=(lookup abilityNames item.data.save.ability)}}
+                        {{#if (or isGM item.hasPlayerOwner)}}
+                            ({{localize "wire.ui.dc" value=item.data.save.dc}})
+                        {{/if}}
+                    </h3>
+                    {{#if isGM}}
+                        <a class="flex0 group-save" data-action="roll-all-saves" title="{{localize "wire.ui.roll-all-saves"}}"><i class="fas fa-users"></i></a>
+                        <a class="flex0 group-save" data-action="roll-npc-saves" title="{{localize "wire.ui.roll-npc-saves"}}"><i class="fas fa-users-cog"></i></a>
+                    {{/if}}
+                </div>
+
+                <div>
+                    {{#if (or isGM hasPlayerOwner)}}
+                        {{#each activation.allTargets}}
+                            {{> target-save-row }}
+                        {{/each}}
+                    {{else}}
+                        {{#each activation.pcTargets}}
+                            {{> target-save-row }}
+                        {{/each}}
+                    {{/if}}
+                </div>
+            </div>
+        {{/if}}
+
+        {{#unless isPlayerView}}
+            {{#if (eq activation.state "waiting-for-save-damage")}}
+                <div class="phase-waiting-for-roll">
+                    <i class="fas fa-dice-d20 fa-3x anim-pulse"></i>
+                </div>
+            {{/if}}
+        {{/unless}}
+    </div>
+
+    <div class="card-buttons">
+        {{#unless isPlayerView}}
+            {{#if (or (eq activation.state "waiting-for-attack-damage-roll") (eq activation.state "waiting-for-save-damage-roll"))}}
+                <button data-action="wire-damage">
+                    {{#if isHealing}}{{ localize "DND5E.Healing" }}
+                    {{else}}{{localize "DND5E.Damage" }}{{/if}}
+                </button>
+            {{/if}}
+            {{#if (eq activation.state "waiting-for-target-confirmation")}}
+                <button data-action="confirm-targets">
+                    {{localize "wire.ui.confirm-targets"}}
+                </button>
+            {{/if}}
+        {{/unless}}
+    </div>
+
+    {{#unless isPlayerView}}
+        <footer class="card-footer">
+            {{#each data.properties}}
+            <span>{{this}}</span>
+            {{/each}}
+        </footer>
+    {{/unless}}
+</div>

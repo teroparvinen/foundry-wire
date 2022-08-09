@@ -1,0 +1,45 @@
+{
+    "name": "wire",
+    "title": "Whistler's Item Rolls Extended",
+    "description": "Adds active effects handling and workflow improvements to item rolls",
+    "system": [
+        "dnd5e"
+    ],
+    "version": "0.1",
+    "authors": [
+        {
+            "name": "Whistler"
+        }
+    ],
+    "socket": true,
+    "esmodules": [
+        "module/wire.js"
+    ],
+    "styles": [
+        "styles/wire.css"
+    ],
+    "dependencies": [
+        {
+            "name": "socketlib",
+            "type": "module"
+        },
+        {
+            "name": "lib-wrapper",
+            "type": "module"
+        }
+    ],
+    "languages": [
+        {
+            "lang": "en",
+            "name": "English",
+            "path": "lang/en.json"
+        }
+    ],
+    "minimumCoreVersion": "9",
+    "compatibleCoreVersion": "9",
+    "compatibility": {
+        "minimum": 9,
+        "verified": 9,
+        "maximum": 9
+    }
+}

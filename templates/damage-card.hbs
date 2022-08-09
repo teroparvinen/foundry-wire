@@ -1,0 +1,48 @@
+<div class="dnd5e chat-card damage-card">
+    {{#unless targets.length}}
+        <div class="damage-card-empty">{{localize "wire.ui.no-damage"}}</div>    
+    {{/unless}}
+    {{#each targets}}
+        <div class="damage-card-target" data-actor-uuid="{{actor.uuid}}">
+            <div class="damage-card-target-details flexrow">
+                <img class="flex0 target-image" src="{{token.data.img}}" title="{{token.name}}" />
+                <div class="flex1 target-damage-info flexrow">
+                    <div class="flexcol damage-state">
+                        <div>
+                            <span class="icon"><i class="fas fa-heart"></i></span>
+                            <span class="hp">{{info.hp}}</span>{{#if (gt info.tempHp 0)}}+<span class="temphp">{{info.tempHp}}</span>{{/if}}
+                        </div>
+                        <div>
+                            {{log info}}
+                            {{#if (or (gt info.hpDmg 0) (gt info.tempHpDmg 0))}}
+                                <span class="icon"><i class="fas fa-tint"></i></span>
+                                <span class="damage">{{info.hpDmg}}</span>{{#if (gt info.tempHpDmg 0)}}+<span class="temphp">{{info.tempHpDmg}}</span>{{/if}}
+                            {{/if}}
+                            {{#if (or (gt info.hpHeal 0) (gt info.tempHpRaise 0))}}
+                                <span class="icon"><i class="fas fa-plus"></i></span>
+                                <span class="heal">{{info.hpHeal}}</span>{{#if (gt info.tempHpRaise 0)}}+<span class="temphp">{{info.tempHpRaise}}</span>{{/if}}
+                            {{/if}}
+                        </div>
+                    </div>
+                    <i class="fas fa-arrow-right flex0"></i>
+                    <div class="damage-state">
+                        <span class="icon"><i class="fas fa-heart"></i></span>
+                        <span class="hp">{{info.newHp}}</span>{{#if (gt info.newTempHp 0)}}+<span class="temphp">{{info.newTempHp}}</span>{{/if}}
+                        {{#if (eq info.newHp 0)}}<i class="fas fa-skull dead"></i>{{/if}}
+                    </div>
+                </div>
+                <div class="target-buttons flexrow">
+                    <a data-action="apply-damage" title="{{localize "wire.ui.apply-damage"}}"><i class="fas fa-check"></i></a>
+                    <a data-action="undo-damage" title="{{localize "wire.ui.undo-damage"}}"><i class="fas fa-undo"></i></a>
+                </div>
+            </div>
+            {{#if ../isGM}}
+                <div class="damage-card-target-modifiers">
+                    {{#if info.di}}{{localize "wire.ui.di"}} -{{info.di}}{{/if}}
+                    {{#if info.dr}}{{localize "wire.ui.dr"}} -{{info.dr}}{{/if}}
+                    {{#if info.dv}}{{localize "wire.ui.dv"}} +{{info.dv}}{{/if}}
+                </div>
+            {{/if}}
+        </div>
+    {{/each}}
+</div>
