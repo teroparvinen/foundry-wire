@@ -1,3 +1,4 @@
+import { initAreaConditionHooks } from "./conditions/area-effects.js";
 import { initCombatTurnConditionHooks } from "./conditions/combat-turns.js";
 import { registerHandlebarsHelpers } from "./handlebars.js";
 import { initHooks } from "./hooks.js";
@@ -14,6 +15,7 @@ Hooks.once("init", () => {
     initActiveEffectSheetHooks();
 
     initCombatTurnConditionHooks();
+    initAreaConditionHooks();
 });
 
 Hooks.once("setup", () => {

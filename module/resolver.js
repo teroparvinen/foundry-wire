@@ -1,8 +1,8 @@
 import { DamageCard } from "./cards/damage-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { DamageParts } from "./game/damage-parts.js";
-import { hasApplicationsOfType, hasConcentration, hasDamageOfType, hasDuration, hasUnavoidableDamageOfType, hasUnavoidableEffectsOfType, isAttack, isInstantaneous, isSelfTarget, isTokenTargetable, targetsSingleToken } from "./item-properties.js";
-import { copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getActorToken, getAttackRollResultType, getSpeaker, isCasterDependentEffect, isInCombat, localizedWarning } from "./utils.js";
+import { hasDamageOfType, hasUnavoidableDamageOfType, hasUnavoidableEffectsOfType, isAttack, isInstantaneous, targetsSingleToken } from "./item-properties.js";
+import { copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getAttackRollResultType, isCasterDependentEffect, isInCombat, localizedWarning } from "./utils.js";
 
 export class Resolver {
     static check(item) {
@@ -26,71 +26,12 @@ export class Resolver {
         if (!('stepQueue' in message)) { setProperty(message, "stepQueue", []); }
     }
 
-    async start() {
-        const item = this.activation.item;
-
-        if (hasDuration(item)) {
-            if (hasConcentration(item)) {
-                await this.applyConcentration();
-            } else if (item.hasAreaTarget) {
-                await this.applyDurationEffect();
-            }
-        }
-
-        if (isTokenTargetable(item)) {
-            if (isAttack(item)) {
-                await this.activation.applyState("waiting-for-attack");
-                this.step();
-            } else { // TODO: Branch here for spells with non-primary effects
-                await this.processImmediateNonAttack();
-            }
-        } else if (item.hasAreaTarget) {
-            if (hasApplicationsOfType(item, "immediate")) {
-                await this.activation.applyState("waiting-for-area-target");
-            } else {
-                await this.activation.applyState("register-triggers");
-                this.step();
-            }
-        }
-
-    }
-
-    async processImmediateNonAttack() {
-        const item = this.activation.item;
-
-        if (item.hasSave) {
-            await this.activation.applyState("waiting-for-saves");
-            if (game.user.isGM && this.activation.message.user === game.user && this.activation.pcTargets.length) {
-                const playerMessageData = {
-                    content: await ItemCard.renderHtml(item, this.activation, true),
-                    flags: {
-                        wire: {
-                            masterMessageUuid: this.activation.message.uuid,
-                            originatorUserId: game.user.id,
-                            isPlayerView: true
-                        }
-                    },
-                    user: game.user.id
-                };
-                const playerMessage = await ChatMessage.create(playerMessageData);
-                this.activation.message.setFlag("wire", "playerMessageUuid", playerMessage.uuid);
-            }
-        } else {
-            if (isSelfTarget(item) || this.activation.allTargets.length == 0) {
-                await this.activation.applyEffectiveTargets([item.actor]);
-            } else {
-                await this.activation.applyEffectiveTargets(this.activation.allTargets.map(t => t.actor));
-            }
-            if (hasDamageOfType(item, "immediate")) {
-                await this.activation.applyState("waiting-for-save-damage-roll");
-            } else {
-                await this.activation.applyState("applying-target-effects");
-                await this.step();
-            }
-        }
-    }
-
     get message() { return this.activation.message; }
+
+    async start() {
+        await this.activation.applyState("idle");
+        await this.step();
+    }
 
     // Implement a primitive semaphore to avoid state machine re-entrancy issues
     async step(queueNumber = null) {
@@ -105,7 +46,6 @@ export class Resolver {
                 msg.stepQueue.pop()();
             }
         } else {
-            console.log("NEED TO WAIT");
             await new Promise((resolve, reject) => {
                 msg.stepQueue.push(() => { resolve(); });
             });
@@ -113,13 +53,58 @@ export class Resolver {
         }
     }
 
+    knownStates = [
+        "applyConcentration", 
+        "applyDamage", 
+        "applyDefaultTargets", 
+        "applyDurationEffect", 
+        "applyEffects", 
+        "idle", 
+        "performAttackDamageRoll",
+        "performAttackRoll", 
+        "performSaveDamageRoll", 
+        "performSavingThrow", 
+        "rolling-attack-damage", 
+        "rolling-save-damage", 
+        "targets-confirmed",
+        "waiting-for-attack-damage",
+        "waiting-for-attack-damage-roll",
+        "waiting-for-attack-result",
+        "waiting-for-saves",
+        "waiting-for-save-damage",
+        "waiting-for-save-damage-roll"
+    ];
+
     async _step(n) {
         const item = this.activation.item;
+        const applicationType = this.activation.applicationType;
 
         const isGM = game.user.isGM;
         const isObservingGM = isGM && this.activation.isObserver;
+        const isAuthor = this.activation.message.isAuthor;
+        const isOriginator = this.activation.message.data.flags.wire?.originatorUserId === game.user.id;
 
-        if (!isObservingGM && this.activation.state === "waiting-for-attack") {
+        if (isAuthor && this.activation.state === "applyConcentration") {
+            await this._applyConcentration();
+            await this.activation.applyState("idle");
+            await this.step(n);
+
+        } else if (isAuthor && this.activation.state === "applyDurationEffect") {
+            await this._applyDurationEffect();
+            await this.activation.applyState("idle");
+            await this.step(n);
+
+        } else if (isAuthor && this.activation.state === "applyDefaultTargets") {
+            await this.activation.assignDefaultTargets();
+            await this.activation.applyState("idle");
+            await this.step(n);
+
+        } else if (isAuthor && this.activation.state === "applySelectedTargets") {
+            await this.activation.assignTargets([...game.user.targets].map(t => t.actor));
+            await this.activation.applyState("idle");
+            await this.step(n);
+
+        } else if (isOriginator && this.activation.state === "performAttackRoll") {
             const roll = await item.rollAttack({ chatMessage: false, fastForward: true });
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.activation.applyAttackRoll(roll);
@@ -127,84 +112,104 @@ export class Resolver {
         } else if (isGM && this.activation.state === "waiting-for-attack-result") {
             if (this.activation.attackResult == "hit") {
                 await this.activation.applyEffectiveTargets([this.activation.singleTarget.actor]);
-                if (hasDamageOfType(item, "immediate")) {
-                    await this.activation.applyState("waiting-for-attack-damage-roll");
-                } else {
-                    await this.activation.applyState("applying-target-effects");
-                    await this.step(n);
-                }
+                await this.activation.applyState("idle");
+                await this.step(n);
             } else if (this.activation.attackResult == "miss") {
-                if (hasUnavoidableDamageOfType(item, "immediate")) {
-                    await this.activation.applyState("waiting-for-attack-damage-roll");
-                } else if (hasUnavoidableEffectsOfType(item, "immediate")) {
-                    await this.activation.applyState("applying-target-effects");
-                    await this.step(n);
-                } else {
-                    await this.activation.applyState("done");
-                }
+                await this.activation.applyState("idle");
+                await this.step(n);
             }
-        } else if (!isObservingGM && this.activation.state === "area-target-placed") {
-            await this.activation.applyState("waiting-for-target-confirmation");
-        } else if (!isObservingGM && this.activation.state === "targets-confirmed") {
+
+        } else if (isAuthor && this.activation.state === "targets-confirmed") {
             await this.activation.assignTargets([...game.user.targets].map(t => t.actor));
             if (isInstantaneous(item)) {
                 await this.activation.template?.delete();
             }
-            await this.processImmediateNonAttack();
-        } else if (!isObservingGM && this.activation.state === "rolling-attack-damage") {
+            await this.activation.applyState("idle");
+            await this.step(n);
+
+        } else if (isAuthor && this.activation.state === "performAttackDamageRoll") {
+            if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType)) || hasUnavoidableDamageOfType(item, applicationType)) {
+                await this.activation.applyState("waiting-for-attack-damage-roll");
+                this.step(n);
+            } else {
+                await this.activation.applyState("idle");
+                await this.step(n);
+            }
+        } else if (isOriginator && this.activation.state === "rolling-attack-damage") {
             await this.activation.applyState("waiting-for-attack-damage");
 
             const isCritical = getAttackRollResultType(this.activation.attackRoll) == "critical";
             const onlyUnavoidable = this.activation.effectiveTargets.length == 0;
-            const damageParts = await DamageParts.roll(item, "immediate", onlyUnavoidable, { isCritical });
+            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical });
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
-            await this.activation.applyState("attack-damage-rolled");
+            await this.activation.applyState("idle");
             await this.step(n);
-        } else if (isGM && this.activation.state === "attack-damage-rolled") {
-            await this.applyDamage();
-            await this.activation.applyState("applying-target-effects");
-            await this.step(n);
-        } else if (isGM && this.activation.state === "waiting-for-saves") {
-            if (this.activation.saveResults?.length === this.activation.allTargets.length) {
-                await this.activation.applyState("saves-complete");
-                await this.step(n);
-            }
-        } else if (isGM && this.activation.state === "saves-complete") {
-            const dc = item.data.data.save.dc;
-            const failedActors = this.activation.saveResults.filter(r => r.roll.total < dc).map(r => r.actor);
-            await this.activation.applyEffectiveTargets(failedActors);
-            if ((failedActors.length && hasDamageOfType(item, "immediate")) || hasUnavoidableDamageOfType(item, "immediate")) {
+
+        } else if (isAuthor && this.activation.state === "performSaveDamageRoll") {
+            if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType)) || hasUnavoidableDamageOfType(item, applicationType)) {
                 await this.activation.applyState("waiting-for-save-damage-roll");
             } else {
-                await this.activation.applyState("applying-target-effects");
+                await this.activation.applyState("idle");
                 await this.step(n);
             }
-        } else if (!isObservingGM && this.activation.state === "rolling-save-damage") {
+        } else if (isOriginator && this.activation.state === "rolling-save-damage") {
             await this.activation.applyState("waiting-for-save-damage");
 
-            const damageParts = await DamageParts.roll(item, "immediate");
+            const damageParts = await DamageParts.roll(item, applicationType);
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
-            await this.activation.applyState("save-damage-rolled");
+            await this.activation.applyState("idle");
             await this.step(n);
-        } else if (isGM && this.activation.state === "save-damage-rolled") {
-            await this.applyDamage();
-            await this.activation.applyState("applying-target-effects");
+
+        } else if (isGM && this.activation.state === "performSavingThrow") {
+            if (game.user.isGM && this.activation.message.user === game.user && this.activation.pcTargets.length) {
+                this.activation.createPlayerMessage();
+            }
+            await this.activation.applyState("waiting-for-saves");
+        } else if (isGM && this.activation.state === "waiting-for-saves") {
+            if (this.activation.saveResults?.length === this.activation.allTargets.length) {
+                const dc = item.data.data.save.dc;
+                const failedActors = this.activation.saveResults.filter(r => r.roll.total < dc).map(r => r.actor);
+                await this.activation.applyEffectiveTargets(failedActors);
+                await this.activation.applyState("idle");
+                await this.step(n);
+            }
+
+        } else if (isGM && this.activation.state === "applyDamage") {
+            await this._applyDamage();
+            await this.activation.applyState("idle");
             await this.step(n);
-        } else if (isGM && this.activation.state === "applying-target-effects") {
-            await this.applyTargetEffects("immediate");
-            await this.activation.applyState("register-triggers");
+
+        } else if (isGM && this.activation.state === "applyEffects") {
+            await this._applyTargetEffects(applicationType);
+            await this.activation.applyState("idle");
             await this.step(n);
-        } else if (isGM && this.activation.state === "register-triggers") {
-            await this.registerTriggers();
-            await this.activation.applyState("done");
+
+        } else if (isGM && this.activation.state === "endEffect") {
+            await this._endEffect(true);
+            await this.activation.applyState("idle");
+            await this.step(n);
+
+        } else if (isGM && this.activation.state === "endEffectOnSave") {
+            await this._endEffect();
+            await this.activation.applyState("idle");
+            await this.step(n);
+
+        } else if (isAuthor && this.activation.state === "idle") {
+            const flow = this.activation.flow;
+            const next = flow.shift();
+            await this.activation.updateFlow(flow);
+            await this.activation.applyState(next);
+            this.step(n);
+        } else if (this.activation.state && !this.knownStates.includes(this.activation.state)) {
+            console.log("UNKNOWN STATE", this.activation.state, ". Maybe run a macro?");
         }
     }
 
-    async applyDamage() {
+    async _applyDamage() {
         const item = this.activation.item;
         const speaker = item.actor;
         const damageParts = this.activation.damageParts;
@@ -238,7 +243,7 @@ export class Resolver {
         }
     }
 
-    async applyConcentration() {
+    async _applyConcentration() {
         const item = this.activation.item;
         const actor = item.actor;
 
@@ -289,11 +294,12 @@ export class Resolver {
         }
 
         if (effect) {
+            await effect.setFlag("wire", "conditions", this.activation.item.getFlag("wire", "conditions"));
             await this.activation.assignMasterEffect(effect);
         }
     }
 
-    async applyDurationEffect() {
+    async _applyDurationEffect() {
         const item = this.activation.item;
         const actor = item.actor;
 
@@ -315,11 +321,12 @@ export class Resolver {
         const effect = effects[0];
 
         if (effect) {
+            await effect.setFlag("wire", "conditions", this.activation.item.getFlag("wire", "conditions"));
             await this.activation.assignMasterEffect(effect);
         }
     }
 
-    async applyTargetEffects(applicationType) {
+    async _applyTargetEffects(applicationType) {
         const item = this.activation.item;
         const actor = item.actor;
         const allTargets = this.activation.allTargets;
@@ -365,13 +372,24 @@ export class Resolver {
    
         let createdEffects = [];
 
-        for (let target of allTargets) {
-            const targetEffects = await target.actor.createEmbeddedDocuments("ActiveEffect", allTargetsEffectData);
+        const applyEffect = async (target, data) => {
+            const existingEffects = target.actor.effects.filter(e => e.data.origin === item.uuid);
+            if (existingEffects.length) {
+                await target.actor.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
+            }
+            const targetEffects = await target.actor.createEmbeddedDocuments("ActiveEffect", data);
             createdEffects = [...createdEffects, ...targetEffects];
         }
+
+        for (let effect of createdEffects) {
+            await effect.setFlag("wire", "originatorUserId", this.activation.message.data.flags.wire?.originatorUserId);
+        }
+
+        for (let target of allTargets) {
+            await applyEffect(target, allTargetsEffectData);
+        }
         for (let target of effectiveTargets) {
-            const targetEffects = await target.actor.createEmbeddedDocuments("ActiveEffect", effectiveTargetsEffectData);
-            createdEffects = [...createdEffects, ...targetEffects];
+            await applyEffect(target, effectiveTargetsEffectData);
         }
 
         await masterEffect?.setFlag("wire", "childEffectUuids", createdEffects.map(e => e.uuid));
@@ -380,8 +398,13 @@ export class Resolver {
         await actor.setFlag("wire", "turnUpdatedEffectUuids", [...(actor.data.flags.wire?.turnUpdatedEffectUuids || []), ...casterDependentEffectUuids]);
     }
 
-    async registerTriggers() {
-        await this.activation.masterEffect?.setFlag("wire", "conditions", this.activation.item.getFlag("wire", "conditions"));
+    async _endEffect(force = false) {
+        const effect = this.activation.sourceEffect;
+        if (effect) {
+            if (force || !this.activation.effectiveTargets.length) {
+                await effect.delete();
+            }
+        }
     }
 
 }

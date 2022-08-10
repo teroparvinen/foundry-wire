@@ -30,7 +30,10 @@ export async function injectConditionList(object, html, containerSelector, condi
     const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
 
     let conditions = object.getFlag("wire", "conditions") || [];
-    console.log("CONDITIONS", conditions);
+    if (!Array.isArray(conditions)) {
+        conditions = [];
+        object.setFlag("wire", "conditions", []);
+    }
     const conditionsHtml = conditions?.map((condition, i) => {
         const bits = [];
         bits.push(`

@@ -1,7 +1,11 @@
-import { Updater } from "./base.js";
+import { Updater } from "./base-updater.js";
 
 export class EndOnSaveUpdater extends Updater {
-    async process() {
-        console.log(this);
+    flow() {
+        return this.hasSave(
+            this.performSavingThrow(
+                this.endEffectOnSave()
+            )
+        )
     }
 }

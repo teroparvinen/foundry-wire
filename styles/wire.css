@@ -3,6 +3,22 @@
 }
 
 
+.item-card .card-header img {
+    width: 36px;
+    height: 36px;
+}
+
+.item-card.item-card-secondary .card-header img {
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+}
+
+.item-card.item-card-secondary .card-header h3 {
+    line-height: 24px;
+}
+
+
 .item-card .dice-roll .dice-label {
     align-self: center;
     font-size: 15px;
@@ -145,11 +161,13 @@
 }
 
 .phase-saving-throws .phase-heading {
+    margin: 0;
     font-weight: bold;
     font-size: 20px;
     font-family: "Modesto Condensed", "Palatino Linotype", serif;
-    line-height: 36px;
+    line-height: 20px;
     color: rgba(0, 0, 0, 0.5);
+    padding: 8px 0;
 }
 
 .item-card .saving-throw-target {

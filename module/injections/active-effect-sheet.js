@@ -30,7 +30,7 @@ export function initActiveEffectSheetHooks() {
 }
 
 export function setupActiveEffectSheetWrappers() {
-    if (DAE) {
+    if (typeof DAE !== "undefined") {
         libWrapper.register("wire", "DAE.DAEActiveEffectConfig.prototype._getSubmitData", onItemSubmit, "MIXED");
     } else {
         libWrapper.register("wire", "ActiveEffectConfig.prototype._getSubmitData", onItemSubmit, "MIXED");

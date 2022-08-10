@@ -16,6 +16,7 @@ export function initHooks() {
                 content: message.data.content,
                 flags: foundry.utils.mergeObject(message.data.flags, { "wire.isGmView": true }),
                 flavor: message.data.flavor,
+                speaker: message.data.speaker,
                 user: game.user.id,
                 whisper: [game.user.id]
             };
@@ -64,7 +65,7 @@ export function initHooks() {
             const casterUuid = effect.getFlag("wire", "castingActorUuid");
             if (casterUuid) {
                 const caster = fromUuid(casterUuid);
-                const effectUuids = caster.flags.wire?.turnUpdatedEffectUuids.filter(uuid => uuid !== effect.uuid);
+                const effectUuids = caster.data.flags.wire?.turnUpdatedEffectUuids.filter(uuid => uuid !== effect.uuid);
                 caster.setFlag("wire", "turnUpdatedEffectUuids", effectUuids);
             }
         }

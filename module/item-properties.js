@@ -4,7 +4,7 @@ const attackTypes = ["msak", "mwak", "rsak", "rwak"];
 const tokenTargetables = ["ally", "creature", "enemy", ""];
 
 export function hasConcentration(item) {
-    return item.data.data.components.concentration;
+    return item.data.data.components?.concentration;
 }
 
 export function hasDuration(item) {
@@ -20,6 +20,10 @@ export function isAttack(item) {
     return item.hasAttack;
 }
 
+export function isSave(item) {
+    return item.data.data.actionType === "save";
+}
+
 export function isTokenTargetable(item) {
     return tokenTargetables.includes(item.data.data.target.type);
 }
@@ -33,7 +37,7 @@ export function isSelfTarget(item) {
 }
 
 export function hasDamageOfType(item, applicationType) {
-    return item.data.data.damage.parts.some(part => part[3] === applicationType);
+    return item.data.data.damage.parts.some(part => (part[3] || "immediate") === applicationType);
 }
 
 export function hasEffectsOfType(item, applicationType) {
@@ -45,19 +49,26 @@ export function hasApplicationsOfType(item, applicationType) {
     return hasDamageOfType(item, applicationType) || hasEffectsOfType(item, applicationType);
 }
 
+export function hasSaveableDamageOfType(item, applicationType) {
+    return item.data.data.damage?.parts.some(part => part[3] === applicationType && ["none", "half"].includes(part[2] || "none"));
+}
+
+export function hasSaveableEffectsOfType(item, applicationType) {
+    return item.effects.some(e => !e.isSuppressed && !e.isTemporary && !e.data.transfer && 
+        (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
+        !e.getFlag("wire", "applyOnSaveOrMiss"));
+}
+
+export function hasSaveableApplicationsOfType(item, applicationType) {
+    return hasSaveableDamageOfType(item, applicationType) || hasSaveableEffectsOfType(item, applicationType);
+}
+
 export function hasUnavoidableDamageOfType(item, applicationType) {
-    return item.data.data.damage.parts.some(part => part[3] === applicationType && ["full", "half"].includes(part[2]));
+    return item.data.data.damage?.parts.some(part => part[3] === applicationType && ["full", "half"].includes(part[2]));
 }
 
 export function hasUnavoidableEffectsOfType(item, applicationType) {
     return item.effects.some(e => !e.isSuppressed && !e.isTemporary && !e.data.transfer && 
         (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
         e.getFlag("wire", "applyOnSaveOrMiss"));
-}
-
-export function getUnavoidableApplicationsOfType(item, applicationType) {
-    let result = [];
-    if (hasUnavoidableEffectsOfType(item, applicationType)) result.push("effects");
-    if (hasUnavoidableDamageOfType(item, applicationType)) result.push("damage");
-    return result;
 }

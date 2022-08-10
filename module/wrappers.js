@@ -1,12 +1,13 @@
 import { Activation } from "./activation.js";
 import { ItemCard } from "./cards/item-card.js";
 import { Resolver } from "./resolver.js";
+import { Flow } from "./flow.js";
+import { itemRollFlow } from "./flows/item-roll.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
     libWrapper.register("wire", "ClientKeybindings._onDismiss", onEscape, "MIXED");
     libWrapper.register("wire", "game.dnd5e.canvas.AbilityTemplate.prototype.activatePreviewListeners", onTemplatePreviewListeners, "MIXED");
-    // libWrapper.register("wire", "game.dnd5e.canvas.AbilityTemplate.prototype.drawPreview", onTemplateDrawPreview, "MIXED");
 }
 
 let messageWaitingForTemplate = null;
@@ -19,25 +20,29 @@ async function onItemRoll(wrapped, options) {
         return;
     }
 
+    const flow = new Flow(item, "immediate");
+    const flowSteps = flow.evaluate(itemRollFlow);
+
     const messageData = await wrapped(foundry.utils.mergeObject(options || {}, { createMessage: false }));
-    console.log(messageData);
-    messageData.content = await ItemCard.renderHtml(item);
-    foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
-    const message = await ChatMessage.create(messageData);
-
-    if (message) {
-        const activation = new Activation(message);
-        await activation.initialize(item);
-
-        if (item.hasAreaTarget) {
-            messageWaitingForTemplate = message;
-        } else {
-            await activation.activate();
+    if (messageData) {
+        messageData.content = await ItemCard.renderHtml(item);
+        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
+        const message = await ChatMessage.create(messageData);
+    
+        if (message) {
+            const activation = new Activation(message);
+            await activation.initialize(item, "immediate", flowSteps);
+    
+            if (item.hasAreaTarget) {
+                messageWaitingForTemplate = message;
+            } else {
+                await activation.activate();
+            }
+    
         }
-
+    
+        return message;
     }
-
-    return message;
 }
 
 function onEscape(wrapped, context) {
@@ -77,8 +82,4 @@ function onTemplatePreviewListeners(wrapped, initialLayer) {
         canvas.stage.off("mousedown", mdHandler);
         cmListener?.apply(this, arguments);
     };
-}
-
-function onTemplateDrawPreview(wrapped) {
-
 }

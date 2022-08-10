@@ -1,0 +1,70 @@
+
+export function itemRollFlow() {
+    const nonAttack = this.pick(
+        this.isSave(
+            this.performSavingThrow(
+                this.hasDamage(
+                    this.performSaveDamageRoll(
+                        this.sequence(
+                            this.applyDamage(),
+                            this.applyEffects()
+                        )
+                    )
+                ),
+                this.applyEffects()
+            )
+        ),
+        this.otherwise(
+            this.applyDefaultTargets(
+                this.sequence(
+                    this.performSaveDamageRoll( // Check if there is any
+                        this.applyDamage()
+                    ),
+                    this.applyEffects()
+                )
+            )
+        )
+    )
+    
+    return this.sequence(
+        this.hasDuration(
+            this.hasConcentration(
+                this.applyConcentration()
+            ),
+            this.hasAreaTarget(
+                this.applyDurationEffect()
+            )
+        ),
+        this.pick(
+            this.isTokenTargetable(
+                this.sequence(
+                    this.applySelectedTargets(),
+                    this.pick(
+                        this.isAttack(
+                            this.performAttackRoll(
+                                this.sequence(
+                                    this.hasDamage(
+                                        this.performAttackDamageRoll(
+                                            this.applyDamage()
+                                        )
+                                    ),
+                                    this.applyEffects()
+                                )
+                            )
+                        ),
+                        this.otherwise(
+                            nonAttack
+                        )
+                    )
+                )
+            ),
+            this.hasAreaTarget(
+                this.hasDamageOrEffects(
+                    this.confirmTargets(
+                        nonAttack
+                    )
+                )
+            )
+        )
+    )
+}

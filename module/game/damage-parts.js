@@ -52,7 +52,7 @@ export class DamageParts {
     
         // Factor in extra weapon-specific critical damage
         const criticalBonusDamage = itemData.critical?.damage;
-    
+
         // Construct the DamageRoll instances for each part
         const partsWithRolls = [...parts, ...ammoParts].map((part, n) => {
             if (n === 0) {
@@ -81,6 +81,9 @@ export class DamageParts {
     
         // Evaluate the configured roll
         await Promise.all(partsWithRolls.map(pr => pr.roll.evaluate({ async: true })));
+
+        // Apply flavor to dice
+        partsWithRolls.forEach(pr => pr.roll.dice.forEach(die => die.options.flavor = pr.part.type));
     
         return new DamageParts(partsWithRolls);
     }

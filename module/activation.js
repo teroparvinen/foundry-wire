@@ -1,5 +1,6 @@
 import { ItemCard } from "./cards/item-card.js";
 import { DamageParts } from "./game/damage-parts.js";
+import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
 import { wireSocket } from "./socket.js";
 import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType } from "./utils.js";
@@ -24,7 +25,9 @@ export class Activation {
     }
 
     get itemUuid() { return this.data.itemUuid; }
+    get applicationType() { return this.data.applicationType; }
     get state() { return this.data.state; }
+    get flow() { return this.data.flow; }
     get templateUuid() { return this.data.templateUuid; }
     get masterEffectUuid() { return this.data.masterEffectUuid; }
     get targetUuids() { return this.data.targetUuids; }
@@ -43,6 +46,7 @@ export class Activation {
     get actor() { return this.item?.actor; }
     get template() { return this.templateUuid ? fromUuid(this.templateUuid) : null; }
     get masterEffect() { return this.masterEffectUuid ? fromUuid(this.masterEffectUuid) : null; }
+    get sourceEffect() { return this.data.sourceEffectUuid ? fromUuid(this.data.sourceEffectUuid) : null; }
 
     get allTargets() { return this.targetUuids?.map(uuid => this._targetRecord(uuid)) ?? []; }
     get pcTargets() { return this.allTargets.filter(t => t.actor.hasPlayerOwner); }
@@ -92,8 +96,16 @@ export class Activation {
         }
     }
 
-    async initialize(item) {
+    async initialize(item, applicationType, flow, sourceEffect = null, sourceTargetUuid = null) {
         foundry.utils.setProperty(this.data, 'itemUuid', item.uuid);
+        foundry.utils.setProperty(this.data, 'applicationType', applicationType);
+        foundry.utils.setProperty(this.data, 'flow', flow);
+        if (sourceEffect) {
+            foundry.utils.setProperty(this.data, 'sourceEffectUuid', sourceEffect.uuid)
+            if (sourceEffect.parent instanceof CONFIG.Actor.documentClass) {
+                foundry.utils.setProperty(this.data, "targetUuids", [sourceTargetUuid]);
+            }
+        }
         this.update();
     }
 
@@ -111,6 +123,8 @@ export class Activation {
             return;
         }
 
+        const isSecondary = this.data.sourceEffectUuid;
+
         // If this is called as a GM on a player roll, you actually want to update the GM card
         const gmMessageUuid = this.message.getFlag("wire", "gmMessageUuid");
         let targetMessage = this.message;
@@ -118,20 +132,40 @@ export class Activation {
             targetMessage = fromUuid(gmMessageUuid);
         }
         const card = new ItemCard(targetMessage);
-        await card.updateContent();
+        await card.updateContent({ isSecondary });
 
         // If this is called on a GM card, also update the player view if it is present
         const playerMessageUuid = this.message.getFlag("wire", "playerMessageUuid");
         if (game.user.isGM && playerMessageUuid) {
             const playerMessage = fromUuid(playerMessageUuid);
             const playerCard = new ItemCard(playerMessage);
-            await playerCard.updateContent(true);
+            const isPlayerView = true;
+            await playerCard.updateContent({ isSecondary, isPlayerView });
+
+            wireSocket.executeForOthers("scrollBottom");
         }
     }
 
-    async activate() {
-        await this.assignTargets([...game.user.targets].map(t => t.actor));
+    async createPlayerMessage() {
+        const playerMessageData = {
+            content: await ItemCard.renderHtml(this.item, this, { isPlayerView: true }),
+            flags: {
+                wire: {
+                    masterMessageUuid: this.message.uuid,
+                    originatorUserId: this.message.data.flags.wire?.originatorUserId,
+                    isPlayerView: true
+                }
+            },
+            speaker: this.message.data.speaker,
+            user: game.user.id
+        };
+        const playerMessage = await ChatMessage.create(playerMessageData);
+        this.message.setFlag("wire", "playerMessageUuid", playerMessage.uuid);
 
+        ui.chat.scrollBottom();
+    }
+
+    async activate() {
         const resolver = new Resolver(this);
         await resolver.start();
     }
@@ -141,12 +175,15 @@ export class Activation {
         await resolver.step();
     }
 
+    async updateFlow(flow) {
+        foundry.utils.setProperty(this.data, 'flow', flow);
+        this.update();
+    }
+
     async assignTemplate(template) {
         await template.setFlag("wire", "activationMessageId", this.message.id);
         foundry.utils.setProperty(this.data, "templateUuid", template.uuid);
         await this.update();
-        await this.applyState("area-target-placed");
-        await this.step();
     }
 
     async assignMasterEffect(effect) {
@@ -157,11 +194,21 @@ export class Activation {
             await effect.setFlag("wire", "templateUuid", this.templateUuid);
             await this.template.setFlag("wire", "masterEffectUuid", effect.uuid);
         }
+
+        await effect.setFlag("wire", "originatorUserId", this.message.data.flags.wire?.originatorUserId);
     }
 
     async assignTargets(targets) {
         foundry.utils.setProperty(this.data, "targetUuids", targets.map(t => t.uuid));
         await this.update();
+    }
+
+    async assignDefaultTargets() {
+        if (isSelfTarget(this.item) || this.allTargets.length == 0) {
+            await this.applyEffectiveTargets([this.item.actor]);
+        } else {
+            await this.applyEffectiveTargets(this.allTargets.map(t => t.actor));
+        }
     }
 
     async applyEffectiveTargets(targets) {
@@ -215,13 +262,13 @@ export class Activation {
     async rollDamage() {
         if (this.data.state === "waiting-for-attack-damage-roll") {
             await this.applyState("rolling-attack-damage");
-        } else {
+        } else if (this.data.state === "waiting-for-save-damage-roll") {
             await this.applyState("rolling-save-damage");
         }
         await this.step();
     }
 
-    async rollSave(actor, options) {
+    async rollSave(actor, options = {}) {
         const roll = await actor.rollAbilitySave(this.item.data.data.save.ability, foundry.utils.mergeObject(options, { chatMessage: false, fastForward: true }));
         await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
         await this.applySave(actor, roll);

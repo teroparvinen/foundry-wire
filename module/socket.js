@@ -7,13 +7,14 @@ export function setupSocket() {
     wireSocket = socketlib.registerModule("wire");
     wireSocket.register("activationUpdated", activationUpdated);
     wireSocket.register("updateMessage", updateMessage);
+    wireSocket.register("scrollBottom", scrollBottom);
 }
 
 async function activationUpdated(messageUuid) {
     const message = fromUuid(messageUuid);
 
-    const originatorUuid = message.getFlag("wire", "originatorUserId");
-    if (originatorUuid) {
+    const originatorUserId = message.getFlag("wire", "originatorUserId");
+    if (originatorUserId) {
         if (game.user.isGM && !message.isAuthor) {
             const gmMessageUuid = message.getFlag("wire", "gmMessageUuid");
             if (gmMessageUuid) {
@@ -37,4 +38,8 @@ async function updateMessage(messageUuid, data) {
     const activation = new Activation(message);
     await activation.step();
     await activation.updateCard();
+}
+
+function scrollBottom() {
+    ui.chat.scrollBottom();
 }

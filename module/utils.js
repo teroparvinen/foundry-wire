@@ -118,7 +118,10 @@ export function copyEffectChanges(effect) {
 }
 
 export function copyConditions(effect) {
-    return duplicate(effect.data.flags.wire?.conditions);
+    const conditions = effect.data.flags.wire?.conditions;
+    if (conditions) {
+        return duplicate(conditions);
+    }
 }
 
 export function copyEffectDuration(effect) {
@@ -127,9 +130,17 @@ export function copyEffectDuration(effect) {
 }
 
 export function isCasterDependentEffect(effect) {
-    return effect.data.flags.wire.conditions.some(c => ["start-of-turn-caster", "end-of-turn-caster"].includes(c.condition));
+    return effect.data.flags.wire?.conditions?.some(c => ["start-of-turn-caster", "end-of-turn-caster"].includes(c.condition));
 }
 
 export function i18n(...args) {
     return game.i18n.localize(...args);
+}
+
+export function getTokenTemplateIds(token) {
+    const tokenPosition = `${token.data.x}.${token.data.y}`;
+    return Object.entries(canvas.grid.highlightLayers)
+        .filter(e => e[0].startsWith("Template."))
+        .filter(e => e[1].positions.has(tokenPosition))
+        .map(e => e[0].substring(9));
 }

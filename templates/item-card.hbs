@@ -1,22 +1,30 @@
-<div class="dnd5e chat-card item-card" data-actor-id="{{actor._id}}" data-item-id="{{item._id}}"
+<div class="dnd5e chat-card item-card {{#if isSecondary}}item-card-secondary{{/if}}" data-actor-id="{{actor._id}}" data-item-id="{{item._id}}"
     {{#if tokenId}}data-token-id="{{tokenId}}"{{/if}} {{#if isSpell}}data-spell-level="{{item.data.level}}"{{/if}}>
-    {{#unless isPlayerView}}
+    {{#unless isGMActorPlayerView}}
         <header class="card-header flexrow">
-            <img src="{{item.img}}" title="{{item.name}}" width="36" height="36"/>
+            <img src="{{item.img}}" title="{{item.name}}" />
             <h3 class="item-name">{{item.name}}</h3>
         </header>
 
-        <div class="card-content">
-            {{{data.description.value}}}
-            {{#if data.materials.value}}
-            <p><strong>{{ localize "DND5E.RequiredMaterials" }}.</strong> {{data.materials.value}}</p>
-            {{/if}}
-        </div>
+        {{#unless isSecondary}}
+            <div class="card-content">
+                {{{data.description.value}}}
+                {{#if data.materials.value}}
+                <p><strong>{{ localize "DND5E.RequiredMaterials" }}.</strong> {{data.materials.value}}</p>
+                {{/if}}
+            </div>
+        {{/unless}}
     {{/unless}}
 
+    {{!--<p>
+        {{#if isGM}}GM{{/if}}
+        {{#if isPlayerView}}PlayerView{{/if}}
+        {{#if isGMActorPlayerView}}GM-actor{{/if}}
+    </p>--}}
+
     <div class="card-phases">
-        {{#unless isPlayerView}}
-            {{#if (eq activation.state "waiting-for-attack")}}
+        {{#unless isGMActorPlayerView}}
+            {{#if (eq activation.state "performAttackRoll")}}
                 <div class="phase-waiting-for-roll">
                     <i class="fas fa-dice-d20 fa-3x anim-pulse"></i>
                 </div>
@@ -95,7 +103,8 @@
                             </div>
                         {{/with}}
                     {{else}}
-                        {{#if (or ../isGM actor.isOwner)}}
+                        {{log ../isGM actor.isOwner actor}}
+                        {{#if (or ../isGM (and actor.hasPlayerOwner actor.isOwner))}}
                             <a data-action="wire-save" class="flex0 target-save"></a>
                         {{/if}}
                     {{/if}}
@@ -130,7 +139,7 @@
             </div>
         {{/if}}
 
-        {{#unless isPlayerView}}
+        {{#unless isGMActorPlayerView}}
             {{#if (eq activation.state "waiting-for-save-damage")}}
                 <div class="phase-waiting-for-roll">
                     <i class="fas fa-dice-d20 fa-3x anim-pulse"></i>
@@ -140,14 +149,14 @@
     </div>
 
     <div class="card-buttons">
-        {{#unless isPlayerView}}
+        {{#unless isGMActorPlayerView}}
             {{#if (or (eq activation.state "waiting-for-attack-damage-roll") (eq activation.state "waiting-for-save-damage-roll"))}}
                 <button data-action="wire-damage">
                     {{#if isHealing}}{{ localize "DND5E.Healing" }}
                     {{else}}{{localize "DND5E.Damage" }}{{/if}}
                 </button>
             {{/if}}
-            {{#if (eq activation.state "waiting-for-target-confirmation")}}
+            {{#if (eq activation.state "confirmTargets")}}
                 <button data-action="confirm-targets">
                     {{localize "wire.ui.confirm-targets"}}
                 </button>
@@ -155,7 +164,7 @@
         {{/unless}}
     </div>
 
-    {{#unless isPlayerView}}
+    {{#unless (or isGMActorPlayerView isSecondary)}}
         <footer class="card-footer">
             {{#each data.properties}}
             <span>{{this}}</span>

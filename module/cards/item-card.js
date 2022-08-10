@@ -4,7 +4,7 @@ import { fromUuid, fudgeToActor, getActorToken } from "../utils.js";
 export class ItemCard {
     static templateName = "modules/wire/templates/item-card.hbs";
 
-    static async renderHtml(item, activation = null, isPlayerView = false) {
+    static async renderHtml(item, activation = null, { isPlayerView = false, isSecondary = false } = {}) {
         if (item) {
             const actor = item.actor;
             const token = getActorToken(actor);
@@ -13,18 +13,18 @@ export class ItemCard {
             const templateData = {
                 isGM: isPlayerView ? false : game.user.isGM,
                 isPlayerView,
+                isGMActorPlayerView: isPlayerView && !actor.hasPlayerOwner,
                 hasPlayerOwner: item.hasPlayerOwner,
                 actor: actor.data,
                 tokenId: token?.uuid || null,
                 item: item.data,
                 data: item.getChatData(),
-                // hasAttack: item.hasAttack,
                 isHealing: item.isHealing,
                 isVersatile: item.isVersatile,
                 isSpell: item.data.type === "spell",
-                // isTool: item.data.type === "tool",
                 activation: activationData,
-                abilityNames: CONFIG.DND5E.abilities
+                abilityNames: CONFIG.DND5E.abilities,
+                isSecondary
             };
             return await renderTemplate(this.templateName, templateData);
         }
@@ -34,9 +34,9 @@ export class ItemCard {
         this.message = message;
     }
 
-    async updateContent(isPlayerView = false) {
+    async updateContent(options) {
         const activation = new Activation(this.message);
-        const html = await ItemCard.renderHtml(activation.item, activation, isPlayerView);
+        const html = await ItemCard.renderHtml(activation.item, activation, options);
         await this.message.update({ content: html });
 
         ui.chat.scrollBottom();
