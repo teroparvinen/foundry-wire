@@ -1,5 +1,6 @@
 import { initAreaConditionHooks } from "./conditions/area-effects.js";
 import { initCombatTurnConditionHooks } from "./conditions/combat-turns.js";
+import { DamageParts } from "./game/damage-parts.js";
 import { registerHandlebarsHelpers } from "./handlebars.js";
 import { initHooks } from "./hooks.js";
 import { initActiveEffectSheetHooks, setupActiveEffectSheetWrappers } from "./injections/active-effect-sheet.js";
@@ -16,6 +17,10 @@ Hooks.once("init", () => {
 
     initCombatTurnConditionHooks();
     initAreaConditionHooks();
+
+    game.wire = {
+        DamageParts
+    }
 });
 
 Hooks.once("setup", () => {

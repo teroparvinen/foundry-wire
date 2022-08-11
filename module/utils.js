@@ -1,3 +1,5 @@
+import { makeUpdater } from "./make-updater.js";
+
 export function fromUuid(uuid) {
     if (!uuid || uuid === '') return null;
     let parts = uuid.split('.');
@@ -37,38 +39,37 @@ export function effectDurationFromItemDuration(itemDuration, inCombat) {
 
     const roundTime = CONFIG.time.roundTime;
     const isDurationCombatTime = itemDuration.units === "round" || itemDuration.units === "turn";
-    const durationInSeconds = itemDuration.value * timeMultipliers[itemDuration.units];
-    const durationInRounds = Math.floor(durationInSeconds / roundTime);
-    const durationInTurns = itemDuration.units === "turn" ? itemDuration.value : 0;
+
+    let durationInSeconds, durationInRounds, durationInTurns;
+    if (typeof timeMultipliers[itemDuration.units] !== "undefined") {
+        durationInSeconds =  itemDuration.value * timeMultipliers[itemDuration.units];
+        durationInRounds = Math.floor(durationInSeconds / roundTime);
+        durationInTurns = itemDuration.units === "turn" ? itemDuration.value : 0;
+    }
 
     const result = {
-        seconds: durationInSeconds,
-        startTime: game.time.worldTime,
+        startTime: game.time.worldTime
     };
+    if (typeof durationInSeconds !== "undefined") { result.seconds = durationInSeconds; }
     if (inCombat || isDurationCombatTime) {
-        result.rounds = durationInRounds;
-        result.turns = durationInTurns;
+        if (typeof durationInRounds !== "undefined") { result.rounds = durationInRounds; }
+        if (typeof durationInTurns !== "undefined") { result.turns = durationInTurns; }
         result.startRound = game.combat?.round;
         result.startTurn = game.combat?.turn;
     }
 
     return result;
+}
 
-    // if (DAE) {
-    //     const convertedDuration = DAE.convertDuration(itemDuration, inCombat);
-    //     if (convertedDuration?.type === "seconds") {
-    //         return { seconds: convertedDuration.seconds, startTime: game.time.worldTime };
-    //     }
-    //     else if (convertedDuration?.type === "turns") {
-    //         return {
-    //             rounds: convertedDuration.rounds,
-    //             turns: convertedDuration.turns,
-    //             startRound: game.combat?.round,
-    //             startTurn: game.combat?.turn
-    //         };
-    //     }
-    // }
-    // return {};
+export function checkEffectDurationOverride(duration, effect) {
+    const effectDuration = effect.data.duration;
+    if (effectDuration.seconds || effectDuration.rounds) {
+        return foundry.utils.mergeObject({}, duration, {
+            seconds: effectDuration.seconds,
+            rounds: duration.rounds ? effectDuration.rounds || Math.floor(effectDuration.seconds / CONFIG.time.roundTime) : undefined
+        });
+    }
+    return duration;
 }
 
 export function localizedWarning(key) {
@@ -134,6 +135,9 @@ export function isCasterDependentEffect(effect) {
 }
 
 export function i18n(...args) {
+    if (args.length) {
+        return game.i18n.format(...args);
+    }
     return game.i18n.localize(...args);
 }
 
@@ -143,4 +147,25 @@ export function getTokenTemplateIds(token) {
         .filter(e => e[0].startsWith("Template."))
         .filter(e => e[1].positions.has(tokenPosition))
         .map(e => e[0].substring(9));
+}
+
+const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+
+export async function runAndAwait(fn, ...args) {
+    if (fn.constructor === AsyncFunction) {
+        return await fn(...args);
+    } else if (fn.constructor === Function) {
+        return fn(...args);
+    }
+}
+
+export async function triggerConditions(actor, condition) {
+    actor.effects.filter(e => !e.isSuppressed).forEach(async effect => {
+        const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
+        await Promise.all(conditions.map(async condition => {
+            const item = fromUuid(effect.data.origin);
+            const updater = makeUpdater(condition.update, effect, actor, item);
+            await updater?.process(effect.parent);
+        }));
+    });
 }

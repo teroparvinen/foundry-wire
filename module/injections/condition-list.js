@@ -12,7 +12,20 @@ const conditionList = [
     ["as-action", "all"],
     ["as-reaction", "all"],
     ["target-attacks.all", "all"],
-    ["target-hit.all", "all"]
+    ["target-attacks.mwak", "all"],
+    ["target-attacks.rwak", "all"],
+    ["target-attacks.msak", "all"],
+    ["target-attacks.rsak", "all"],
+    ["target-hits.all", "all"],
+    ["target-hits.mwak", "all"],
+    ["target-hits.rwak", "all"],
+    ["target-hits.msak", "all"],
+    ["target-hits.rsak", "all"],
+    ["target-is-hit.all", "all"],
+    ["target-is-hit.mwak", "all"],
+    ["target-is-hit.rwak", "all"],
+    ["target-is-hit.msak", "all"],
+    ["target-is-hit.rsak", "all"]
 ];
 
 const updateList = [

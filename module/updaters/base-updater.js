@@ -20,7 +20,7 @@ export class Updater {
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", this.effect.data.flags.wire?.originatorUserId);
         const message = await ChatMessage.create(messageData);
 
-        const flowSteps = Flow.evaluate(this.item, this.applicationType, this.flow);
+        const flow = new Flow(this.item, this.applicationType, this.flow);
             
         if (message) {
             const activation = new Activation(message);
@@ -29,7 +29,7 @@ export class Updater {
                 activation.createPlayerMessage();
             }
 
-            await activation.initialize(this.item, this.applicationType, flowSteps, this.effect, targetActor.uuid);
+            await activation.initialize(this.item, this.applicationType, flow, this.effect, targetActor.uuid);
             await activation.activate();
         }
     }

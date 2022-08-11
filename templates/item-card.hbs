@@ -148,6 +148,12 @@
         {{/unless}}
     </div>
 
+    {{#if activation.customHtml}}
+        <div class="card-custom-html">
+            {{{activation.customHtml}}}
+        </div>
+    {{/if}}
+
     <div class="card-buttons">
         {{#unless isGMActorPlayerView}}
             {{#if (or (eq activation.state "waiting-for-attack-damage-roll") (eq activation.state "waiting-for-save-damage-roll"))}}

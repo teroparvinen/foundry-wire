@@ -1,19 +1,33 @@
-import { hasConcentration, hasDamageOfType, hasDuration, hasEffectsOfType, hasSaveableApplicationsOfType, isAttack, isSave, isTokenTargetable } from "./item-properties.js";
+import { hasConcentration, hasDamageOfType, hasDuration, hasEffectsOfType, hasSaveableApplicationsOfType, isAttack, isSave, isSelfTarget, isTokenTargetable } from "./item-properties.js";
 
 export class Flow {
-    static evaluate(item, applicationType, fn) {
-        const flow = new Flow(item, applicationType);
-        return flow.evaluate(fn);
-    }
-
-    constructor(item, applicationType) {
+    constructor(item, applicationType, evaluator) {
         this.item = item;
         this.applicationType = applicationType;
+        this.evaluator = evaluator;
+
+        const macroCommand = item.data.flags.itemacro?.macro?.data.command?.trim();
+        if (macroCommand) {
+            this.macroFunction = new Function(macroCommand);
+        }
+
+        this.preRollOptions = {};
+        this.customSteps = {};
     }
 
-    evaluate(fn) {
-        const result = fn.apply(this).flat(100).filter(i => i);
-        return result;
+    evaluate() {
+        let result;
+        if (this.macroFunction) {
+            result = this.macroFunction.apply(this);
+        }
+        if (!result && this.evaluator) {
+            result = this.evaluator.apply(this);
+        }
+        
+        const steps = result.flat(100).filter(i => i);
+        this.isEvaluated = true;
+        this.evaluatedSteps = steps;
+        return steps;
     }
 
     chain(input) {
@@ -23,6 +37,13 @@ export class Flow {
             return [input]
         }
         return [];
+    }
+
+    registerFlowStep(name, runAsRoller, fn) {
+        this.customSteps[name] = {
+            runAsRoller,
+            fn
+        }
     }
 
     // Flow control
@@ -41,6 +62,10 @@ export class Flow {
 
     sequence() {
         return [...arguments].filter(a => a);
+    }
+
+    performCustomStep(name, ...args) {
+        return [name, ...this.chain(this.pick(...args))];
     }
 
     // Item information
@@ -95,6 +120,12 @@ export class Flow {
 
     isSave() {
         if (isSave(this.item)) {
+            return this.pick(...arguments);
+        }
+    }
+
+    isSelfTarget() {
+        if (isSelfTarget(this.item)) {
             return this.pick(...arguments);
         }
     }
@@ -161,5 +192,19 @@ export class Flow {
 
     performSavingThrow() {
         return ["performSavingThrow", ...this.chain(this.pick(...arguments))];
+    }
+
+    triggerAttackConditions() {
+        return ["triggerAttackConditions", ...this.chain(this.pick(...arguments))];
+    }
+
+    // Pre-roll options
+
+    requestCustomConfiguration(callback) {
+        this.preRollOptions["customConfigurationCallback"] = callback;
+    }
+
+    skipConfigurationDialog() {
+        this.preRollOptions["skipConfigurationDialog"] = true;
     }
 }

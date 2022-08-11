@@ -1,4 +1,5 @@
 import { ItemCard } from "./cards/item-card.js";
+import { Flow } from "./flow.js";
 import { DamageParts } from "./game/damage-parts.js";
 import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
@@ -27,7 +28,8 @@ export class Activation {
     get itemUuid() { return this.data.itemUuid; }
     get applicationType() { return this.data.applicationType; }
     get state() { return this.data.state; }
-    get flow() { return this.data.flow; }
+    get flowSteps() { return this.data.flowSteps; }
+    get config() { return this.data.config; }
     get templateUuid() { return this.data.templateUuid; }
     get masterEffectUuid() { return this.data.masterEffectUuid; }
     get targetUuids() { return this.data.targetUuids; }
@@ -92,14 +94,19 @@ export class Activation {
             saves: this.data.saves,
             allTargets: this.allTargets,
             pcTargets: this.pcTargets,
-            singleTarget: this.singleTarget
+            singleTarget: this.singleTarget,
+            customHtml: this.data.customHtml
         }
     }
 
     async initialize(item, applicationType, flow, sourceEffect = null, sourceTargetUuid = null) {
         foundry.utils.setProperty(this.data, 'itemUuid', item.uuid);
         foundry.utils.setProperty(this.data, 'applicationType', applicationType);
-        foundry.utils.setProperty(this.data, 'flow', flow);
+
+        const flowSteps = flow.isEvaluated ? flow.evaluatedSteps : flow.evaluate();
+        foundry.utils.setProperty(this.data, 'flowSteps', flowSteps);
+        this.flow = flow;
+
         if (sourceEffect) {
             foundry.utils.setProperty(this.data, 'sourceEffectUuid', sourceEffect.uuid)
             if (sourceEffect.parent instanceof CONFIG.Actor.documentClass) {
@@ -107,6 +114,15 @@ export class Activation {
             }
         }
         this.update();
+    }
+
+    getCustomFlowStepHandlers() {
+        if (!this.flow) {
+            this.flow = new Flow(this.item, this.applicationType);
+            this.flow.evaluate();
+        }
+
+        return this.flow.customSteps;
     }
 
     async update() {
@@ -204,11 +220,27 @@ export class Activation {
     }
 
     async assignDefaultTargets() {
-        if (isSelfTarget(this.item) || this.allTargets.length == 0) {
+        if (isSelfTarget(this.item) || (this.allTargets.length == 0 && game.user.targets.size == 0)) {
+            await this.assignTargets([this.item.actor]);
             await this.applyEffectiveTargets([this.item.actor]);
-        } else {
+        } else if (this.allTargets.length) {
             await this.applyEffectiveTargets(this.allTargets.map(t => t.actor));
+        } else if (game.user.targets.size) {
+            const actors = [...game.user.targets].map(t => t.actor);
+            await this.assignTargets(actors);
+            await this.applyEffectiveTargets(actors);
         }
+    }
+
+    async assignConfig(config) {
+        foundry.utils.setProperty(this.data, "config", config);
+        await this.update();
+    }
+
+    async assignCustomHtml(html) {
+        foundry.utils.setProperty(this.data, "customHtml", html);
+        await this.update();
+        await this.updateCard();
     }
 
     async applyEffectiveTargets(targets) {

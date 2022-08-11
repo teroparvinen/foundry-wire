@@ -1,8 +1,9 @@
 import { Activation } from "./activation.js";
 import { ItemCard } from "./cards/item-card.js";
-import { Resolver } from "./resolver.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
+import { preRollCheck, preRollConfig } from "./preroll.js";
+import { fromUuid, i18n } from "./utils.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
@@ -10,32 +11,47 @@ export function setupWrappers() {
     libWrapper.register("wire", "game.dnd5e.canvas.AbilityTemplate.prototype.activatePreviewListeners", onTemplatePreviewListeners, "MIXED");
 }
 
-let messageWaitingForTemplate = null;
+let templateInfo = null;
 
 async function onItemRoll(wrapped, options) {
     const item = this;
     console.log("ROLLING ITEM", item, options);
 
-    if (!Resolver.check(item)) {
+    const concentrationEffect = item.actor.effects.find(effect => effect.getFlag("wire", "isConcentration"));
+    if (concentrationEffect) {
+        const originName = fromUuid(concentrationEffect.data.origin).name;
+        if (!await Dialog.confirm({
+            title: i18n("wire.ui.end-concentration-dialog-title"),
+            content: i18n("wire.ui.end-concentration-dialog-content", { originName })
+        })) {
+            return;
+        }
+    }
+
+    if (!preRollCheck(item)) {
         return;
     }
 
-    const flow = new Flow(item, "immediate");
-    const flowSteps = flow.evaluate(itemRollFlow);
+    const flow = new Flow(item, "immediate", itemRollFlow);
+    flow.evaluate();
 
-    const messageData = await wrapped(foundry.utils.mergeObject(options || {}, { createMessage: false }));
-    if (messageData) {
+    const result = await preRollConfig(item, flow.preRollOptions);
+
+    if (result) {
+        const { messageData, config } = result;
+
         messageData.content = await ItemCard.renderHtml(item);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
         const message = await ChatMessage.create(messageData);
     
         if (message) {
             const activation = new Activation(message);
-            await activation.initialize(item, "immediate", flowSteps);
+            await activation.initialize(item, "immediate", flow);
     
             if (item.hasAreaTarget) {
-                messageWaitingForTemplate = message;
+                templateInfo = { config, message };
             } else {
+                await activation.assignConfig(config);
                 await activation.activate();
             }
     
@@ -66,10 +82,11 @@ function onTemplatePreviewListeners(wrapped, initialLayer) {
 
     const mdHandler = function(event) {
         Hooks.once("createMeasuredTemplate", async (templateDoc, data, user) => {
-            const activation = new Activation(messageWaitingForTemplate);
+            const activation = new Activation(templateInfo.message);
+            await activation.assignConfig(templateInfo.config);
             await activation.activate();
             await activation.assignTemplate(templateDoc);
-            messageWaitingForTemplate = null;
+            templateInfo = null;
             canvas.stage.off("mousedown", mdHandler);
         });
     };
@@ -77,8 +94,8 @@ function onTemplatePreviewListeners(wrapped, initialLayer) {
 
     const cmListener = canvas.app.view.oncontextmenu;
     canvas.app.view.oncontextmenu = function(event) {
-        messageWaitingForTemplate?.delete();
-        messageWaitingForTemplate = null;
+        templateInfo.message?.delete();
+        templateInfo = null;
         canvas.stage.off("mousedown", mdHandler);
         cmListener?.apply(this, arguments);
     };

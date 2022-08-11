@@ -17,7 +17,9 @@
             "di": "Immunity",
             "dr": "Resistance",
             "dv": "Vulnerability",
-            "no-damage": "No damage was done"
+            "no-damage": "No damage was done",
+            "end-concentration-dialog-title": "End Concentration?",
+            "end-concentration-dialog-content": "You are concetrating on {originName}"
         },
         "item": {
             "damage-none": "None on save/miss",
@@ -39,7 +41,20 @@
             "condition-as-action": "As an action",
             "condition-as-reaction": "As a reaction",
             "condition-target-attacks.all": "Target makes any attack",
-            "condition-target-hit.all": "Target is hit with any attack",
+            "condition-target-attacks.mwak": "Target makes a melee weapon attack",
+            "condition-target-attacks.rwak": "Target makes a ranged weapon attack",
+            "condition-target-attacks.msak": "Target makes a melee spell attack",
+            "condition-target-attacks.rsak": "Target makes a ranged spell attack",
+            "condition-target-hits.all": "Target hits with any attack",
+            "condition-target-hits.mwak": "Target hits with a melee weapon attack",
+            "condition-target-hits.rwak": "Target hits with a ranged weapon attack",
+            "condition-target-hits.msak": "Target hits with a melee spell attack",
+            "condition-target-hits.rsak": "Target hits with a ranged spell attack",
+            "condition-target-is-hit.all": "Target is hit with any attack",
+            "condition-target-is-hit.mwak": "Target is hit with a melee weapon attack",
+            "condition-target-is-hit.rwak": "Target is hit with a ranged weapon attack",
+            "condition-target-is-hit.msak": "Target is hit with a melee spell attack",
+            "condition-target-is-hit.rsak": "Target is hit with a ranged spell attack",
             "update-apply-delayed": "Apply delayed effects",
             "update-apply-overtime": "Apply over time effects",
             "update-end": "End the effect",
@@ -57,7 +72,9 @@
         "warn": {
             "attack-must-have-single-target": "An attack must have a single creature type target",
             "select-single-target-for-attack": "Select a target for the attack",
-            "select-targets-for-effect": "Select (a) target(s) for the effect"
+            "select-targets-for-effect": "Select (a) target(s) for the effect",
+            "damage-roll-has-no-parts": "There is no damage to roll!",
+            "could-not-parse-bonus-damage": "Could not parse bonus damage!"
         }
     }
 }

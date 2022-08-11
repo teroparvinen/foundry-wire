@@ -1,22 +1,9 @@
 import { DamageCard } from "./cards/damage-card.js";
-import { ItemCard } from "./cards/item-card.js";
 import { DamageParts } from "./game/damage-parts.js";
-import { hasDamageOfType, hasUnavoidableDamageOfType, hasUnavoidableEffectsOfType, isAttack, isInstantaneous, targetsSingleToken } from "./item-properties.js";
-import { copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getAttackRollResultType, isCasterDependentEffect, isInCombat, localizedWarning } from "./utils.js";
+import { hasDamageOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
+import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getAttackRollResultType, isCasterDependentEffect, isInCombat, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
-    static check(item) {
-        if (isAttack(item) && !targetsSingleToken(item)) {
-            return localizedWarning("wire.warn.attack-must-have-single-target");
-        } else if (isAttack(item) && game.user.targets.size != 1) {
-            return localizedWarning("wire.warn.select-single-target-for-attack");
-        } else if (item.hasSave && !item.hasAreaTarget && game.user.targets.size == 0) {
-            return localizedWarning("wire.warn.select-targets-for-effect");
-        }
-
-        return true;  
-    }
-
     constructor(activation) {
         this.activation = activation;
 
@@ -139,8 +126,10 @@ export class Resolver {
             await this.activation.applyState("waiting-for-attack-damage");
 
             const isCritical = getAttackRollResultType(this.activation.attackRoll) == "critical";
+            const spellLevel = this.activation.config.spellLevel;
             const onlyUnavoidable = this.activation.effectiveTargets.length == 0;
-            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical });
+            const attackTarget = this.activation.singleTarget?.actor;
+            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical, spellLevel, attackTarget });
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
@@ -157,7 +146,8 @@ export class Resolver {
         } else if (isOriginator && this.activation.state === "rolling-save-damage") {
             await this.activation.applyState("waiting-for-save-damage");
 
-            const damageParts = await DamageParts.roll(item, applicationType);
+            const spellLevel = this.activation.config.spellLevel;
+            const damageParts = await DamageParts.roll(item, applicationType, false, { spellLevel });
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
@@ -188,6 +178,11 @@ export class Resolver {
             await this.activation.applyState("idle");
             await this.step(n);
 
+        } else if (isGM && this.activation.state === "triggerAttackConditions") {
+            await this._triggerAttackConditions();
+            await this.activation.applyState("idle");
+            await this.step(n);
+
         } else if (isGM && this.activation.state === "endEffect") {
             await this._endEffect(true);
             await this.activation.applyState("idle");
@@ -199,13 +194,23 @@ export class Resolver {
             await this.step(n);
 
         } else if (isAuthor && this.activation.state === "idle") {
-            const flow = this.activation.flow;
+            const flow = this.activation.flowSteps;
             const next = flow.shift();
             await this.activation.updateFlow(flow);
             await this.activation.applyState(next);
             this.step(n);
         } else if (this.activation.state && !this.knownStates.includes(this.activation.state)) {
-            console.log("UNKNOWN STATE", this.activation.state, ". Maybe run a macro?");
+            const handlers = this.activation.getCustomFlowStepHandlers();
+            const handler = handlers[this.activation.state];
+            if (handler) {
+                if ((handler.runAsRoller && isOriginator) || (!handler.runAsRoller && isGM)) {
+                    await runAndAwait(handler.fn, this.activation)
+                    await this.activation.applyState("idle");
+                    await this.step(n);
+                }
+            } else {
+                console.log("UNKNOWN STATE", this.activation.state, ". Maybe run a macro?");
+            }
         }
     }
 
@@ -213,33 +218,41 @@ export class Resolver {
         const item = this.activation.item;
         const speaker = item.actor;
         const damageParts = this.activation.damageParts;
-        const targets = this.activation.allTargets;
+        let targets = this.activation.allTargets;
         const effectiveTargets = this.activation.effectiveTargets; // Attack hit or save failed
 
-        const targetDamage = targets
-            .map(target => {
-                return {
-                    actor: target.actor,
-                    token: target.token,
-                    points: damageParts.appliedToActor(target.actor, effectiveTargets.map(t => t.actor).includes(target.actor))
-                };
-            });
-        const actualDamage = targetDamage.filter(t => t.points.damage > 0 || t.points.healing > 0 || t.points.temphp > 0);
+        for (let tgt of effectiveTargets) {
+            if (!targets.find(t => t.actor === tgt.actor)) {
+                targets.push(tgt);
+            }
+        }
 
-        const pcDamage = actualDamage.filter(t => t.actor.hasPlayerOwner);
-        const npcDamage = actualDamage.filter(t => !t.actor.hasPlayerOwner);
-    
-        if (pcDamage.length) {
-            const pcDamageCard = new DamageCard(true, speaker, pcDamage);
-            await pcDamageCard.make();
-        }
-        if (npcDamage.length) {
-            const npcDamageCard = new DamageCard(false, speaker, npcDamage);
-            await npcDamageCard.make();
-        }
-        if (!pcDamage.length && !npcDamage.length) {
-            const noDamageCard = new DamageCard(false, speaker, []);
-            await noDamageCard.make();
+        if (damageParts && damageParts.result.length) {
+            const targetDamage = targets
+                .map(target => {
+                    return {
+                        actor: target.actor,
+                        token: target.token,
+                        points: damageParts.appliedToActor(target.actor, effectiveTargets.map(t => t.actor).includes(target.actor))
+                    };
+                });
+            const actualDamage = targetDamage.filter(t => t.points.damage > 0 || t.points.healing > 0 || t.points.temphp > 0);
+
+            const pcDamage = actualDamage.filter(t => t.actor.hasPlayerOwner);
+            const npcDamage = actualDamage.filter(t => !t.actor.hasPlayerOwner);
+        
+            if (pcDamage.length) {
+                const pcDamageCard = new DamageCard(true, speaker, pcDamage);
+                await pcDamageCard.make();
+            }
+            if (npcDamage.length) {
+                const npcDamageCard = new DamageCard(false, speaker, npcDamage);
+                await npcDamageCard.make();
+            }
+            if (!pcDamage.length && !npcDamage.length) {
+                const noDamageCard = new DamageCard(false, speaker, []);
+                await noDamageCard.make();
+            }
         }
     }
 
@@ -252,7 +265,7 @@ export class Resolver {
         const ceApi = game.dfreds?.effectInterface;
         if (ceApi) {
             if (ceApi.hasEffectApplied("Concentrating"), actor.uuid) {
-                ceApi.removeEffect({
+                await ceApi.removeEffect({
                     effectName: "Concentrating",
                     uuid: actor.uuid
                 });
@@ -294,6 +307,7 @@ export class Resolver {
         }
 
         if (effect) {
+            await effect.setFlag("wire", "isConcentration", true);
             await effect.setFlag("wire", "conditions", this.activation.item.getFlag("wire", "conditions"));
             await this.activation.assignMasterEffect(effect);
         }
@@ -348,7 +362,7 @@ export class Resolver {
                     disabled: false,
                     icon: effect.data.icon,
                     label: effect.data.label,
-                    duration: appliedDuration,
+                    duration: checkEffectDurationOverride(appliedDuration, effect),
                     flags: {
                         wire: {
                             activationMessageId: this.activation.message.id,
@@ -373,7 +387,7 @@ export class Resolver {
         let createdEffects = [];
 
         const applyEffect = async (target, data) => {
-            const existingEffects = target.actor.effects.filter(e => e.data.origin === item.uuid);
+            const existingEffects = target.actor.effects.filter(e => e.data.origin === item.uuid && !e.data.flags.wire?.masterEffectUuid && !e.data.flags.wire?.isMasterEffect);
             if (existingEffects.length) {
                 await target.actor.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
             }
@@ -404,6 +418,25 @@ export class Resolver {
             if (force || !this.activation.effectiveTargets.length) {
                 await effect.delete();
             }
+        }
+    }
+
+    async _triggerAttackConditions() {
+        const attacker = this.activation.item.actor;
+        const attackType = this.activation.item.data.data.actionType;
+
+        await triggerConditions(attacker, "target-attacks.all");
+        await triggerConditions(attacker, `target-attacks.${attackType}`);
+
+        const targets = this.activation.effectiveTargets;
+        if (targets.length) {
+            const target = targets[0].actor;
+
+            await triggerConditions(attacker, "target-hits.all");
+            await triggerConditions(attacker, `target-hits.${attackType}`);
+
+            await triggerConditions(target, "target-is-hit.all");
+            await triggerConditions(target, `target-is-hit.${attackType}`);
         }
     }
 

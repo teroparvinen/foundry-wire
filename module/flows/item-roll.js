@@ -1,5 +1,14 @@
 
 export function itemRollFlow() {
+    const friendlyTarget = this.applyDefaultTargets(
+        this.sequence(
+            this.performSaveDamageRoll(
+                this.applyDamage()
+            ),
+            this.applyEffects()
+        )
+    )
+
     const nonAttack = this.pick(
         this.isSave(
             this.performSavingThrow(
@@ -15,14 +24,7 @@ export function itemRollFlow() {
             )
         ),
         this.otherwise(
-            this.applyDefaultTargets(
-                this.sequence(
-                    this.performSaveDamageRoll( // Check if there is any
-                        this.applyDamage()
-                    ),
-                    this.applyEffects()
-                )
-            )
+            friendlyTarget
         )
     )
     
@@ -45,10 +47,14 @@ export function itemRollFlow() {
                                 this.sequence(
                                     this.hasDamage(
                                         this.performAttackDamageRoll(
-                                            this.applyDamage()
+                                            this.applyDamage(
+                                                this.triggerAttackConditions()
+                                            )
                                         )
                                     ),
-                                    this.applyEffects()
+                                    this.applyEffects(
+                                        this.triggerAttackConditions()
+                                    )
                                 )
                             )
                         ),
@@ -64,6 +70,9 @@ export function itemRollFlow() {
                         nonAttack
                     )
                 )
+            ),
+            this.isSelfTarget(
+                friendlyTarget
             )
         )
     )

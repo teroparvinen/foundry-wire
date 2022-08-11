@@ -1,18 +1,37 @@
+import { localizedWarning } from "../utils.js";
 
 
 export class DamageParts {
-    static async roll(item, applicationType, onlyUnavoidable, { spellLevel, isCritical } = {}) {
+    static async roll(item, applicationType, onlyUnavoidable, { spellLevel, isCritical, attackTarget } = {}) {
         if (!item.hasDamage) throw new Error("You may not make a Damage Roll with this Item.");
         const itemData = item.data.data;
         const actorData = item.actor.data.data;
     
         // Get damage components
-        const parts = this._itemDamageParts(item, applicationType, onlyUnavoidable);
+        let parts = this._itemDamageParts(item, applicationType, onlyUnavoidable);
         const primaryModifiers = [];
+
+        if (!parts.length) {
+            localizedWarning("wire.warn.damage-roll-has-no-parts");
+            return new DamageParts([]);
+        }
     
         // Get roll data
         const rollData = item.getRollData();
         if (spellLevel) rollData.item.level = spellLevel;
+
+        // Add target info to roll data
+        const targetType = Object.keys(CONFIG.DND5E.creatureTypes).reduce((accumulator, value) => {
+            return {...accumulator, [value]: 0 };
+        }, {});
+        targetType[attackTarget.data.data.details.type.value] = 1;
+
+        const targetSize = Object.keys(CONFIG.DND5E.actorSizes).reduce((accumulator, value) => {
+            return {...accumulator, [value]: 0 };
+        }, {});
+        targetSize[attackTarget.data.data.details.size] = 1;
+
+        rollData.target = { type: targetType, size: targetSize };
     
         // Scale damage from up-casting spells
         if ((item.data.type === "spell")) {
@@ -36,7 +55,44 @@ export class DamageParts {
         // Add damage bonus formula
         const actorBonus = getProperty(actorData, `bonuses.${itemData.actionType}`) || {};
         if (actorBonus.damage && (parseInt(actorBonus.damage) !== 0)) {
-            primaryModifiers.push(actorBonus.damage);
+            const { isValid, terms } = simplifyDamageFormula(actorBonus.damage, rollData);
+            const nonOperatorTerms = terms.filter(t => !(t instanceof OperatorTerm));
+            const recognizedTerms = nonOperatorTerms.filter(t => CONFIG.DND5E.damageTypes[t.flavor]);
+            if (isValid && recognizedTerms.length === nonOperatorTerms.length) {
+                for (let t of recognizedTerms) {
+                    parts.push({
+                        formula: t.formula,
+                        type: t.flavor,
+                        halving: parts[0].halving,
+                        applicationType: parts[0].applicationType
+                    });
+                }
+            } else {
+                localizedWarning("wire.warn.could-not-parse-bonus-damage");
+            }
+
+            // const terms = new Roll.parse(actorBonus.damage, rollData);
+            // const recognizedTerms = terms.filter(t => {
+            //     if (t instanceof ParentheticalTerm || t instanceof NumericTerm || t instanceof DiceTerm || (t instanceof OperatorTerm && t.operator === "+")) { return true; }
+            // });
+            // if (recognizedTerms.length === roll.terms.length) {
+            //     for (let t of recognizedTerms) {
+            //         if (!(t instanceof OperatorTerm)) {
+            //             if (t.flavor && CONFIG.DND5E.damageTypes[t.flavor]) {
+            //                 parts.push({
+            //                     formula: t.formula,
+            //                     type: t.flavor,
+            //                     halving: parts[0].halving,
+            //                     applicationType: parts[0].applicationType
+            //                 });
+            //             } else {
+            //                 primaryModifiers.push(t.formula);
+            //             }
+            //         }
+            //     }
+            // } else {
+            //     primaryModifiers.push(actorBonus.damage);
+            // }
         }
     
         // Handle ammunition damage
@@ -82,8 +138,15 @@ export class DamageParts {
         // Evaluate the configured roll
         await Promise.all(partsWithRolls.map(pr => pr.roll.evaluate({ async: true })));
 
+        let criticalThreshold = 20;
+        if (item.data.type === "weapon") { criticalThreshold = item.actor.data.flags?.dnd5e?.weaponCriticalThreshold || criticalThreshold }
+        if (item.data.type === "spell") { criticalThreshold = item.actor.data.flags?.dnd5e?.spellCriticalThreshold || criticalThreshold }
+
         // Apply flavor to dice
-        partsWithRolls.forEach(pr => pr.roll.dice.forEach(die => die.options.flavor = pr.part.type));
+        partsWithRolls.forEach(pr => pr.roll.dice.forEach(die => {
+            die.options.flavor = pr.part.type;
+            die.options.critical = criticalThreshold
+        }));
     
         return new DamageParts(partsWithRolls);
     }
@@ -109,6 +172,26 @@ export class DamageParts {
                 roll: CONFIG.Dice.DamageRoll.fromData(pr.roll)
             }
         }));
+    }
+
+    static async singleValue(formula, damageType) {
+        const part = {
+            formula: String(formula),
+            type: damageType,
+            halving: "none",
+            applicationType: "immediate"
+        };
+        const pr = {
+            part: part,
+            roll: new CONFIG.Dice.DamageRoll(part.formula, {}, {})
+        };
+
+        await pr.roll.evaluate({ async: true });
+        pr.roll.dice.forEach(die => {
+            die.options.flavor = pr.part.type;
+        });
+
+        return new DamageParts([pr]);
     }
 
     constructor(partsWithRolls) {
@@ -194,4 +277,75 @@ export class DamageParts {
             };
         });
     }
+}
+
+function splitByOperator(terms) {
+    const groups = [];
+    let current = [];
+
+    if (!Array.isArray(terms)) { return terms; }
+    for (let t of terms) {
+        if (t instanceof OperatorTerm) {
+            groups.push(current);
+            groups.push(t);
+            current = [];
+        } else {
+            if (t instanceof ParentheticalTerm) {
+                const pterms = Roll.parse(t.term);
+                const r = splitByOperator(pterms);
+                if (r.every(r => r instanceof NumericTerm || r instanceof OperatorTerm)) {
+                    current.push(new NumericTerm({ number: Roll.fromTerms(r, { flavor: t.flavor }).evaluate({ async: false }).total }));
+                } else {
+                    r.flavor = t.flavor;
+                    current.push(r);
+                }
+            } else {
+                current.push(t);
+            }
+        }
+    }
+    if (current.length) { groups.push(current); }
+
+    if (groups.length == 1) {
+        if (groups[0].length == 1) { return groups[0][0] }
+        if (groups[0].length == 2 && groups[0][0] instanceof NumericTerm && groups[0][1] instanceof StringTerm) {
+            return Roll.parse(`${groups[0][0].expression}${groups[0][1].term}`);
+        }
+        return groups[0];
+    } else {
+        return groups.map(g => {
+            const r = splitByOperator(g);
+            if (!Array.isArray(r)) { return r; }
+            else if (r.length == 1) {
+                return (r[0]);
+            } else {
+                return r;
+            }
+        });
+    }
+}
+  
+function simplifyDamageFormula(formula, rollData) {
+    const incomingTerms = Roll.parse(formula, rollData);
+    const groups = splitByOperator(incomingTerms);
+
+    if (!Array.isArray(groups) && (groups instanceof NumericTerm || groups instanceof Die)) {
+        return { isValid: true, terms: [groups] };
+    }
+
+    let failed = false;
+    const terms = groups.reduce((list, i) => {
+        if (!Array.isArray(i)) { list.push(i); }
+        else if (i.every(r => r instanceof NumericTerm || r instanceof OperatorTerm || r instanceof Die)) {
+            i.forEach(r => r.options.flavor = i.flavor);
+            list.push(...i);
+        } else {
+            list.push(i);
+            failed = true;
+        }
+        return list;
+    }, []);
+
+    const isValid = !failed;
+    return { isValid, terms }
 }
