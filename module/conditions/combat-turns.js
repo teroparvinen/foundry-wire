@@ -1,7 +1,7 @@
 import { Activation } from "../activation.js";
 import { Flow } from "../flow.js";
 import { takeAnActionFlow } from "../flows/take-an-action.js";
-import { makeUpdater } from "../make-updater.js";
+import { makeUpdater } from "../updater-utility.js";
 import { areAllied, areEnemies, fromUuid, getTokenTemplateIds, triggerConditions } from "../utils.js";
 
 export function initCombatTurnConditionHooks() {
@@ -36,7 +36,7 @@ async function handleTurn(actor, token, isStart) {
         await Promise.all(conditions.map(async condition => {
             const item = fromUuid(effect.data.origin);
             if (effect.parent instanceof CONFIG.Actor.documentClass) {
-                const updater = makeUpdater(condition.update, effect, effect.parent, item);
+                const updater = makeUpdater(condition, effect, item);
                 await updater?.process();
             }
         }));
@@ -61,7 +61,7 @@ async function handleTurn(actor, token, isStart) {
                 else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
 
                 if (dispositionCheck) {
-                    const updater = makeUpdater(condition.update, effect, token.actor, item);
+                    const updater = makeUpdater(condition, effect, item, token.actor);
                     await updater?.process();
                 }
             }));
@@ -75,7 +75,7 @@ async function handleTurn(actor, token, isStart) {
             await Promise.all(conditions.map(async condition => {
                 const item = fromUuid(effect.data.origin);
                 const flow = new Flow(item, "immediate", takeAnActionFlow);
-                await Activation.createConditionMessage(item, effect, flow, effect.parent, { playerMessageOnly: true });
+                await Activation.createConditionMessage(condition, item, effect, flow, { playerMessageOnly: true });
             }));
         });
     }

@@ -1,7 +1,7 @@
 import { DamageCard } from "./cards/damage-card.js";
 import { DamageParts } from "./game/damage-parts.js";
 import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableEffectsOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
-import { makeUpdater } from "./make-updater.js";
+import { makeUpdater } from "./updater-utility.js";
 import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getAttackRollResultType, isCasterDependentEffect, isInCombat, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
@@ -222,7 +222,7 @@ export class Resolver {
         } else if (isGM && this.activation.state === "action-trigger-activated") {
             const sourceEffect = this.activation.sourceEffect;
             const condition = sourceEffect.data.flags.wire?.conditions?.find(c => c.condition === "take-an-action");
-            const updater = makeUpdater(condition.update, sourceEffect, this.activation.singleTarget.actor, item);
+            const updater = makeUpdater(condition, sourceEffect, item);
             await updater?.process();
 
             this.activation.message.delete();

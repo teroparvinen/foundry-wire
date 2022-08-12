@@ -2,10 +2,10 @@ import { applySecondaryFlow } from "../flows/apply-secondary.js";
 import { Updater } from "./base-updater.js";
 
 export class ApplySecondaryUpdater extends Updater {
-    constructor(update, effect, actor, item) {
-        super(update, effect, actor, item)
+    constructor(condition, effect, item, externalTargetActor) {
+        super(condition, effect, item, externalTargetActor)
 
-        this.applicationType = update === "apply-delayed" ? "delayed" : "overtime";
+        this.applicationType = condition.update === "apply-delayed" ? "delayed" : "overtime";
     }
 
     flow() {

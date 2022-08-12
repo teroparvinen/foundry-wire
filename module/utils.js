@@ -1,4 +1,4 @@
-import { makeUpdater } from "./make-updater.js";
+import { makeUpdater } from "./updater-utility.js";
 
 export function fromUuid(uuid) {
     if (!uuid || uuid === '') return null;
@@ -159,12 +159,12 @@ export async function runAndAwait(fn, ...args) {
     }
 }
 
-export async function triggerConditions(actor, condition, { triggerOnCaster = false} = {}) {
+export async function triggerConditions(actor, condition, externalTargetActor = null) {
     actor.effects.filter(e => !e.isSuppressed).forEach(async effect => {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
         await Promise.all(conditions.map(async condition => {
             const item = fromUuid(effect.data.origin);
-            const updater = makeUpdater(condition.update, effect, triggerOnCaster ? item.actor : actor, item);
+            const updater = makeUpdater(condition, effect, item, externalTargetActor);
             await updater?.process();
         }));
     });
@@ -190,4 +190,15 @@ export function areEnemies(actor1, actor2) {
     const disp2 = getDisposition(actor2);
 
     return disp1 === -disp2;
+}
+
+export function isCastersTurn(item) {
+    const actor = item.actor;
+    if (game.combat) {
+        const combatant = game.combat.getCombatantByActor(actor.id);
+        return game.combat.current.combatantId === combatant.id;
+    } else {
+        // Assume out of combat to be the caster's to operate freely
+        return true;
+    }
 }

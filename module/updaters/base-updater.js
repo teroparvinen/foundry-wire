@@ -4,10 +4,10 @@ import { Flow } from "../flow.js";
 import { getSpeaker } from "../utils.js";
 
 export class Updater {
-    constructor(update, effect, actor, item) {
-        this.update = update;
+    constructor(condition, effect, item, externalTargetActor) {
+        this.condition = condition;
         this.effect = effect;
-        this.actor = actor;
+        this.externalTargetActor = externalTargetActor;
         this.item = item;
 
         this.applicationType = "immediate";
@@ -15,6 +15,6 @@ export class Updater {
 
     async process() {
         const flow = new Flow(this.item, this.applicationType, this.flow);
-        Activation.createConditionMessage(this.item, this.effect, flow, this.actor)
+        Activation.createConditionMessage(this.condition, this.item, this.effect, flow, { externalTargetActor: this.externalTargetActor });
     }
 }

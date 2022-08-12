@@ -4,6 +4,7 @@ import { DamageParts } from "./game/damage-parts.js";
 import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
 import { wireSocket } from "./socket.js";
+import { determineUpdateTargetUuids } from "./updater-utility.js";
 import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker } from "./utils.js";
 
 export class Activation {
@@ -13,7 +14,7 @@ export class Activation {
         return new Activation(gmMessage);
     }
 
-    static async createConditionMessage(item, effect, flow, actor, { playerMessageOnly = false } = {}) {
+    static async createConditionMessage(condition, item, effect, flow, { playerMessageOnly = false, externalTargetActor = null } = {}) {
         const messageData = await item.displayCard({ createMessage: false });
         messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
         messageData.speaker = getSpeaker(item.actor);
@@ -28,7 +29,7 @@ export class Activation {
                 activation.createPlayerMessage();
             }
 
-            await activation.initialize(item, flow.applicationType, flow, effect, actor.uuid);
+            await activation.initialize(item, flow.applicationType, flow, condition, effect, externalTargetActor);
             await activation.activate();
         }
     }
@@ -122,7 +123,7 @@ export class Activation {
         }
     }
 
-    async initialize(item, applicationType, flow, sourceEffect = null, sourceTargetUuid = null) {
+    async initialize(item, applicationType, flow, condition = null, sourceEffect = null, externalEffectTarget = null) {
         foundry.utils.setProperty(this.data, 'itemUuid', item.uuid);
         foundry.utils.setProperty(this.data, 'applicationType', applicationType);
 
@@ -130,11 +131,12 @@ export class Activation {
         foundry.utils.setProperty(this.data, 'flowSteps', flowSteps);
         this.flow = flow;
 
-        if (sourceEffect) {
-            foundry.utils.setProperty(this.data, 'sourceEffectUuid', sourceEffect.uuid)
-            if (sourceEffect.parent instanceof CONFIG.Actor.documentClass) {
-                foundry.utils.setProperty(this.data, "targetUuids", [sourceTargetUuid]);
-            }
+        if (condition && sourceEffect) {
+            foundry.utils.setProperty(this.data, 'condition', condition);
+            foundry.utils.setProperty(this.data, 'sourceEffectUuid', sourceEffect.uuid);
+
+            const targetUuids = determineUpdateTargetUuids(item, sourceEffect, condition, externalEffectTarget);
+            foundry.utils.setProperty(this.data, "targetUuids", targetUuids);
         }
         this.update();
     }
@@ -248,14 +250,7 @@ export class Activation {
             if (makeEffective) { await this.applyEffectiveTargets(targets); }
         }
 
-        if (this.sourceEffect) {
-            const masterEffectTargets = this.sourceEffect.data.flags.wire?.childEffectUuids.map(uuid => fromUuid(uuid)).map(e => e.parent);
-            if (masterEffectTargets) {
-                await apply(masterEffectTargets);
-            } else {
-                await apply([this.sourceEffect.parent]);
-            }
-        } else if (isSelfTarget(this.item) || (this.allTargets.length == 0 && game.user.targets.size == 0)) {
+        if (isSelfTarget(this.item) || (this.allTargets.length == 0 && game.user.targets.size == 0)) {
             await apply([this.item.actor]);
         } else if (this.allTargets.length) {
             if (makeEffective) { await this.applyEffectiveTargets(this.allTargets.map(t => t.actor)); }

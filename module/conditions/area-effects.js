@@ -1,4 +1,4 @@
-import { makeUpdater } from "../make-updater.js";
+import { makeUpdater } from "../updater-utility.js";
 import { areAllied, areEnemies, fromUuid, getTokenTemplateIds } from "../utils.js";
 
 export function initAreaConditionHooks() {
@@ -29,7 +29,7 @@ export function initAreaConditionHooks() {
                             else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
 
                             if (dispositionCheck) {
-                                const updater = makeUpdater(condition.update, effect, actor, item);
+                                const updater = makeUpdater(condition, effect, item, actor);
                                 await updater?.process();
                             }
                         }));

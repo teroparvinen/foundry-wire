@@ -97,7 +97,7 @@ export async function preRollConfig(item, options = {}) {
     // Initiate measured template creation
     let template;
     if (doCreateMeasuredTemplate) {
-        if (isSelfRange(item) && item.hasAreaTarget) {
+        if (isSelfRange(item) && item.hasAreaTarget && item.data.data.target.type === "sphere") {
             const token = getActorToken(actor);
             if (token) {
                 const d = canvas.grid.size / 2;
