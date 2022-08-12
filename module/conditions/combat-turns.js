@@ -1,5 +1,8 @@
+import { Activation } from "../activation.js";
+import { Flow } from "../flow.js";
+import { takeAnActionFlow } from "../flows/take-an-action.js";
 import { makeUpdater } from "../make-updater.js";
-import { fromUuid, getTokenTemplateIds, triggerConditions } from "../utils.js";
+import { areAllied, areEnemies, fromUuid, getTokenTemplateIds, triggerConditions } from "../utils.js";
 
 export function initCombatTurnConditionHooks() {
     Hooks.on("updateCombat", async (combat, change, options, userId) => {
@@ -28,14 +31,13 @@ async function handleTurn(actor, token, isStart) {
     // Caster turn changes
     const handledCasterCondition = isStart ? "start-of-turn-caster" : "end-of-turn-caster";
 
-    actor.data.flags.wire?.turnUpdatedEffectUuids.map(uuid => fromUuid(uuid)).filter(e => !e.isSuppressed).forEach(async effect => {
+    actor.data.flags.wire?.turnUpdatedEffectUuids?.map(uuid => fromUuid(uuid)).filter(e => !e.isSuppressed).forEach(async effect => {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === handledCasterCondition) ?? [];
         await Promise.all(conditions.map(async condition => {
             const item = fromUuid(effect.data.origin);
             if (effect.parent instanceof CONFIG.Actor.documentClass) {
-                const effectActor = effect.parent;
-                const updater = makeUpdater(condition.update, effect, effectActor, item);
-                await updater?.process(effect.parent);
+                const updater = makeUpdater(condition.update, effect, effect.parent, item);
+                await updater?.process();
             }
         }));
     });
@@ -49,12 +51,32 @@ async function handleTurn(actor, token, isStart) {
         const effect = fromUuid(effectUuid);
     
         if (effect && !effect.isSuppressed) {
-            const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === handledAreaCondition) ?? [];
+            const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith(handledAreaCondition)) ?? [];
             await Promise.all(conditions.map(async condition => {
                 const item = fromUuid(effect.data.origin);
-                const updater = makeUpdater(condition.update, effect, token.actor, item);
-                await updater?.process(token.actor);
+
+                let dispositionCheck = false;
+                if (condition.condition.startsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
+                else if (condition.condition.startsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
+                else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
+
+                if (dispositionCheck) {
+                    const updater = makeUpdater(condition.update, effect, token.actor, item);
+                    await updater?.process();
+                }
             }));
         }
+    }
+
+    // Actions
+    if (isStart) {
+        actor.effects.filter(e => !e.isSuppressed).forEach(async effect => {
+            const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === "take-an-action") ?? [];
+            await Promise.all(conditions.map(async condition => {
+                const item = fromUuid(effect.data.origin);
+                const flow = new Flow(item, "immediate", takeAnActionFlow);
+                await Activation.createConditionMessage(item, effect, flow, effect.parent, { playerMessageOnly: true });
+            }));
+        });
     }
 }

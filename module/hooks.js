@@ -51,7 +51,8 @@ export function initHooks() {
             if (effect.getFlag("wire", "isMasterEffect")) {
                 const templateUuid = effect.getFlag("wire", "templateUuid");
                 if (templateUuid) {
-                    await fromUuid(templateUuid).delete();
+                    const template = fromUuid(templateUuid);
+                    await template?.delete();
                 }
     
                 const childEffectUuids = effect.getFlag("wire", "childEffectUuids");
@@ -67,6 +68,66 @@ export function initHooks() {
                 const caster = fromUuid(casterUuid);
                 const effectUuids = caster.data.flags.wire?.turnUpdatedEffectUuids.filter(uuid => uuid !== effect.uuid);
                 caster.setFlag("wire", "turnUpdatedEffectUuids", effectUuids);
+            }
+        }
+    });
+
+    Hooks.on("deleteMeasuredTemplate", (template, options, user) => {
+        if (template.author === game.user) {
+            const attachedTokenId = template.getFlag("wire", "attachedTokenId");
+            if (attachedTokenId) {
+                const token = canvas.tokens.get(attachedTokenId);
+                token.document.unsetFlag("wire", "attachedTemplateId");
+            }
+        }
+    });
+
+    Hooks.on("updateToken", async (tokenDoc, change, options, userId) => {
+        if (change.x || change.y) {
+            const templateId = await tokenDoc.getFlag("wire", "attachedTemplateId");
+            const template = canvas.templates.get(templateId);
+            if (template && template.document.author === game.user) {
+                const d = canvas.grid.size / 2;
+                const update = { x: tokenDoc.data.x + d, y: tokenDoc.data.y + d };
+                await template.document.update(update);
+            }
+        }
+    });
+
+    Hooks.on("preUpdateActor", async (actor, change, options, userId) => {
+        const hpUpdate = getProperty(change, "data.attributes.hp.value");
+        if (hpUpdate !== undefined) {
+            const maxHp = actor.data.data.attributes.hp.max;
+            const woundedThreshold = Math.floor(0.5 * maxHp);
+
+            const isDamaged = hpUpdate < maxHp;
+            const isWounded = hpUpdate <= woundedThreshold;
+            const isAtZero = hpUpdate == 0;
+
+            const needsDamaged = isDamaged && !isAtZero && !isWounded;
+            const needsWounded = isWounded && !isAtZero;
+            const needsUnconscious = actor.hasPlayerOwner && isAtZero;
+            const needsDead = !actor.hasPlayerOwner && isAtZero;
+
+            const ceApi = game.dfreds?.effectInterface;
+
+            if (ceApi) {
+                const damagedExists = ceApi.findEffectByName("Damaged");
+
+                const hasDamaged = damagedExists && ceApi.hasEffectApplied("Damaged", actor.uuid);
+                const hasWounded = ceApi.hasEffectApplied("Wounded", actor.uuid);
+                const hasUnconscious = ceApi.hasEffectApplied("Unconscious", actor.uuid);
+                const hasDead = ceApi.hasEffectApplied("Dead", actor.uuid);
+
+                if (damagedExists && (needsDamaged != hasDamaged)) { await ceApi.toggleEffect("Damaged", { uuids: [actor.uuid] }); }
+                if (needsWounded != hasWounded) { await ceApi.toggleEffect("Wounded", { uuids: [actor.uuid] }); }
+                if (needsUnconscious != hasUnconscious) { await ceApi.toggleEffect("Unconscious", { uuids: [actor.uuid] }); }
+                if (needsDead != hasDead) {
+                    await ceApi.toggleEffect("Dead", { uuids: [actor.uuid], overlay: true });
+                    
+                    const combatant = actor.token ? game.combat?.getCombatantByToken(actor.token.id) : game.combat?.getCombatantByActor(actor.id);
+                    await combatant.update({ defeated: needsDead });
+                }
             }
         }
     });

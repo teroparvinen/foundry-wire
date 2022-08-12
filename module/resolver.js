@@ -1,6 +1,7 @@
 import { DamageCard } from "./cards/damage-card.js";
 import { DamageParts } from "./game/damage-parts.js";
-import { hasDamageOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
+import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableEffectsOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
+import { makeUpdater } from "./make-updater.js";
 import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getAttackRollResultType, isCasterDependentEffect, isInCombat, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
@@ -41,11 +42,14 @@ export class Resolver {
     }
 
     knownStates = [
+        "action-trigger-activated",
         "applyConcentration", 
         "applyDamage", 
-        "applyDefaultTargets", 
+        "applyDefaultTargets",
+        "applyDefaultTargetsAsEffective",
         "applyDurationEffect", 
-        "applyEffects", 
+        "applyEffects",
+        "confirmTargets",
         "idle", 
         "performAttackDamageRoll",
         "performAttackRoll", 
@@ -54,12 +58,15 @@ export class Resolver {
         "rolling-attack-damage", 
         "rolling-save-damage", 
         "targets-confirmed",
+        "triggerAction",
+        "waiting-for-action-trigger",
         "waiting-for-attack-damage",
         "waiting-for-attack-damage-roll",
         "waiting-for-attack-result",
         "waiting-for-saves",
         "waiting-for-save-damage",
-        "waiting-for-save-damage-roll"
+        "waiting-for-save-damage-roll",
+        "waiting-for-target-confirmation"
     ];
 
     async _step(n) {
@@ -85,6 +92,10 @@ export class Resolver {
             await this.activation.assignDefaultTargets();
             await this.activation.applyState("idle");
             await this.step(n);
+        } else if (isAuthor && this.activation.state === "applyDefaultTargetsAsEffective") {
+            await this.activation.assignDefaultTargets(true);
+            await this.activation.applyState("idle");
+            await this.step(n);
 
         } else if (isAuthor && this.activation.state === "applySelectedTargets") {
             await this.activation.assignTargets([...game.user.targets].map(t => t.actor));
@@ -106,6 +117,13 @@ export class Resolver {
                 await this.step(n);
             }
 
+        } else if (isAuthor && this.activation.state === "confirmTargets") {
+            if (hasApplicationsOfType(item, this.activation.applicationType)) {
+                await this.activation.applyState("waiting-for-target-confirmation");
+            } else {
+                await this.activation.applyState("targets-confirmed");
+                await this.step(n);
+            }
         } else if (isAuthor && this.activation.state === "targets-confirmed") {
             await this.activation.assignTargets([...game.user.targets].map(t => t.actor));
             if (isInstantaneous(item)) {
@@ -126,7 +144,7 @@ export class Resolver {
             await this.activation.applyState("waiting-for-attack-damage");
 
             const isCritical = getAttackRollResultType(this.activation.attackRoll) == "critical";
-            const spellLevel = this.activation.config.spellLevel;
+            const spellLevel = this.activation.config?.spellLevel;
             const onlyUnavoidable = this.activation.effectiveTargets.length == 0;
             const attackTarget = this.activation.singleTarget?.actor;
             const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical, spellLevel, attackTarget });
@@ -146,7 +164,7 @@ export class Resolver {
         } else if (isOriginator && this.activation.state === "rolling-save-damage") {
             await this.activation.applyState("waiting-for-save-damage");
 
-            const spellLevel = this.activation.config.spellLevel;
+            const spellLevel = this.activation.config?.spellLevel;
             const damageParts = await DamageParts.roll(item, applicationType, false, { spellLevel });
             await damageParts.roll3dDice();
 
@@ -155,10 +173,16 @@ export class Resolver {
             await this.step(n);
 
         } else if (isGM && this.activation.state === "performSavingThrow") {
-            if (game.user.isGM && this.activation.message.user === game.user && this.activation.pcTargets.length) {
-                this.activation.createPlayerMessage();
+            if (hasOnlyUnavoidableEffectsOfType(item, applicationType)) {
+                await this.activation.applyEffectiveTargets(this.activation.allTargets.map(a => a.actor));
+                await this.activation.applyState("idle");
+                await this.step(n);
+            } else {
+                if (this.activation.message.user === game.user && this.activation.pcTargets.length) {
+                    this.activation.createPlayerMessage();
+                }
+                await this.activation.applyState("waiting-for-saves");
             }
-            await this.activation.applyState("waiting-for-saves");
         } else if (isGM && this.activation.state === "waiting-for-saves") {
             if (this.activation.saveResults?.length === this.activation.allTargets.length) {
                 const dc = item.data.data.save.dc;
@@ -192,6 +216,16 @@ export class Resolver {
             await this._endEffect();
             await this.activation.applyState("idle");
             await this.step(n);
+
+        } else if (isGM && this.activation.state === "triggerAction") {
+            await this.activation.applyState("waiting-for-action-trigger");
+        } else if (isGM && this.activation.state === "action-trigger-activated") {
+            const sourceEffect = this.activation.sourceEffect;
+            const condition = sourceEffect.data.flags.wire?.conditions?.find(c => c.condition === "take-an-action");
+            const updater = makeUpdater(condition.update, sourceEffect, this.activation.singleTarget.actor, item);
+            await updater?.process();
+
+            this.activation.message.delete();
 
         } else if (isAuthor && this.activation.state === "idle") {
             const flow = this.activation.flowSteps;
@@ -395,15 +429,17 @@ export class Resolver {
             createdEffects = [...createdEffects, ...targetEffects];
         }
 
-        for (let effect of createdEffects) {
-            await effect.setFlag("wire", "originatorUserId", this.activation.message.data.flags.wire?.originatorUserId);
-        }
-
         for (let target of allTargets) {
             await applyEffect(target, allTargetsEffectData);
         }
         for (let target of effectiveTargets) {
             await applyEffect(target, effectiveTargetsEffectData);
+        }
+
+        for (let effect of createdEffects) {
+            const originatorUserId = this.activation.message.data.flags.wire?.originatorUserId;
+            if (!originatorUserId) { console.warn("Activation message does not have originatorUserId set", this.activation.message); }
+            await effect.setFlag("wire", "originatorUserId", originatorUserId);
         }
 
         await masterEffect?.setFlag("wire", "childEffectUuids", createdEffects.map(e => e.uuid));

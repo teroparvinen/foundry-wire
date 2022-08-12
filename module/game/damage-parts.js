@@ -21,17 +21,19 @@ export class DamageParts {
         if (spellLevel) rollData.item.level = spellLevel;
 
         // Add target info to roll data
-        const targetType = Object.keys(CONFIG.DND5E.creatureTypes).reduce((accumulator, value) => {
-            return {...accumulator, [value]: 0 };
-        }, {});
-        targetType[attackTarget.data.data.details.type.value] = 1;
-
-        const targetSize = Object.keys(CONFIG.DND5E.actorSizes).reduce((accumulator, value) => {
-            return {...accumulator, [value]: 0 };
-        }, {});
-        targetSize[attackTarget.data.data.details.size] = 1;
-
-        rollData.target = { type: targetType, size: targetSize };
+        if (attackTarget) {
+            const targetType = Object.keys(CONFIG.DND5E.creatureTypes).reduce((accumulator, value) => {
+                return {...accumulator, [value]: 0 };
+            }, {});
+            targetType[attackTarget.data.data.details.type.value] = 1;
+    
+            const targetSize = Object.keys(CONFIG.DND5E.actorSizes).reduce((accumulator, value) => {
+                return {...accumulator, [value]: 0 };
+            }, {});
+            targetSize[attackTarget.data.data.details.size] = 1;
+    
+            rollData.target = { type: targetType, size: targetSize };
+        }
     
         // Scale damage from up-casting spells
         if ((item.data.type === "spell")) {

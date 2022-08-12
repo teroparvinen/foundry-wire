@@ -4,13 +4,33 @@ import { DamageParts } from "./game/damage-parts.js";
 import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
 import { wireSocket } from "./socket.js";
-import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType } from "./utils.js";
+import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker } from "./utils.js";
 
 export class Activation {
     static async initializeGmMessage(gmMessage, masterMessage) {
         await masterMessage.setFlag("wire", "gmMessageUuid", gmMessage.uuid);
         await gmMessage.setFlag("wire", "masterMessageUuid", masterMessage.uuid);
         return new Activation(gmMessage);
+    }
+
+    static async createConditionMessage(item, effect, flow, actor, { playerMessageOnly = false } = {}) {
+        const messageData = await item.displayCard({ createMessage: false });
+        messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
+        messageData.speaker = getSpeaker(item.actor);
+        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", effect.data.flags.wire?.originatorUserId);
+        if (playerMessageOnly) { messageData.whisper = null; }
+        const message = await ChatMessage.create(messageData);
+
+        if (message) {
+            const activation = new Activation(message);
+
+            if (item.hasPlayerOwner && !playerMessageOnly) {
+                activation.createPlayerMessage();
+            }
+
+            await activation.initialize(item, flow.applicationType, flow, effect, actor.uuid);
+            await activation.activate();
+        }
     }
 
     constructor(message) {
@@ -55,6 +75,8 @@ export class Activation {
     get singleTarget() { return this._targetRecord(this.targetUuids?.find(t => t)); }
     get effectiveTargets() { return this.effectiveTargetUuids?.map(uuid => this._targetRecord(uuid)) ?? []; }
 
+    get actionUpdate() { return this.sourceEffect?.data.flags.wire?.conditions?.find(c => c.condition === "take-an-action")?.update || ''; }
+
     _targetRecord(uuid) {
         if (uuid) {
             const actor = fudgeToActor(fromUuid(uuid));
@@ -95,7 +117,8 @@ export class Activation {
             allTargets: this.allTargets,
             pcTargets: this.pcTargets,
             singleTarget: this.singleTarget,
-            customHtml: this.data.customHtml
+            customHtml: this.data.customHtml,
+            actionUpdate: this.actionUpdate ? "wire.item.update-" + this.actionUpdate : null
         }
     }
 
@@ -219,16 +242,26 @@ export class Activation {
         await this.update();
     }
 
-    async assignDefaultTargets() {
-        if (isSelfTarget(this.item) || (this.allTargets.length == 0 && game.user.targets.size == 0)) {
-            await this.assignTargets([this.item.actor]);
-            await this.applyEffectiveTargets([this.item.actor]);
+    async assignDefaultTargets(makeEffective) {
+        const apply = async (targets) => {
+            await this.assignTargets(targets);
+            if (makeEffective) { await this.applyEffectiveTargets(targets); }
+        }
+
+        if (this.sourceEffect) {
+            const masterEffectTargets = this.sourceEffect.data.flags.wire?.childEffectUuids.map(uuid => fromUuid(uuid)).map(e => e.parent);
+            if (masterEffectTargets) {
+                await apply(masterEffectTargets);
+            } else {
+                await apply([this.sourceEffect.parent]);
+            }
+        } else if (isSelfTarget(this.item) || (this.allTargets.length == 0 && game.user.targets.size == 0)) {
+            await apply([this.item.actor]);
         } else if (this.allTargets.length) {
-            await this.applyEffectiveTargets(this.allTargets.map(t => t.actor));
+            if (makeEffective) { await this.applyEffectiveTargets(this.allTargets.map(t => t.actor)); }
         } else if (game.user.targets.size) {
             const actors = [...game.user.targets].map(t => t.actor);
-            await this.assignTargets(actors);
-            await this.applyEffectiveTargets(actors);
+            await apply(actors);
         }
     }
 
@@ -291,6 +324,11 @@ export class Activation {
         await this.step();
     }
 
+    async activateAction() {
+        await this.applyState("action-trigger-activated");
+        await this.step();
+    }
+
     async rollDamage() {
         if (this.data.state === "waiting-for-attack-damage-roll") {
             await this.applyState("rolling-attack-damage");
@@ -301,6 +339,15 @@ export class Activation {
     }
 
     async rollSave(actor, options = {}) {
+        const spellDC = this.item.data.data.save.dc;
+        if (options.success || options.failure) {
+            const formula = options.success ? `1d20min${spellDC}` : `1d20max${spellDC-1}`;
+            const roll = await new CONFIG.Dice.D20Roll(formula, {}, { configured: true }).evaluate({ async: true });
+            await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
+            await this.applySave(actor, roll);
+            return;
+        }
+
         const roll = await actor.rollAbilitySave(this.item.data.data.save.ability, foundry.utils.mergeObject(options, { chatMessage: false, fastForward: true }));
         await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
         await this.applySave(actor, roll);

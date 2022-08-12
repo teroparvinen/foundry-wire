@@ -1,10 +1,11 @@
 import { makeUpdater } from "../make-updater.js";
-import { fromUuid, getTokenTemplateIds } from "../utils.js";
+import { areAllied, areEnemies, fromUuid, getTokenTemplateIds } from "../utils.js";
 
 export function initAreaConditionHooks() {
     Hooks.on("updateToken", async (tokenDoc, change, update, userId) => {
         if (game.user.isGM && (change.x || change.y)) {
             const tokenPosition = `${tokenDoc.data.x}.${tokenDoc.data.y}`;
+            const actor = tokenDoc.object.actor;
             const currentTemplateIds = Object.entries(canvas.grid.highlightLayers)
                 .filter(e => e[0].startsWith("Template."))
                 .filter(e => e[1].positions.has(tokenPosition))
@@ -18,11 +19,19 @@ export function initAreaConditionHooks() {
                     const effect = fromUuid(effectUuid);
 
                     if (effect && !effect.isSuppressed) {
-                        const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === "enters-area") ?? [];
+                        const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith("enters-area")) ?? [];
                         await Promise.all(conditions.map(async condition => {
                             const item = fromUuid(effect.data.origin);
-                            const updater = makeUpdater(condition.update, effect, tokenDoc.object.actor, item);
-                            await updater?.process(tokenDoc.object.actor);
+
+                            let dispositionCheck = false;
+                            if (condition.condition.startsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
+                            else if (condition.condition.startsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
+                            else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
+
+                            if (dispositionCheck) {
+                                const updater = makeUpdater(condition.update, effect, actor, item);
+                                await updater?.process();
+                            }
                         }));
 
                         visitedSet.add(templateId);

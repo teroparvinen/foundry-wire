@@ -18,6 +18,30 @@
     line-height: 24px;
 }
 
+.item-card.item-card-action {
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 8px;
+    color: white;
+}
+
+.item-card.item-card-action .card-header {
+    border: 0;
+}
+
+.item-card.item-card-action .card-header h3 {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: initial;
+}
+
+.item-card.item-card-action button {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.item-card.item-card-action .phase-action {
+    padding: 5px;
+    text-align: center;
+}
 
 .item-card .dice-roll .dice-label {
     align-self: center;
@@ -156,6 +180,10 @@
     animation-iteration-count: infinite;
 }
 
+.item-card .phase-damage {
+    padding: 10px 0;
+}
+
 .phase-saving-throws {
     margin: 0 5px;
 }
@@ -171,6 +199,7 @@
 }
 
 .item-card .saving-throw-target {
+    position: relative;
     border-top: 1px solid rgba(0, 0, 0, 0.3);
 }
 
@@ -196,8 +225,30 @@
     background-size: 32px;
 }
 
-.item-card .saving-throw-target .target-save:hover {
+.phase-saving-throws .saving-throw-target .target-save:hover {
     background-image: url(/icons/svg/d20-highlight.svg);
+}
+
+.phase-saving-throws .saving-throw-target .target-save-popup {
+    display: none;
+    position: absolute;
+    top: 3px;
+    right: -5px;
+    width: 100px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 20px;
+}
+
+.phase-saving-throws.popup .saving-throw-target .target-save-popup {
+    display: flex;
+}
+
+.phase-saving-throws .saving-throw-target .target-save-popup a {
+    width: 50px;
+    margin: 0;
+    padding: 10px 0;
+    text-align: center;
+    color: white;
 }
 
 .item-card .saving-throw-target .target-save-result {

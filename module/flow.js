@@ -24,7 +24,7 @@ export class Flow {
             result = this.evaluator.apply(this);
         }
         
-        const steps = result.flat(100).filter(i => i);
+        const steps = result?.flat(100).filter(i => i);
         this.isEvaluated = true;
         this.evaluatedSteps = steps;
         return steps;
@@ -150,6 +150,10 @@ export class Flow {
         return ["applyDefaultTargets", ...this.chain(this.pick(...arguments))];
     }
 
+    applyDefaultTargetsAsEffective() {
+        return ["applyDefaultTargetsAsEffective", ...this.chain(this.pick(...arguments))];
+    }
+
     applyDurationEffect() {
         return ["applyDurationEffect", ...this.chain(this.pick(...arguments))];
     }
@@ -194,8 +198,16 @@ export class Flow {
         return ["performSavingThrow", ...this.chain(this.pick(...arguments))];
     }
 
+    triggerAction() {
+        return ["triggerAction", ...this.chain(this.pick(...arguments))];
+    }
+
     triggerAttackConditions() {
         return ["triggerAttackConditions", ...this.chain(this.pick(...arguments))];
+    }
+
+    triggerAction() {
+        return ["triggerAction", ...this.chain(this.pick(...arguments))];
     }
 
     // Pre-roll options

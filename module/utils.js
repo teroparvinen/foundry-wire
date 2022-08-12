@@ -159,13 +159,35 @@ export async function runAndAwait(fn, ...args) {
     }
 }
 
-export async function triggerConditions(actor, condition) {
+export async function triggerConditions(actor, condition, { triggerOnCaster = false} = {}) {
     actor.effects.filter(e => !e.isSuppressed).forEach(async effect => {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
         await Promise.all(conditions.map(async condition => {
             const item = fromUuid(effect.data.origin);
-            const updater = makeUpdater(condition.update, effect, actor, item);
-            await updater?.process(effect.parent);
+            const updater = makeUpdater(condition.update, effect, triggerOnCaster ? item.actor : actor, item);
+            await updater?.process();
         }));
     });
+}
+
+export function getDisposition(actor) {
+    // Without a token, assume players are friendly, non-players with character sheets are neutral and npc sheet means enemy
+    const disp = getActorToken(actor)?.data.disposition;
+    const tokenDisposition = typeof disp === "number" ? disp : undefined;
+    const assumedDisposition = actor.hasPlayerOwner ? 1 : (actor.type === "npc" ? -1 : 0);
+    return tokenDisposition || assumedDisposition;
+}
+
+export function areAllied(actor1, actor2) {
+    const disp1 = getDisposition(actor1);
+    const disp2 = getDisposition(actor2);
+
+    return disp1 === disp2;
+}
+
+export function areEnemies(actor1, actor2) {
+    const disp1 = getDisposition(actor1);
+    const disp2 = getDisposition(actor2);
+
+    return disp1 === -disp2;
 }

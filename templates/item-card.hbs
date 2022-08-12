@@ -1,4 +1,4 @@
-<div class="dnd5e chat-card item-card {{#if isSecondary}}item-card-secondary{{/if}}" data-actor-id="{{actor._id}}" data-item-id="{{item._id}}"
+<div class="dnd5e chat-card item-card {{#if isSecondary}}item-card-secondary{{/if}} {{#if (eq activation.state "waiting-for-action-trigger")}}item-card-action{{/if}}" data-actor-id="{{actor._id}}" data-item-id="{{item._id}}"
     {{#if tokenId}}data-token-id="{{tokenId}}"{{/if}} {{#if isSpell}}data-spell-level="{{item.data.level}}"{{/if}}>
     {{#unless isGMActorPlayerView}}
         <header class="card-header flexrow">
@@ -15,12 +15,6 @@
             </div>
         {{/unless}}
     {{/unless}}
-
-    {{!--<p>
-        {{#if isGM}}GM{{/if}}
-        {{#if isPlayerView}}PlayerView{{/if}}
-        {{#if isGMActorPlayerView}}GM-actor{{/if}}
-    </p>--}}
 
     <div class="card-phases">
         {{#unless isGMActorPlayerView}}
@@ -103,9 +97,14 @@
                             </div>
                         {{/with}}
                     {{else}}
-                        {{log ../isGM actor.isOwner actor}}
                         {{#if (or ../isGM (and actor.hasPlayerOwner actor.isOwner))}}
                             <a data-action="wire-save" class="flex0 target-save"></a>
+                            {{#if ../isGM}}
+                                <div class="target-save-popup save-popup-toggle">
+                                    <a data-action="wire-save-success"><i class="fas fa-check fa-2x"></i></a>
+                                    <a data-action="wire-save-failure"><i class="fas fa-times fa-2x"></i></a>
+                                </div>
+                            {{/if}}
                         {{/if}}
                     {{/if}}
                 </div>
@@ -120,6 +119,7 @@
                         {{/if}}
                     </h3>
                     {{#if isGM}}
+                        <a class="flex0 group-save save-popup-toggle" title="{{localize "wire.ui.manual-saves"}}"><i class="fas fa-check"></i></a>
                         <a class="flex0 group-save" data-action="roll-all-saves" title="{{localize "wire.ui.roll-all-saves"}}"><i class="fas fa-users"></i></a>
                         <a class="flex0 group-save" data-action="roll-npc-saves" title="{{localize "wire.ui.roll-npc-saves"}}"><i class="fas fa-users-cog"></i></a>
                     {{/if}}
@@ -146,6 +146,12 @@
                 </div>
             {{/if}}
         {{/unless}}
+
+        {{#if (eq activation.state "waiting-for-action-trigger")}}
+            <div class="phase-action">
+                {{localize activation.actionUpdate}}
+            </div>
+        {{/if}}
     </div>
 
     {{#if activation.customHtml}}
@@ -162,9 +168,14 @@
                     {{else}}{{localize "DND5E.Damage" }}{{/if}}
                 </button>
             {{/if}}
-            {{#if (eq activation.state "confirmTargets")}}
+            {{#if (eq activation.state "waiting-for-target-confirmation")}}
                 <button data-action="confirm-targets">
                     {{localize "wire.ui.confirm-targets"}}
+                </button>
+            {{/if}}
+            {{#if (eq activation.state "waiting-for-action-trigger")}}
+                <button data-action="activate-action">
+                    {{localize "wire.ui.activate-action"}}
                 </button>
             {{/if}}
         {{/unless}}

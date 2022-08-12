@@ -1,16 +1,20 @@
 import { i18n } from "../utils.js";
 
 const conditionList = [
-    ["enters-area", "item"],
-    ["starts-turn-inside-area", "item"],
-    ["ends-turn-inside-area", "item"],
+    ["creature-enters-area", "item"],
+    ["creature-starts-turn-inside-area", "item"],
+    ["creature-ends-turn-inside-area", "item"],
+    ["ally-enters-area", "item"],
+    ["ally-starts-turn-inside-area", "item"],
+    ["ally-ends-turn-inside-area", "item"],
+    ["enemy-enters-area", "item"],
+    ["enemy-starts-turn-inside-area", "item"],
+    ["enemy-ends-turn-inside-area", "item"],
     ["area-placed-over", "item"],
     ["start-of-turn-caster", "all"],
     ["end-of-turn-caster", "all"],
     ["start-of-turn-target", "effect"],
     ["end-of-turn-target", "effect"],
-    ["as-action", "all"],
-    ["as-reaction", "all"],
     ["target-attacks.all", "all"],
     ["target-attacks.mwak", "all"],
     ["target-attacks.rwak", "all"],
@@ -25,7 +29,8 @@ const conditionList = [
     ["target-is-hit.mwak", "all"],
     ["target-is-hit.rwak", "all"],
     ["target-is-hit.msak", "all"],
-    ["target-is-hit.rsak", "all"]
+    ["target-is-hit.rsak", "all"],
+    ["take-an-action", "all"]
 ];
 
 const updateList = [

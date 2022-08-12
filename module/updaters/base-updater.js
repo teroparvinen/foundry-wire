@@ -13,24 +13,8 @@ export class Updater {
         this.applicationType = "immediate";
     }
 
-    async process(targetActor) {
-        const messageData = await this.item.displayCard({ createMessage: false });
-        messageData.content = await ItemCard.renderHtml(this.item, null, { isSecondary: true });
-        messageData.speaker = getSpeaker(this.item.actor);
-        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", this.effect.data.flags.wire?.originatorUserId);
-        const message = await ChatMessage.create(messageData);
-
+    async process() {
         const flow = new Flow(this.item, this.applicationType, this.flow);
-            
-        if (message) {
-            const activation = new Activation(message);
-
-            if (this.item.hasPlayerOwner) {
-                activation.createPlayerMessage();
-            }
-
-            await activation.initialize(this.item, this.applicationType, flow, this.effect, targetActor.uuid);
-            await activation.activate();
-        }
+        Activation.createConditionMessage(this.item, this.effect, flow, this.actor)
     }
 }

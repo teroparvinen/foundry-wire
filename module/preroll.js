@@ -1,11 +1,9 @@
 import AbilityUseDialog from "../../../systems/dnd5e/module/apps/ability-use-dialog.js";
-import { isAttack, targetsSingleToken } from "./item-properties.js";
-import { localizedWarning, runAndAwait } from "./utils.js";
+import { isAttack, isSelfRange, targetsSingleToken } from "./item-properties.js";
+import { getActorToken, localizedWarning, runAndAwait } from "./utils.js";
 
 export function preRollCheck(item) {
-    if (isAttack(item) && !targetsSingleToken(item)) {
-        return localizedWarning("wire.warn.attack-must-have-single-target");
-    } else if (isAttack(item) && game.user.targets.size != 1) {
+    if (isAttack(item) && !item.hasAreaTarget && game.user.targets.size != 1) {
         return localizedWarning("wire.warn.select-single-target-for-attack");
     } else if (item.hasSave && !item.hasAreaTarget && game.user.targets.size == 0) {
         return localizedWarning("wire.warn.select-targets-for-effect");
@@ -97,9 +95,26 @@ export async function preRollConfig(item, options = {}) {
     if (resourceUpdates.length) await actor.updateEmbeddedDocuments("Item", resourceUpdates);
 
     // Initiate measured template creation
+    let template;
     if (doCreateMeasuredTemplate) {
-        const template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
-        if (template) template.drawPreview();
+        if (isSelfRange(item) && item.hasAreaTarget) {
+            const token = getActorToken(actor);
+            if (token) {
+                const d = canvas.grid.size / 2;
+                const destination = canvas.grid.getSnappedPosition(token.data.x, token.data.y, 2);
+                destination.x = destination.x + d;
+                destination.y = destination.y + d;
+                const preTemplate = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
+                await preTemplate.data.update(destination);
+                const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [preTemplate.data.toObject()]);
+                template = created[0];
+                await token.document.setFlag("wire", "attachedTemplateId", template.id);
+                await template.setFlag("wire", "attachedTokenId", token.id);
+            }
+        } else {
+            const template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
+            if (template) template.drawPreview();
+        }
     }
 
     // Create or return the Chat Message data
@@ -107,7 +122,8 @@ export async function preRollConfig(item, options = {}) {
 
     return {
         messageData: messageData,
-        config: activationConfig
+        config: activationConfig,
+        template
     };
 }
 

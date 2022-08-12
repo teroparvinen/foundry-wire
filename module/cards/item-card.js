@@ -52,6 +52,10 @@ export class ItemCard {
             else $(tip).slideUp(200);
             tip.classList.toggle("expanded");
         });
+
+        html.on("click", ".save-popup-toggle", function(event) {
+            event.target.closest('.phase-saving-throws').classList.toggle('popup');
+        });
     }
 
     static async _onChatCardAction(event) {
@@ -81,12 +85,16 @@ export class ItemCard {
                 activation.rollDamage();
                 break;
             case "wire-save":
+            case "wire-save-success":
+            case "wire-save-failure":
                 const actorUuid = event.target.closest('.saving-throw-target').dataset.actorId;
                 const actor = fudgeToActor(fromUuid(actorUuid));
                 if (actor && (game.user.isGM || actor.isOwner)) {
                     const advantage = !!event.altKey;
                     const disadvantage = !advantage && !!event.metaKey;
-                    activation.rollSave(actor, { advantage, disadvantage });
+                    const success = action === "wire-save-success";
+                    const failure = action === "wire-save-failure";
+                    activation.rollSave(actor, { advantage, disadvantage, success, failure });
                 }
                 break;
             case "roll-all-saves":
@@ -107,6 +115,10 @@ export class ItemCard {
                 break;
             case "confirm-targets":
                 activation.confirmTargets();
+                break;
+            case "activate-action":
+                activation.activateAction();
+                break;
             }
 
         button.disabled = false;

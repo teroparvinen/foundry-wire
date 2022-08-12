@@ -1,6 +1,6 @@
 
 export function itemRollFlow() {
-    const friendlyTarget = this.applyDefaultTargets(
+    const friendlyTarget = this.applyDefaultTargetsAsEffective(
         this.sequence(
             this.performSaveDamageRoll(
                 this.applyDamage()

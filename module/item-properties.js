@@ -36,6 +36,10 @@ export function isSelfTarget(item) {
     return item.data.data.target.type === "self";
 }
 
+export function isSelfRange(item) {
+    return item.data.data.range.units === "self";
+}
+
 export function hasDamageOfType(item, applicationType) {
     return item.data.data.damage.parts.some(part => (part[3] || "immediate") === applicationType);
 }
@@ -71,4 +75,12 @@ export function hasUnavoidableEffectsOfType(item, applicationType) {
     return item.effects.some(e => !e.isSuppressed && !e.isTemporary && !e.data.transfer && 
         (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
         e.getFlag("wire", "applyOnSaveOrMiss"));
+}
+
+export function hasUnavoidableApplicationsOfType(item, applicationType) {
+    return hasUnavoidableDamageOfType(item, applicationType) || hasUnavoidableEffectsOfType(item, applicationType);
+}
+
+export function hasOnlyUnavoidableEffectsOfType(item, applicationType) {
+    return !hasSaveableApplicationsOfType(item, applicationType) && hasUnavoidableEffectsOfType(item, applicationType);
 }

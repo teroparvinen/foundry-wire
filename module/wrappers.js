@@ -9,6 +9,7 @@ export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
     libWrapper.register("wire", "ClientKeybindings._onDismiss", onEscape, "MIXED");
     libWrapper.register("wire", "game.dnd5e.canvas.AbilityTemplate.prototype.activatePreviewListeners", onTemplatePreviewListeners, "MIXED");
+    libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.prepareDerivedData", onActorPrepareDerivedData, "MIXED");
 }
 
 let templateInfo = null;
@@ -38,7 +39,7 @@ async function onItemRoll(wrapped, options) {
     const result = await preRollConfig(item, flow.preRollOptions);
 
     if (result) {
-        const { messageData, config } = result;
+        const { messageData, config, template } = result;
 
         messageData.content = await ItemCard.renderHtml(item);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
@@ -48,10 +49,13 @@ async function onItemRoll(wrapped, options) {
             const activation = new Activation(message);
             await activation.initialize(item, "immediate", flow);
     
-            if (item.hasAreaTarget) {
+            if (item.hasAreaTarget && !template) {
                 templateInfo = { config, message };
             } else {
                 await activation.assignConfig(config);
+                if (template) {
+                    await activation.assignTemplate(template);
+                }
                 await activation.activate();
             }
     
@@ -99,4 +103,10 @@ function onTemplatePreviewListeners(wrapped, initialLayer) {
         canvas.stage.off("mousedown", mdHandler);
         cmListener?.apply(this, arguments);
     };
+}
+
+function onActorPrepareDerivedData(wrapped, ...args) {
+    wrapped.apply(this, [...args]);
+
+    foundry.utils.setProperty(this.data, "flags.wire.effect", {});
 }
