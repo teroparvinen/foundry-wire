@@ -64,7 +64,7 @@ export class DamageParts {
                 for (let t of recognizedTerms) {
                     parts.push({
                         formula: t.formula,
-                        type: t.flavor,
+                        type: t.flavor || parts[0].type,
                         halving: parts[0].halving,
                         applicationType: parts[0].applicationType
                     });
@@ -72,29 +72,6 @@ export class DamageParts {
             } else {
                 localizedWarning("wire.warn.could-not-parse-bonus-damage");
             }
-
-            // const terms = new Roll.parse(actorBonus.damage, rollData);
-            // const recognizedTerms = terms.filter(t => {
-            //     if (t instanceof ParentheticalTerm || t instanceof NumericTerm || t instanceof DiceTerm || (t instanceof OperatorTerm && t.operator === "+")) { return true; }
-            // });
-            // if (recognizedTerms.length === roll.terms.length) {
-            //     for (let t of recognizedTerms) {
-            //         if (!(t instanceof OperatorTerm)) {
-            //             if (t.flavor && CONFIG.DND5E.damageTypes[t.flavor]) {
-            //                 parts.push({
-            //                     formula: t.formula,
-            //                     type: t.flavor,
-            //                     halving: parts[0].halving,
-            //                     applicationType: parts[0].applicationType
-            //                 });
-            //             } else {
-            //                 primaryModifiers.push(t.formula);
-            //             }
-            //         }
-            //     }
-            // } else {
-            //     primaryModifiers.push(actorBonus.damage);
-            // }
         }
     
         // Handle ammunition damage
@@ -281,6 +258,8 @@ export class DamageParts {
     }
 }
 
+
+// Here be dragons
 function splitByOperator(terms) {
     const groups = [];
     let current = [];

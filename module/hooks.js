@@ -1,6 +1,7 @@
 import { Activation } from "./activation.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { ItemCard } from "./cards/item-card.js";
+import { getWireFlags } from "./game/effect-flags.js";
 import { fromUuid } from "./utils.js";
 
 export function initHooks() {
@@ -87,8 +88,7 @@ export function initHooks() {
             const templateId = await tokenDoc.getFlag("wire", "attachedTemplateId");
             const template = canvas.templates.get(templateId);
             if (template && template.document.author === game.user) {
-                const d = canvas.grid.size / 2;
-                const update = { x: tokenDoc.data.x + d, y: tokenDoc.data.y + d };
+                const update = tokenDoc.object.getCenter(tokenDoc.data.x, tokenDoc.data.y);
                 await template.document.update(update);
             }
         }
@@ -129,6 +129,22 @@ export function initHooks() {
                     await combatant.update({ defeated: needsDead });
                 }
             }
+        }
+    });
+
+    Hooks.on("updateCombat", async (combat, change, options, userId) => {
+        if (game.user.isGM) {
+            const combatant = combat.combatants.get(combat.current.combatantId);
+            if (combatant?.isNPC) {
+                combatant.token?.object?.control();
+                canvas.animatePan({ x: combatant.token?._object?.x, y: combatant.token?._object?.y })
+            }
+        }
+    });
+
+    Hooks.on("ready", () => {
+        if (game.modules.get("dae")) {
+            DAE.addAutoFields(getWireFlags());
         }
     });
 

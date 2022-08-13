@@ -45,7 +45,7 @@ export function hasDamageOfType(item, applicationType) {
 }
 
 export function hasEffectsOfType(item, applicationType) {
-    return item.effects.some(e => !e.isSuppressed && !e.isTemporary && !e.data.transfer && 
+    return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
         (e.getFlag("wire", "applicationType") || "immediate") === applicationType);
 }
 
@@ -58,7 +58,7 @@ export function hasSaveableDamageOfType(item, applicationType) {
 }
 
 export function hasSaveableEffectsOfType(item, applicationType) {
-    return item.effects.some(e => !e.isSuppressed && !e.isTemporary && !e.data.transfer && 
+    return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
         (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
         !e.getFlag("wire", "applyOnSaveOrMiss"));
 }
@@ -72,7 +72,7 @@ export function hasUnavoidableDamageOfType(item, applicationType) {
 }
 
 export function hasUnavoidableEffectsOfType(item, applicationType) {
-    return item.effects.some(e => !e.isSuppressed && !e.isTemporary && !e.data.transfer && 
+    return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
         (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
         e.getFlag("wire", "applyOnSaveOrMiss"));
 }

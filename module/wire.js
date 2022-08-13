@@ -1,6 +1,7 @@
 import { initAreaConditionHooks } from "./conditions/area-effects.js";
 import { initCombatTurnConditionHooks } from "./conditions/combat-turns.js";
 import { DamageParts } from "./game/damage-parts.js";
+import { setupRollFlagWrappers } from "./game/effect-flags.js";
 import { registerHandlebarsHelpers } from "./handlebars.js";
 import { initHooks } from "./hooks.js";
 import { initActiveEffectSheetHooks, setupActiveEffectSheetWrappers } from "./injections/active-effect-sheet.js";
@@ -27,5 +28,6 @@ Hooks.once("setup", () => {
     setupWrappers();
     setupItemSheetWrappers();
     setupActiveEffectSheetWrappers();
+    setupRollFlagWrappers();
     setupSocket();
 });

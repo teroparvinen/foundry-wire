@@ -3,7 +3,7 @@ import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
 import { preRollCheck, preRollConfig } from "./preroll.js";
-import { fromUuid, i18n } from "./utils.js";
+import { fromUuid, i18n, setTemplateTargeting } from "./utils.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
@@ -92,6 +92,7 @@ function onTemplatePreviewListeners(wrapped, initialLayer) {
             await activation.assignTemplate(templateDoc);
             templateInfo = null;
             canvas.stage.off("mousedown", mdHandler);
+            setTemplateTargeting(false);
         });
     };
     canvas.stage.on("mousedown", mdHandler);
@@ -102,11 +103,12 @@ function onTemplatePreviewListeners(wrapped, initialLayer) {
         templateInfo = null;
         canvas.stage.off("mousedown", mdHandler);
         cmListener?.apply(this, arguments);
+        setTemplateTargeting(false);
     };
 }
 
 function onActorPrepareDerivedData(wrapped, ...args) {
     wrapped.apply(this, [...args]);
 
-    foundry.utils.setProperty(this.data, "flags.wire.effect", {});
+    // TODO: necessary?
 }

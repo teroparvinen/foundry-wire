@@ -1,3 +1,4 @@
+import { itemRollFlow } from "./flows/item-roll.js";
 import { hasConcentration, hasDamageOfType, hasDuration, hasEffectsOfType, hasSaveableApplicationsOfType, isAttack, isSave, isSelfTarget, isTokenTargetable } from "./item-properties.js";
 
 export class Flow {
@@ -118,6 +119,24 @@ export class Flow {
         }
     }
 
+    isDelayedApplication() {
+        if (this.applicationType === "delayed") {
+            return this.pick(...arguments);
+        }
+    }
+
+    isImmediateApplication() {
+        if (this.applicationType === "immediate") {
+            return this.pick(...arguments);
+        }
+    }
+
+    isOverTimeApplication() {
+        if (this.applicationType === "overtime") {
+            return this.pick(...arguments);
+        }
+    }
+
     isSave() {
         if (isSave(this.item)) {
             return this.pick(...arguments);
@@ -208,6 +227,12 @@ export class Flow {
 
     triggerAction() {
         return ["triggerAction", ...this.chain(this.pick(...arguments))];
+    }
+
+    // Default flows
+
+    defaultFlow() {
+        return itemRollFlow.apply(this);
     }
 
     // Pre-roll options

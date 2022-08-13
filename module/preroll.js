@@ -1,6 +1,6 @@
 import AbilityUseDialog from "../../../systems/dnd5e/module/apps/ability-use-dialog.js";
 import { isAttack, isSelfRange, targetsSingleToken } from "./item-properties.js";
-import { getActorToken, localizedWarning, runAndAwait } from "./utils.js";
+import { getActorToken, localizedWarning, runAndAwait, setTemplateTargeting } from "./utils.js";
 
 export function preRollCheck(item) {
     if (isAttack(item) && !item.hasAreaTarget && game.user.targets.size != 1) {
@@ -79,10 +79,6 @@ export async function preRollConfig(item, options = {}) {
         }
     }
 
-    // const consumption = {
-    //     doConsumeRecharge, doConsumeResource, consumedSpellLevel, consumedUsageCount, consumedItemQuantity
-    // };
-
     // Determine whether the item can be used by testing for resource consumption
     const usage = getUsageUpdates(item, useConfig);
     if (!usage) return;
@@ -97,13 +93,12 @@ export async function preRollConfig(item, options = {}) {
     // Initiate measured template creation
     let template;
     if (doCreateMeasuredTemplate) {
-        if (isSelfRange(item) && item.hasAreaTarget && item.data.data.target.type === "sphere") {
+        if (isSelfRange(item) && item.hasAreaTarget && (item.data.data.target.type === "sphere" || item.data.data.target.type === "radius")) {
             const token = getActorToken(actor);
             if (token) {
-                const d = canvas.grid.size / 2;
                 const destination = canvas.grid.getSnappedPosition(token.data.x, token.data.y, 2);
-                destination.x = destination.x + d;
-                destination.y = destination.y + d;
+                destination.x = destination.x + token.w / 2;
+                destination.y = destination.y + token.h / 2;
                 const preTemplate = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
                 await preTemplate.data.update(destination);
                 const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [preTemplate.data.toObject()]);
@@ -114,6 +109,7 @@ export async function preRollConfig(item, options = {}) {
         } else {
             const template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
             if (template) template.drawPreview();
+            setTemplateTargeting(true);
         }
     }
 

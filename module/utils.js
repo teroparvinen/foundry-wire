@@ -24,7 +24,7 @@ export function isInCombat(actor) {
     return (game.combat?.turns.some(combatant => combatant.actor?.id === actor.id));
 }
 
-export function effectDurationFromItemDuration(itemDuration, inCombat) {
+export function effectDurationFromItemDuration(itemDuration, inActorInCombat) {
     if (!itemDuration) { return {}; }
 
     const timeMultipliers = {
@@ -39,36 +39,60 @@ export function effectDurationFromItemDuration(itemDuration, inCombat) {
 
     const roundTime = CONFIG.time.roundTime;
     const isDurationCombatTime = itemDuration.units === "round" || itemDuration.units === "turn";
+    const inCombat = !!game.combat;
 
-    let durationInSeconds, durationInRounds, durationInTurns;
-    if (typeof timeMultipliers[itemDuration.units] !== "undefined") {
-        durationInSeconds =  itemDuration.value * timeMultipliers[itemDuration.units];
-        durationInRounds = Math.floor(durationInSeconds / roundTime);
-        durationInTurns = itemDuration.units === "turn" ? itemDuration.value : 0;
+    if (typeof timeMultipliers[itemDuration.units] === "undefined") {
+        return {};
     }
 
-    const result = {
-        startTime: game.time.worldTime
-    };
-    if (typeof durationInSeconds !== "undefined") { result.seconds = durationInSeconds; }
-    if (inCombat || isDurationCombatTime) {
-        if (typeof durationInRounds !== "undefined") { result.rounds = durationInRounds; }
-        if (typeof durationInTurns !== "undefined") { result.turns = durationInTurns; }
-        result.startRound = game.combat?.round;
-        result.startTurn = game.combat?.turn;
-    }
+    const seconds = timeMultipliers[itemDuration.units] * itemDuration.value;
+    const rounds = itemDuration.units === "round" ? itemDuration.value : 0;
+    const turns = itemDuration.units === "turn" ? itemDurationValue : 0;
+    const startTime = game.time.worldTime;
+    const startRound = game.combat?.round;
+    const startTurn = game.combat?.turn;
 
-    return result;
+    if (isDurationCombatTime) {
+        if (inCombat) {
+            return { rounds, turns, startRound, startTurn };
+        } else {
+            return { seconds: rounds * roundTime, startTime };
+        }
+    } else {
+        if (inCombat) {
+            return { rounds: Math.floor(seconds / roundTime), turns: 0, startRound, startTurn };
+        } else {
+            return { seconds, startTime }
+        }
+    }
 }
 
 export function checkEffectDurationOverride(duration, effect) {
+    const roundTime = CONFIG.time.roundTime;
+
     const effectDuration = effect.data.duration;
-    if (effectDuration.seconds || effectDuration.rounds) {
-        return foundry.utils.mergeObject({}, duration, {
-            seconds: effectDuration.seconds,
-            rounds: duration.rounds ? effectDuration.rounds || Math.floor(effectDuration.seconds / CONFIG.time.roundTime) : undefined
-        });
+    const isCombatTime = effectDuration.rounds || effectDuration.turns;
+    const startTime = game.time.worldTime;
+    const startRound = game.combat?.round;
+    const startTurn = game.combat?.turn;
+
+    if (effectDuration?.turns || effectDuration?.rounds) {
+        const rounds = effectDuration.rounds;
+        const turns = effectDuration.turns;
+        if (isCombatTime) {
+            return { rounds, turns, startRound, startTurn };
+        } else {
+            return { seconds: rounds * roundTime, startTime };
+        }
+    } else if (effectDuration?.seconds) {
+        const seconds = effectDuration.seconds;
+        if (isCombatTime) {
+            return { rounds: Math.floor(seconds / roundTime), turns: 0, startRound, startTurn };
+        } else {
+            return { seconds, startTime }
+        }
     }
+
     return duration;
 }
 
@@ -200,5 +224,11 @@ export function isCastersTurn(item) {
     } else {
         // Assume out of combat to be the caster's to operate freely
         return true;
+    }
+}
+
+export function setTemplateTargeting(state) {
+    if (game.modules.get("df-templates")) {
+        game.settings.set("df-templates", "template-targeting-toggle", state);
     }
 }

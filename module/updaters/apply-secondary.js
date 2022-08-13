@@ -1,4 +1,4 @@
-import { applySecondaryFlow } from "../flows/apply-secondary.js";
+import { itemRollFlow } from "../flows/item-roll.js";
 import { Updater } from "./base-updater.js";
 
 export class ApplySecondaryUpdater extends Updater {
@@ -9,6 +9,6 @@ export class ApplySecondaryUpdater extends Updater {
     }
 
     flow() {
-        return applySecondaryFlow.apply(this);
+        return itemRollFlow.apply(this);
     }
 }

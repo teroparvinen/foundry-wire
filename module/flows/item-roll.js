@@ -28,7 +28,7 @@ export function itemRollFlow() {
         )
     )
     
-    return this.sequence(
+    const immediate = this.sequence(
         this.hasDuration(
             this.hasConcentration(
                 this.applyConcentration()
@@ -74,6 +74,43 @@ export function itemRollFlow() {
             this.isSelfTarget(
                 friendlyTarget
             )
+        )
+    )
+
+    const secondary = this.pick(
+        this.hasSaveableApplications(
+            this.performSavingThrow(
+                this.hasDamage(
+                    this.performSaveDamageRoll(
+                        this.sequence(
+                            this.applyDamage(),
+                            this.applyEffects()
+                        )
+                    )
+                ),
+                this.applyEffects()
+            )
+        ),
+        this.hasDamage(
+            this.performSaveDamageRoll(
+                this.sequence(
+                    this.applyDamage(),
+                    this.applyEffects()
+                )
+            )
+        ),
+        this.applyEffects()
+    )
+
+    return this.pick(
+        this.isImmediateApplication(
+            immediate
+        ),
+        this.isDelayedApplication(
+            secondary
+        ),
+        this.isOverTimeApplication(
+            secondary
         )
     )
 }

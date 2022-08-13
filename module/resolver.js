@@ -1,5 +1,6 @@
 import { DamageCard } from "./cards/damage-card.js";
 import { DamageParts } from "./game/damage-parts.js";
+import { getAttackOptions } from "./game/effect-flags.js";
 import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableEffectsOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
 import { makeUpdater } from "./updater-utility.js";
 import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getAttackRollResultType, isCasterDependentEffect, isInCombat, runAndAwait, triggerConditions } from "./utils.js";
@@ -103,7 +104,8 @@ export class Resolver {
             await this.step(n);
 
         } else if (isOriginator && this.activation.state === "performAttackRoll") {
-            const roll = await item.rollAttack({ chatMessage: false, fastForward: true });
+            const options = getAttackOptions(this.activation);
+            const roll = await item.rollAttack(foundry.utils.mergeObject({ chatMessage: false, fastForward: true }, options));
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.activation.applyAttackRoll(roll);
             await this.activation.applyState("waiting-for-attack-result");
@@ -384,7 +386,7 @@ export class Resolver {
         const staticDuration = effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor));
         const appliedDuration = masterEffect ? copyEffectDuration(masterEffect) : staticDuration;
 
-        const effects = item.effects.filter(e => !e.isSuppressed && !e.isTemporary && !e.data.transfer && (e.getFlag("wire", "applicationType") || "immediate") === applicationType);
+        const effects = item.effects.filter(e => !e.isSuppressed && !e.data.transfer && (e.getFlag("wire", "applicationType") || "immediate") === applicationType);
         const allTargetsEffects = effects.filter(e => e.getFlag("wire", "applyOnSaveOrMiss"));
         const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
 
@@ -401,6 +403,7 @@ export class Resolver {
                         wire: {
                             activationMessageId: this.activation.message.id,
                             castingActorUuid: actor.uuid,
+                            sourceEffectUuid: effect.uuid,
                             conditions: copyConditions(effect)
                         }
                     }
@@ -421,7 +424,9 @@ export class Resolver {
         let createdEffects = [];
 
         const applyEffect = async (target, data) => {
-            const existingEffects = target.actor.effects.filter(e => e.data.origin === item.uuid && !e.data.flags.wire?.masterEffectUuid && !e.data.flags.wire?.isMasterEffect);
+            const sourceEffectUuids = data.map(d => d.flags.wire.sourceEffectUuid);
+            // const existingEffects = target.actor.effects.filter(e => e.data.origin === item.uuid && !e.data.flags.wire?.masterEffectUuid && !e.data.flags.wire?.isMasterEffect);
+            const existingEffects = target.actor.effects.filter(e => sourceEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid));
             if (existingEffects.length) {
                 await target.actor.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
             }
