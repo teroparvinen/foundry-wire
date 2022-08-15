@@ -2,12 +2,13 @@ import { itemRollFlow } from "./flows/item-roll.js";
 import { hasConcentration, hasDamageOfType, hasDuration, hasEffectsOfType, hasSaveableApplicationsOfType, isAttack, isSave, isSelfTarget, isTokenTargetable } from "./item-properties.js";
 
 export class Flow {
-    constructor(item, applicationType, evaluator) {
+    constructor(item, applicationType, evaluator, { allowMacro = true } = {}) {
         this.item = item;
         this.applicationType = applicationType;
         this.evaluator = evaluator;
+        this.allowMacro = allowMacro;
 
-        const macroCommand = item.data.flags.itemacro?.macro?.data.command?.trim();
+        const macroCommand = item?.data.flags.itemacro?.macro?.data.command?.trim();
         if (macroCommand) {
             this.macroFunction = new Function(macroCommand);
         }
@@ -18,14 +19,15 @@ export class Flow {
 
     evaluate() {
         let result;
-        if (this.macroFunction) {
+        if (this.allowMacro && this.macroFunction) {
             result = this.macroFunction.apply(this);
         }
         if (!result && this.evaluator) {
             result = this.evaluator.apply(this);
         }
         
-        const steps = result?.flat(100).filter(i => i);
+        // const steps = result?.flat(100).filter(i => i);
+        const steps = result;
         this.isEvaluated = true;
         this.evaluatedSteps = steps;
         return steps;
@@ -58,11 +60,11 @@ export class Flow {
     }
 
     otherwise() {
-        return this.pick(...arguments);
+        return this.pick(...arguments).flat();
     }
 
     sequence() {
-        return [...arguments].filter(a => a);
+        return [...arguments].filter(a => a).flat();
     }
 
     performCustomStep(name, ...args) {

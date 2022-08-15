@@ -48,8 +48,25 @@ export function getWireFlags() {
         ...Object.keys(CONFIG.DND5E.skills).flatMap(skill => [
             `flags.wire.advantage.skill.${skill}`,
             `flags.wire.disadvantage.skill.${skill}`
-        ])
+        ]),
+
+        ...[
+            "flags.wire.damage.multiplier.all",
+        ],
+        ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
+            `flags.wire.damage.multiplier.action.${at}`
+        ]),
+        ...Object.keys(CONFIG.DND5E.creatureTypes).flatMap(ct => [
+            `flags.wire.damage.multiplier.creature.${ct}`
+        ]),
+        ...Object.keys(CONFIG.DND5E.abilities).flatMap(abl => [
+            `flags.wire.damage.multiplier.ability.${abl}`
+        ]),
     ];
+}
+
+const flagInitialValues = {
+    "flags.wire.damage.multiplier.*": 1
 }
 
 export function getAttackOptions(activation) {
@@ -84,11 +101,51 @@ export function getAttackOptions(activation) {
     return { advantage, disadvantage };
 }
 
+export function getDamageMultiplier(item, actor, target) {
+    const multiplierFlags = actor.data.flags.wire?.damage?.multiplier || {};
+
+    const globalMultiplier = multiplierFlags.all || 1;
+    const actionTypeMultiplier = multiplierFlags.action ? multiplierFlags.action[item.data.data.actionType] || 1 : 1;
+    const creatureTypeMultiplier = multiplierFlags.creature ? (target?.data.data.details?.type?.value ? multiplierFlags.creature[target.data.data.details.type.value] || 1 : 1) : 1;
+    const abilityMultiplier = multiplierFlags.ability ? multiplierFlags.ability[item.abilityMod] || 1 : 1;
+
+    return globalMultiplier * actionTypeMultiplier * creatureTypeMultiplier * abilityMultiplier;
+}
+
 export function setupRollFlagWrappers() {
+    // libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.prepareDerivedData", onActorPrepareDerivedData, "MIXED");
+    libWrapper.register("wire", "CONFIG.ActiveEffect.documentClass.prototype.apply", onActiveEffectApply, "MIXED");
+
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.rollSkill", onActorRollSkill, "MIXED");
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.rollAbilityTest", onActorRollAbilityTest, "MIXED");
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.rollAbilitySave", onActorRollAbilitySave, "MIXED");
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.rollDeathSave", onActorRollDeathSave, "MIXED");
+}
+
+// function onActorPrepareDerivedData(wrapped, ...args) {
+//     wrapped.apply(this, [...args]);
+// }
+
+function onActiveEffectApply(wrapped, actor, change) {
+    if (change.key.startsWith("flags.wire.")) {
+        const current = foundry.utils.getProperty(actor.data, change.key) ?? null;
+
+        if (current === null ) {
+            let initialValue = null;
+            for (let initialKey in flagInitialValues) {
+                if (initialKey === change.key || initialKey.endsWith("*") && change.key.startsWith(initialKey.slice(0, initialKey.length - 1))) {
+                    initialValue = flagInitialValues[initialKey];
+                    break;
+                }
+            }
+            
+            if (initialValue !== null) {
+                foundry.utils.setProperty(actor.data, change.key, initialValue);
+            }
+        }
+    }
+
+    wrapped.apply(this, [actor, change]);
 }
 
 function onActorRollSkill(wrapped, skillId, options) {

@@ -15,6 +15,6 @@ export class Updater {
 
     async process() {
         const flow = new Flow(this.item, this.applicationType, this.flow);
-        Activation.createConditionMessage(this.condition, this.item, this.effect, flow, { externalTargetActor: this.externalTargetActor });
+        await Activation.createConditionMessage(this.condition, this.item, this.effect, flow, { externalTargetActor: this.externalTargetActor });
     }
 }

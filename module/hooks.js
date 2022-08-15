@@ -41,7 +41,8 @@ export function initHooks() {
     Hooks.on("renderChatMessage", async (message, html, data) => {
         const shouldHidePlayerOriginated = game.user.isGM && !message.isAuthor && message.getFlag("wire", "originatorUserId");
         const shouldHidePlayerView = game.user.isGM && message.getFlag("wire", "isPlayerView");
-        if (shouldHidePlayerOriginated || shouldHidePlayerView) {
+        const isExplicitlyHidden = message.getFlag("wire", "isHidden");
+        if (shouldHidePlayerOriginated || shouldHidePlayerView || isExplicitlyHidden) {
             html[0].classList.add("wire-gm-hide");
         }
     });
@@ -143,7 +144,7 @@ export function initHooks() {
     });
 
     Hooks.on("ready", () => {
-        if (game.modules.get("dae")) {
+        if (game.modules.get("dae")?.active) {
             DAE.addAutoFields(getWireFlags());
         }
     });

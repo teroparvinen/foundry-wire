@@ -13,31 +13,35 @@ export function setupSocket() {
 async function activationUpdated(messageUuid) {
     const message = fromUuid(messageUuid);
 
-    const originatorUserId = message.getFlag("wire", "originatorUserId");
-    if (originatorUserId) {
-        if (game.user.isGM && !message.isAuthor) {
-            const gmMessageUuid = message.getFlag("wire", "gmMessageUuid");
-            if (gmMessageUuid) {
-                const gmMessage = fromUuid(gmMessageUuid);
-                const activation = new Activation(gmMessage);
+    if (message) {
+        const originatorUserId = message.getFlag("wire", "originatorUserId");
+        if (originatorUserId) {
+            if (game.user.isGM && !message.isAuthor) {
+                const gmMessageUuid = message.getFlag("wire", "gmMessageUuid");
+                if (gmMessageUuid) {
+                    const gmMessage = fromUuid(gmMessageUuid);
+                    const activation = new Activation(gmMessage);
+                    await activation.step();
+                    await activation.updateCard();
+                }
+            } else if (message.isAuthor || originatorUserId === game.user.id) {
+                const activation = new Activation(message);
                 await activation.step();
                 await activation.updateCard();
             }
-        } else if (message.isAuthor) {
-            const activation = new Activation(message);
-            await activation.step();
-            await activation.updateCard();
         }
     }
 }
 
 async function updateMessage(messageUuid, data) {
     const message = fromUuid(messageUuid);
-    await message.setFlag("wire", "activation", data);
+    if (message) {
+        await message.setFlag("wire", "activation", data);
 
-    const activation = new Activation(message);
-    await activation.step();
-    await activation.updateCard();
+        const activation = new Activation(message);
+        await activation.step();
+        await activation.updateCard();
+    }
 }
 
 function scrollBottom() {

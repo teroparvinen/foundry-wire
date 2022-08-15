@@ -43,6 +43,8 @@ export class ItemCard {
     }
 
     static activateListeners(html) {
+        html.off("click", ".card-buttons button");
+
         html.on("click", ".card-buttons button", this._onChatCardAction.bind(this));
         html.on("click", ".card-phases a", this._onChatCardAction.bind(this));
 

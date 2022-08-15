@@ -55,6 +55,7 @@ export class Activation {
     get masterEffectUuid() { return this.data.masterEffectUuid; }
     get targetUuids() { return this.data.targetUuids; }
     get effectiveTargetUuids() { return this.data.effectiveTargetUuids; }
+    get attackTargetUuid() { return this.data.attack?.targetActorUuid; }
     get attackRoll() { return this.data.attack?.roll ? CONFIG.Dice.D20Roll.fromData(this.data.attack.roll) : null; }
     get attackResult() { return this.data.attack?.result; }
     get damageParts() { return this.data.damage?.parts ? DamageParts.fromData(this.data.damage.parts) : null; }
@@ -75,6 +76,7 @@ export class Activation {
     get pcTargets() { return this.allTargets.filter(t => t.actor.hasPlayerOwner); }
     get singleTarget() { return this._targetRecord(this.targetUuids?.find(t => t)); }
     get effectiveTargets() { return this.effectiveTargetUuids?.map(uuid => this._targetRecord(uuid)) ?? []; }
+    get attackTarget() { return this._targetRecord(this.attackTargetUuid); }
 
     get actionUpdate() { return this.sourceEffect?.data.flags.wire?.conditions?.find(c => c.condition === "take-an-action")?.update || ''; }
 
@@ -108,7 +110,8 @@ export class Activation {
                 roll: attackRoll,
                 tooltip: attackRollTooltip,
                 resultType: attackRollResultType,
-                result: this.attackResult 
+                result: this.attackResult,
+                target: this.attackTarget
             },
             damage: {
                 roll: damageRoll,
@@ -160,7 +163,7 @@ export class Activation {
 
     async updateCard() {
         // If a player calls this on a view that has a player view (which is managed by the GM), bail out
-        if (!game.user.isGM && this.message.getFlag("wire", "playerMessageUuid")) {
+        if (!game.user.isGM && (this.message.getFlag("wire", "playerMessageUuid") || !this.message.isAuthor)) {
             return;
         }
 
@@ -216,8 +219,8 @@ export class Activation {
         await resolver.step();
     }
 
-    async updateFlow(flow) {
-        foundry.utils.setProperty(this.data, 'flow', flow);
+    async updateFlowSteps(flowSteps) {
+        foundry.utils.setProperty(this.data, 'flowSteps', flowSteps);
         this.update();
     }
 
@@ -260,6 +263,12 @@ export class Activation {
         }
     }
 
+    async clearTargets() {
+        await this.assignTargets([]);
+        await this.applyEffectiveTargets([]);
+        this.update();
+    }
+
     async assignConfig(config) {
         foundry.utils.setProperty(this.data, "config", config);
         await this.update();
@@ -284,6 +293,11 @@ export class Activation {
         await wireSocket.executeForOthers("activationUpdated", this.message.uuid);
     }
 
+    async applyAttackTarget(targetActor) {
+        foundry.utils.setProperty(this.data, "attack.targetActorUuid", targetActor.uuid);
+        await this.update();
+    }
+
     async applyAttackRoll(roll) {
         foundry.utils.setProperty(this.data, "attack.roll", roll.toJSON());
         await this.update();
@@ -295,8 +309,20 @@ export class Activation {
         await this.step();
     }
 
+    async clearAttack() {
+        foundry.utils.setProperty(this.data, "attack.roll", null);
+        foundry.utils.setProperty(this.data, "attack.result", null);
+        foundry.utils.setProperty(this.data, "attack.targetActorUuid", null);
+        await this.update();
+    }
+
     async applyDamageRollParts(damageParts) {
         foundry.utils.setProperty(this.data, "damage.parts", damageParts.toJSON());
+        await this.update();
+    }
+
+    async clearDamage() {
+        foundry.utils.setProperty(this.data, "damage.parts", null);
         await this.update();
     }
 
@@ -312,6 +338,11 @@ export class Activation {
             await this.step();
             wireSocket.executeForOthers("activationUpdated", this.message.uuid);
         }
+    }
+
+    async clearSaves() {
+        foundry.utils.setProperty(this.data, "saves", []);
+        await this.update();
     }
 
     async confirmTargets() {

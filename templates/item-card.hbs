@@ -34,11 +34,11 @@
                     </div>
 
                     <div class="flexrow">
-                        <img class="flex0 token-image" src="{{activation.singleTarget.token.data.img}}" />
+                        <img class="flex0 token-image" src="{{activation.attack.target.token.data.img}}" />
                         <div class="flex1 token-info flexcol">
-                            <div class="token-name">{{activation.singleTarget.token.name}}</div>
+                            <div class="token-name">{{activation.attack.target.token.name}}</div>
                             {{#if isGM}}
-                                <div class="token-ac"><i class="fas fa-shield-alt"></i> {{activation.singleTarget.actor.data.data.attributes.ac.value}}</div>
+                                <div class="token-ac"><i class="fas fa-shield-alt"></i> {{activation.attack.target.actor.data.data.attributes.ac.value}}</div>
                             {{/if}}
                         </div>
                         {{#if activation.attack.result}}
@@ -49,8 +49,8 @@
                         {{else}}
                             {{#if isGM}}
                                 <div class="flex0 confirm-buttons flexrow">
-                                    <a data-action="confirm-attack-hit" class="flex0 confirm-yes {{#if (gte activation.attack.roll.total activation.singleTarget.actor.data.data.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-check fa-2x"></i></a>
-                                    <a data-action="confirm-attack-miss" class="flex0 confirm-no {{#if (lt activation.attack.roll.total activation.singleTarget.actor.data.data.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-times fa-2x"></i></a>
+                                    <a data-action="confirm-attack-hit" class="flex0 confirm-yes {{#if (gte activation.attack.roll.total activation.attack.target.actor.data.data.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-check fa-2x"></i></a>
+                                    <a data-action="confirm-attack-miss" class="flex0 confirm-no {{#if (lt activation.attack.roll.total activation.attack.target.actor.data.data.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-times fa-2x"></i></a>
                                 </div>
                             {{else}}
                                 <div class="flex0 waiting-for-hit"><i class="fas fa-shield-alt fa-2x anim-beat"></i></div>
@@ -77,7 +77,7 @@
             {{/if}}
         {{/unless}}
 
-        {{#if (or (eq activation.state "waiting-for-saves") activation.saves)}}
+        {{#if (or (eq activation.state "waiting-for-saves") activation.saves.length)}}
             {{#*inline "target-save-row"}}
                 <div class="saving-throw-target flexrow" data-actor-id="{{actor.uuid}}">
                     <img class="flex0 target-image" src="{{token.data.img}}" />

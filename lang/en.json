@@ -14,7 +14,7 @@
             "roll-npc-saves": "Roll NPCs",
             "manual-saves": "Force success or failure",
             "dc": "DC {value}",
-            "confirm-targets": "Confirm targets",
+            "confirm-targets": "Confirm target(s)",
             "di": "Immunity",
             "dr": "Resistance",
             "dv": "Vulnerability",
@@ -42,7 +42,12 @@
             "condition-enemy-enters-area": "An enemy first enters the area on its turn",
             "condition-enemy-starts-turn-inside-area": "An enemy starts its turn inside the area",
             "condition-enemy-ends-turn-inside-area": "An enemy ends its turn inside the area",
-            "condition-area-placed-over": "The area is placed over the creature",
+            "condition-area-envelops-creature": "The area envelops a creature",
+            "condition-area-envelops-ally": "The area envelops an ally",
+            "condition-area-envelops-enemy": "The area envelops an enemy",
+            "condition-area-reveals-creature": "The creature is revealed from the area",
+            "condition-area-reveals-ally": "The ally is revealed from the area",
+            "condition-area-reveals-enemy": "The enemy is revealed from the area",
             "condition-start-of-turn-caster": "Start of caster's turn",
             "condition-end-of-turn-caster": "End of caster's turn",
             "condition-start-of-turn-target": "Start of target's turn",
@@ -63,8 +68,11 @@
             "condition-target-is-hit.msak": "Target is hit with a melee spell attack",
             "condition-target-is-hit.rsak": "Target is hit with a ranged spell attack",
             "condition-take-an-action": "As an action",
-            "update-apply-delayed": "Apply delayed effects",
-            "update-apply-overtime": "Apply over time effects",
+            "update-apply-delayed": "Activate delayed damage and effects",
+            "update-apply-overtime": "Activate over time damage and effects",
+            "update-apply-effects-immediate": "Apply immediate effects",
+            "update-apply-effects-delayed": "Apply delayed effects",
+            "update-apply-effects-overtime": "Apply over time effects",
             "update-end": "End the effect",
             "update-end-on-save": "End the effect on a save",
             "update-attack-target": "Make an attack against the target",
@@ -75,11 +83,11 @@
         "active-effect": {
             "apply-on-save-or-miss": "Apply the effect if the save succeeds or the attack misses",
             "application-phase": "Application phase",
-            "application-phase-hint": "The conditions for the activation are determined on the main item sheet"
+            "application-phase-hint": "The conditions for the activation are determined in the effect application section below and on the main item sheet"
         },
         "warn": {
             "select-single-target-for-attack": "Select a target for the attack",
-            "select-targets-for-effect": "Select (a) target(s) for the effect",
+            "select-targets-for-effect": "Make a target selection",
             "damage-roll-has-no-parts": "There is no damage to roll!",
             "could-not-parse-bonus-damage": "Could not parse bonus damage!"
         }

@@ -1,4 +1,5 @@
 import { localizedWarning } from "../utils.js";
+import { getDamageMultiplier } from "./effect-flags.js";
 
 
 export class DamageParts {
@@ -49,7 +50,7 @@ export class DamageParts {
                 scalingMultiplier = Math.max(spellLevel - itemData.level, 0);
             }
             if (scalingMultiplier > 0) {
-                const s = new Roll(itemData.scaling.formula, rollData).alter(times);
+                const s = new Roll(itemData.scaling.formula, rollData).alter(scalingMultiplier);
                 primaryModifiers.push(s.formula);
             }
         }
@@ -66,7 +67,8 @@ export class DamageParts {
                         formula: t.formula,
                         type: t.flavor || parts[0].type,
                         halving: parts[0].halving,
-                        applicationType: parts[0].applicationType
+                        applicationType: parts[0].applicationType,
+                        multiplier: 1
                     });
                 }
             } else {
@@ -81,6 +83,10 @@ export class DamageParts {
             ammoParts = this._itemDamageParts(item._ammo, applicationType, onlyUnavoidable);
             delete item._ammo;
         }
+
+        // Effect damage multiplier
+        const effectFlagMultiplier = getDamageMultiplier(item, item.actor, attackTarget);
+        parts[0].multiplier = effectFlagMultiplier;
     
         // Factor in extra critical damage dice from the Barbarian's "Brutal Critical"
         const criticalBonusDice = itemData.actionType === "mwak" ? item.actor.getFlag("dnd5e", "meleeCriticalDamageDice") ?? 0 : 0;
@@ -138,7 +144,8 @@ export class DamageParts {
                     formula: d[0],
                     type: d[1],
                     halving: d[2] || "none",
-                    applicationType: d[3] || "immediate"
+                    applicationType: d[3] || "immediate",
+                    multiplier: 1
                 }
             })
             .filter(d => d.applicationType === applicationType && (!onlyUnavoidable || d.halving !== "none"));
@@ -192,9 +199,10 @@ export class DamageParts {
         }
 
         const components = this.result.map(pr => {
+            const mult = typeof pr.part.multiplier === "number" ? pr.part.multiplier : 1;
             const type = pr.part.type;
             const halving = pr.part.halving;
-            const points = pr.roll.total;
+            const points = Math.floor(pr.roll.total * mult);
 
             const caused = Math.floor(halvingFactor(halving, isEffective) * points);
 

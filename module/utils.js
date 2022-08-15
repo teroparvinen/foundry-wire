@@ -165,12 +165,52 @@ export function i18n(...args) {
     return game.i18n.localize(...args);
 }
 
-export function getTokenTemplateIds(token) {
-    const tokenPosition = `${token.data.x}.${token.data.y}`;
+export function getTokenSquarePositions(token) {
+    let tokenPositions = [];
+    if (token.data.width === 1 && token.data.height === 1) {
+        tokenPositions.push(`${token.data.x}.${token.data.y}`);
+    } else {
+        const gs = canvas.grid.size;
+        for (let x = 0; x < token.data.width; x++) {
+            for (let y = 0; y < token.data.height; y++) {
+                tokenPositions.push(`${token.data.x + gs * x}.${token.data.y + gs * y}`);
+            }
+        }
+    }
+    return tokenPositions;
+}
+
+export function getTokenTemplateIds(token, requireAll = false) {
+    const tokenPositions = getTokenSquarePositions(token);
+
     return Object.entries(canvas.grid.highlightLayers)
         .filter(e => e[0].startsWith("Template."))
-        .filter(e => e[1].positions.has(tokenPosition))
+        .filter(e => {
+            if (requireAll) {
+                return tokenPositions.every(p => e[1].positions.has(p));
+            } else {
+                return tokenPositions.some(p => e[1].positions.has(p));
+            }
+        })
         .map(e => e[0].substring(9));
+}
+
+export function getTemplateTokenUuids(template, requireAll = true) {
+    const templatePositions = canvas.grid.highlightLayers[`Template.${template.id}`]?.positions;
+    if (templatePositions) {
+        const tokens = canvas.tokens.objects.children;
+        return tokens
+            .filter(t => t.isVisible)
+            .filter(t => {
+                if (requireAll) {
+                    return getTokenSquarePositions(t).every(p => templatePositions.has(p));
+                } else {
+                    return getTokenSquarePositions(t).some(p => templatePositions.has(p));
+                }
+            })
+            .map(t => t.document.uuid);
+    }
+    return [];
 }
 
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
@@ -228,7 +268,7 @@ export function isCastersTurn(item) {
 }
 
 export function setTemplateTargeting(state) {
-    if (game.modules.get("df-templates")) {
+    if (game.modules.get("df-templates")?.active) {
         game.settings.set("df-templates", "template-targeting-toggle", state);
     }
 }

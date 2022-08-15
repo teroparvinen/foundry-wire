@@ -7,9 +7,9 @@ import { fromUuid, i18n, setTemplateTargeting } from "./utils.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
-    libWrapper.register("wire", "ClientKeybindings._onDismiss", onEscape, "MIXED");
     libWrapper.register("wire", "game.dnd5e.canvas.AbilityTemplate.prototype.activatePreviewListeners", onTemplatePreviewListeners, "MIXED");
-    libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.prepareDerivedData", onActorPrepareDerivedData, "MIXED");
+    libWrapper.register("wire", "ClientKeybindings._onDismiss", onEscape, "OVERRIDE");
+    libWrapper.register("wire", "CONFIG.ui.chat.prototype.scrollBottom", onChatLogScrollBottom, "OVERRIDE");
 }
 
 let templateInfo = null;
@@ -65,22 +65,6 @@ async function onItemRoll(wrapped, options) {
     }
 }
 
-function onEscape(wrapped, context) {
-    if (!(ui.context && ui.context.menu.length) && !((Object.keys(ui.windows).length))) {
-        if (ui.controls.activeControl !== "token") {
-            canvas.tokens.activate();
-            return true;
-        }
-
-        if (game.user.targets.size) {
-            [...game.user.targets][0].setTarget(false);
-            return true;
-        }
-    }
-
-    return wrapped.apply(this, [context]);
-}
-
 function onTemplatePreviewListeners(wrapped, initialLayer) {
     wrapped.apply(this, [initialLayer]);
 
@@ -107,8 +91,61 @@ function onTemplatePreviewListeners(wrapped, initialLayer) {
     };
 }
 
-function onActorPrepareDerivedData(wrapped, ...args) {
-    wrapped.apply(this, [...args]);
+function onEscape(context) {
+    // Save fog of war if there are pending changes
+    if (canvas.ready) canvas.sight.commitFog();
 
-    // TODO: necessary?
+    // Dismiss an open context menu
+    if (ui.context && ui.context.menu.length) {
+        ui.context.close();
+        return true;
+    }
+
+    // Return to chat tab
+    if (ui.sidebar.activeTab !== "chat") {
+        ui.sidebar.activateTab("chat");
+        return true;
+    }
+
+    // Return to token controls
+    if (ui.controls.activeControl !== "token") {
+        canvas.tokens.activate();
+        return true;
+    }
+
+    // Release targets
+    if (game.user.targets.size) {
+        [...game.user.targets][0].setTarget(false);
+        return true;
+    }
+
+    // // Close open UI windows
+    // if (Object.keys(ui.windows).length) {
+    //     Object.values(ui.windows).forEach(app => app.close());
+    //     return true;
+    // }
+
+    // // (GM) - release controlled objects (if not in a preview)
+    // if (game.user.isGM && canvas.activeLayer && Object.keys(canvas.activeLayer._controlled).length) {
+    //     if (!canvas.activeLayer.preview?.children.length) canvas.activeLayer.releaseAll();
+    //     return true;
+    // }
+
+    // Toggle the main menu
+    // ui.menu.toggle();
+
+    // Save the fog immediately rather than waiting for the 3s debounced save as part of commitFog.
+    if (canvas.ready) canvas.sight.saveFog();
+    return true;
+}
+
+function onChatLogScrollBottom({popout}={}) {
+    const el = this.element;
+    const log = el.length ? el[0].querySelector("#chat-log") : null;
+
+    const scrolled = log.scrollHeight - log.scrollTop - log.clientHeight;
+    const pageHeight = log.clientHeight;
+
+    if (log && scrolled < pageHeight) log.scrollTop = log.scrollHeight;
+    if (popout) this._popout?.scrollBottom();
 }

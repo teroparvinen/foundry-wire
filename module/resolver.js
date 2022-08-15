@@ -1,9 +1,10 @@
 import { DamageCard } from "./cards/damage-card.js";
+import { applyTargetEffects } from "./game/active-effects.js";
 import { DamageParts } from "./game/damage-parts.js";
 import { getAttackOptions } from "./game/effect-flags.js";
 import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableEffectsOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
 import { makeUpdater } from "./updater-utility.js";
-import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getAttackRollResultType, isCasterDependentEffect, isInCombat, runAndAwait, triggerConditions } from "./utils.js";
+import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getAttackRollResultType, isCasterDependentEffect, isInCombat, localizedWarning, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
     constructor(activation) {
@@ -107,6 +108,7 @@ export class Resolver {
             const options = getAttackOptions(this.activation);
             const roll = await item.rollAttack(foundry.utils.mergeObject({ chatMessage: false, fastForward: true }, options));
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
+            await this.activation.applyAttackTarget(this.activation.singleTarget.actor);
             await this.activation.applyAttackRoll(roll);
             await this.activation.applyState("waiting-for-attack-result");
         } else if (isGM && this.activation.state === "waiting-for-attack-result") {
@@ -126,13 +128,18 @@ export class Resolver {
                 await this.activation.applyState("targets-confirmed");
                 await this.step(n);
             }
-        } else if (isAuthor && this.activation.state === "targets-confirmed") {
-            await this.activation.assignTargets([...game.user.targets].map(t => t.actor));
-            if (isInstantaneous(item)) {
-                await this.activation.template?.delete();
+        } else if (isOriginator && this.activation.state === "targets-confirmed") {
+            if (game.user.targets.size === 0) {
+                localizedWarning("wire.warn.select-targets-for-effect");
+                await this.activation.applyState("waiting-for-target-confirmation");
+            } else {
+                await this.activation.assignTargets([...game.user.targets].map(t => t.actor));
+                if (isInstantaneous(item)) {
+                    await this.activation.template?.delete();
+                }
+                await this.activation.applyState("idle");
+                await this.step(n);
             }
-            await this.activation.applyState("idle");
-            await this.step(n);
 
         } else if (isAuthor && this.activation.state === "performAttackDamageRoll") {
             if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType)) || hasUnavoidableDamageOfType(item, applicationType)) {
@@ -227,12 +234,14 @@ export class Resolver {
             const updater = makeUpdater(condition, sourceEffect, item);
             await updater?.process();
 
-            this.activation.message.delete();
+            this.activation.message.setFlag("wire", "isHidden", true);
+            await this.activation.applyState("idle");
+            // await this.activation.message.delete();
 
         } else if (isAuthor && this.activation.state === "idle") {
             const flow = this.activation.flowSteps;
             const next = flow.shift();
-            await this.activation.updateFlow(flow);
+            await this.activation.updateFlowSteps(flow);
             await this.activation.applyState(next);
             this.step(n);
         } else if (this.activation.state && !this.knownStates.includes(this.activation.state)) {
@@ -240,7 +249,7 @@ export class Resolver {
             const handler = handlers[this.activation.state];
             if (handler) {
                 if ((handler.runAsRoller && isOriginator) || (!handler.runAsRoller && isGM)) {
-                    await runAndAwait(handler.fn, this.activation)
+                    await runAndAwait(handler.fn, this.activation);
                     await this.activation.applyState("idle");
                     await this.step(n);
                 }
@@ -312,7 +321,6 @@ export class Resolver {
             effectData.duration = effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor));
             effectData.flags = foundry.utils.mergeObject(effectData.flags, {
                 wire: {
-                    activationMessageId: this.activation.message.id,
                     isMasterEffect: true
                 }
             });
@@ -333,7 +341,6 @@ export class Resolver {
                 duration: effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor)),
                 flags: {
                     wire: {
-                        activationMessageId: this.activation.message.id,
                         isMasterEffect: true
                     }
                 }
@@ -362,7 +369,6 @@ export class Resolver {
             duration: effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor)),
             flags: {
                 wire: {
-                    activationMessageId: this.activation.message.id,
                     isMasterEffect: true
                 }
             }
@@ -377,69 +383,13 @@ export class Resolver {
     }
 
     async _applyTargetEffects(applicationType) {
-        const item = this.activation.item;
-        const actor = item.actor;
-        const allTargets = this.activation.allTargets;
-        const effectiveTargets = this.activation.effectiveTargets;
-        const masterEffect = this.activation.masterEffect;
-
-        const staticDuration = effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor));
-        const appliedDuration = masterEffect ? copyEffectDuration(masterEffect) : staticDuration;
-
-        const effects = item.effects.filter(e => !e.isSuppressed && !e.data.transfer && (e.getFlag("wire", "applicationType") || "immediate") === applicationType);
-        const allTargetsEffects = effects.filter(e => e.getFlag("wire", "applyOnSaveOrMiss"));
-        const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
-
-        const makeEffectData = (effect) => {
-            return foundry.utils.mergeObject(
-                {
-                    changes: copyEffectChanges(effect),
-                    origin: item.uuid,
-                    disabled: false,
-                    icon: effect.data.icon,
-                    label: effect.data.label,
-                    duration: checkEffectDurationOverride(appliedDuration, effect),
-                    flags: {
-                        wire: {
-                            activationMessageId: this.activation.message.id,
-                            castingActorUuid: actor.uuid,
-                            sourceEffectUuid: effect.uuid,
-                            conditions: copyConditions(effect)
-                        }
-                    }
-                },
-                masterEffect ? {
-                    flags: {
-                        wire: {
-                            masterEffectUuid: masterEffect.uuid
-                        }
-                    }
-                } : {}
-            );
-        };
-
-        const allTargetsEffectData = allTargetsEffects.map(effect => makeEffectData(effect));
-        const effectiveTargetsEffectData = effectiveTargetsEffects.map(effect => makeEffectData(effect));
-   
-        let createdEffects = [];
-
-        const applyEffect = async (target, data) => {
-            const sourceEffectUuids = data.map(d => d.flags.wire.sourceEffectUuid);
-            // const existingEffects = target.actor.effects.filter(e => e.data.origin === item.uuid && !e.data.flags.wire?.masterEffectUuid && !e.data.flags.wire?.isMasterEffect);
-            const existingEffects = target.actor.effects.filter(e => sourceEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid));
-            if (existingEffects.length) {
-                await target.actor.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
-            }
-            const targetEffects = await target.actor.createEmbeddedDocuments("ActiveEffect", data);
-            createdEffects = [...createdEffects, ...targetEffects];
-        }
-
-        for (let target of allTargets) {
-            await applyEffect(target, allTargetsEffectData);
-        }
-        for (let target of effectiveTargets) {
-            await applyEffect(target, effectiveTargetsEffectData);
-        }
+        const createdEffects = await applyTargetEffects(
+            this.activation.item,
+            applicationType,
+            this.activation.allTargets.map(t => t.actor),
+            this.activation.effectiveTargets.map(t => t.actor),
+            this.activation.masterEffect
+        );
 
         for (let effect of createdEffects) {
             const originatorUserId = this.activation.message.data.flags.wire?.originatorUserId;
@@ -447,8 +397,7 @@ export class Resolver {
             await effect.setFlag("wire", "originatorUserId", originatorUserId);
         }
 
-        await masterEffect?.setFlag("wire", "childEffectUuids", createdEffects.map(e => e.uuid));
-
+        const actor = this.activation.item.actor;
         const casterDependentEffectUuids = createdEffects.filter(e => isCasterDependentEffect(e)).map(e => e.uuid);
         await actor.setFlag("wire", "turnUpdatedEffectUuids", [...(actor.data.flags.wire?.turnUpdatedEffectUuids || []), ...casterDependentEffectUuids]);
     }

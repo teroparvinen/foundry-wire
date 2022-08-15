@@ -1,3 +1,4 @@
+import { ApplyEffectsUpdater } from "./updaters/apply-effects.js";
 import { ApplySecondaryUpdater } from "./updaters/apply-secondary.js";
 import { EndOnSaveUpdater } from "./updaters/end-on-save.js";
 import { EndUpdater } from "./updaters/end.js";
@@ -8,6 +9,11 @@ export function makeUpdater(condition, effect, item, externalTargetActor = null)
     case "apply-delayed":
     case "apply-overtime":
         return new ApplySecondaryUpdater(condition, effect, item, externalTargetActor);
+        break;
+    case "apply-effects-immediate":
+    case "apply-effects-delayed":
+    case "apply-effects-overtime":
+        return new ApplyEffectsUpdater(condition, effect, item, externalTargetActor);
         break;
     case "end":
         return new EndUpdater(condition, effect, item, externalTargetActor);
@@ -39,15 +45,18 @@ export function determineUpdateTargetUuids(item, effect, condition, externalTarg
         case "enemy-enters-area":
         case "enemy-starts-turn-inside-area":
         case "enemy-ends-turn-inside-area":
+        case "area-envelops-creature":
+        case "area-envelops-ally":
+        case "area-envelops-enemy":
+        case "area-reveals-creature":
+        case "area-reveals-ally":
+        case "area-reveals-enemy":
             if (!externalTargetActor) {
                 console.warn("Area conditions need an external actor target. None given.");
                 return [];
             } else {
                 return [externalTargetActor.uuid]
             }
-        case "area-placed-over":
-            console.warn("Not implemented");
-            break;
         case "start-of-turn-caster":
         case "end-of-turn-caster":
             return getOriginalTargets();

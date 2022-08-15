@@ -10,7 +10,12 @@ const conditionList = [
     ["enemy-enters-area", "item"],
     ["enemy-starts-turn-inside-area", "item"],
     ["enemy-ends-turn-inside-area", "item"],
-    ["area-placed-over", "item"],
+    ["area-envelops-creature", "item"],
+    ["area-envelops-ally", "item"],
+    ["area-envelops-enemy", "item"],
+    ["area-reveals-creature", "item"],
+    ["area-reveals-ally", "item"],
+    ["area-reveals-enemy", "item"],
     ["start-of-turn-caster", "all"],
     ["end-of-turn-caster", "all"],
     ["start-of-turn-target", "effect"],
@@ -36,11 +41,11 @@ const conditionList = [
 const updateList = [
     ["apply-delayed", ["all"]],
     ["apply-overtime", ["all"]],
+    ["apply-effects-immediate", ["all"]],
+    ["apply-effects-delayed", ["all"]],
+    ["apply-effects-overtime", ["all"]],
     ["end", ["all"]],
     ["end-on-save", ["all"]],
-    ["attack-target", ["all"]],
-    ["target-and-attack", ["all"]],
-    ["move-template", ["all"]],
     ["splash-delayed", ["all"]]
 ]
 

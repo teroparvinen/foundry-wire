@@ -74,8 +74,8 @@ async function handleTurn(actor, token, isStart) {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === "take-an-action") ?? [];
             await Promise.all(conditions.map(async condition => {
                 const item = fromUuid(effect.data.origin);
-                const flow = new Flow(item, "immediate", takeAnActionFlow);
-                await Activation.createConditionMessage(condition, item, effect, flow, { playerMessageOnly: true });
+                const flow = new Flow(item, "immediate", takeAnActionFlow, { allowMacro: false });
+                await Activation.createConditionMessage(condition, item, effect, flow, { playerMessageOnly: item.actor.hasPlayerOwner });
             }));
         });
     }
