@@ -127,21 +127,32 @@ export class Activation {
     }
 
     async initialize(item, applicationType, flow, condition = null, sourceEffect = null, externalEffectTarget = null) {
-        foundry.utils.setProperty(this.data, 'itemUuid', item.uuid);
-        foundry.utils.setProperty(this.data, 'applicationType', applicationType);
+        foundry.utils.setProperty(this.data, "itemUuid", item.uuid);
+        foundry.utils.setProperty(this.data, "applicationType", applicationType);
 
         const flowSteps = flow.isEvaluated ? flow.evaluatedSteps : flow.evaluate();
-        foundry.utils.setProperty(this.data, 'flowSteps', flowSteps);
+        foundry.utils.setProperty(this.data, "flowSteps", flowSteps);
         this.flow = flow;
 
         if (condition && sourceEffect) {
-            foundry.utils.setProperty(this.data, 'condition', condition);
-            foundry.utils.setProperty(this.data, 'sourceEffectUuid', sourceEffect.uuid);
+            foundry.utils.setProperty(this.data, "condition", condition);
+            foundry.utils.setProperty(this.data, "sourceEffectUuid", sourceEffect.uuid);
+
+            foundry.utils.setProperty(this.data, "config", sourceEffect.data.flags.wire?.activationConfig);
+            if (sourceEffect.data.flags.wire?.isMasterEffect) {
+                foundry.utils.setProperty(this.data, "masterEffectUuid", sourceEffect.uuid);
+            } else {
+                foundry.utils.setProperty(this.data, "masterEffectUuid", sourceEffect.data.flags.wire?.masterEffectUuid);
+            }
 
             const targetUuids = determineUpdateTargetUuids(item, sourceEffect, condition, externalEffectTarget);
             foundry.utils.setProperty(this.data, "targetUuids", targetUuids);
         }
         this.update();
+    }
+
+    _restoreProperties(sourceEffect) {
+
     }
 
     getCustomFlowStepHandlers() {

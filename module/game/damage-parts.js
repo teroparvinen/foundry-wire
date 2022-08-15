@@ -26,12 +26,16 @@ export class DamageParts {
             const targetType = Object.keys(CONFIG.DND5E.creatureTypes).reduce((accumulator, value) => {
                 return {...accumulator, [value]: 0 };
             }, {});
-            targetType[attackTarget.data.data.details.type.value] = 1;
+            if (attackTarget.data.data.details?.type?.value) {
+                targetType[attackTarget.data.data.details.type.value] = 1;
+            }
     
             const targetSize = Object.keys(CONFIG.DND5E.actorSizes).reduce((accumulator, value) => {
                 return {...accumulator, [value]: 0 };
             }, {});
-            targetSize[attackTarget.data.data.details.size] = 1;
+            if (attackTarget.data.data.details?.size) {
+                targetSize[attackTarget.data.data.details?.size] = 1;
+            }
     
             rollData.target = { type: targetType, size: targetSize };
         }

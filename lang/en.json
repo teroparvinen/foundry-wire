@@ -83,7 +83,9 @@
         "active-effect": {
             "apply-on-save-or-miss": "Apply the effect if the save succeeds or the attack misses",
             "application-phase": "Application phase",
-            "application-phase-hint": "The conditions for the activation are determined in the effect application section below and on the main item sheet"
+            "application-phase-hint": "The conditions for the activation are determined in the effect application section below and on the main item sheet",
+            "track-independent-duration": "Track duration independently from concentration or master effect",
+            "track-independent-duration-hint": "With this enabled, this effect will stay running until the end of its duration even if the caster drops the effect. Does not make sense without a duration given above."
         },
         "warn": {
             "select-single-target-for-attack": "Select a target for the attack",

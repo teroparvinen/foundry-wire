@@ -8,7 +8,7 @@ export function initActiveEffectSheetHooks() {
         const applicationType = effect.getFlag("wire", "applicationType");
         const checked = (value) => { return value ? "checked" : "" };
         const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
-        const fields = `
+        const detailsFields = `
             <div class="form-group">
                 <label>${i18n("wire.active-effect.apply-on-save-or-miss")}</label>
                 <input type="checkbox" name="flags.wire.applyOnSaveOrMiss" ${checked(applyOnSaveOrMiss)}>
@@ -23,9 +23,19 @@ export function initActiveEffectSheetHooks() {
                 <div class="hint">${i18n("wire.active-effect.application-phase-hint")}</div>
             </div>
         `;
-        html.find('section[data-tab="details"] .form-group').last().after(fields);
+        html.find('section[data-tab="details"] .form-group').last().after(detailsFields);
 
         await injectConditionList(app.object, html, 'section[data-tab="details"]', "effect");
+
+        const independentDuration = effect.getFlag("wire", "independentDuration");
+        const durationFields = `
+            <div class="form-group">
+                <label>${i18n("wire.active-effect.track-independent-duration")}</label>
+                <input type="checkbox" name="flags.wire.independentDuration" ${checked(independentDuration)}>
+                <div class="hint">${i18n("wire.active-effect.track-independent-duration-hint")}</div>
+            </div>
+        `;
+        html.find('section[data-tab="duration"] .form-group').last().after(durationFields);
     });
 }
 

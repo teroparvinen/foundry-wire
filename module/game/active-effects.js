@@ -1,7 +1,6 @@
 import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, isInCombat } from "../utils.js";
 
-
-export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect) {
+export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config) {
     const actor = item.actor;
 
     const staticDuration = effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor));
@@ -11,7 +10,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     const allTargetsEffects = effects.filter(e => e.getFlag("wire", "applyOnSaveOrMiss"));
     const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
 
-    const makeEffectData = (effect) => {
+    const makeEffectInfo = (effect) => {
         return foundry.utils.mergeObject(
             {
                 changes: copyEffectChanges(effect),
@@ -24,11 +23,12 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                     wire: {
                         castingActorUuid: actor.uuid,
                         sourceEffectUuid: effect.uuid,
-                        conditions: copyConditions(effect)
+                        conditions: copyConditions(effect),
+                        activationConfig: config
                     }
                 }
             },
-            masterEffect ? {
+            (masterEffect && !effect.data.flags.wire?.independentDuration) ? {
                 flags: {
                     wire: {
                         masterEffectUuid: masterEffect.uuid
@@ -38,30 +38,35 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
         );
     };
 
-    const allTargetsEffectData = allTargetsEffects.map(effect => makeEffectData(effect));
-    const effectiveTargetsEffectData = effectiveTargetsEffects.map(effect => makeEffectData(effect));
+    const allTargetsTrackedEffectData = allTargetsEffects.filter(e => !e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
+    const allTargetsIndependentEffectData = allTargetsEffects.filter(e => e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
+    const effectiveTargetsTrackedEffectData = effectiveTargetsEffects.filter(e => !e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
+    const effectiveTargetsIndependentEffectData = effectiveTargetsEffects.filter(e => e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
 
-    let createdEffects = [];
+    let trackedEffects = [];
+    let independentEffects = [];
 
-    const applyEffect = async (target, data) => {
+    const applyEffect = async (target, data, queue) => {
         const sourceEffectUuids = data.map(d => d.flags.wire.sourceEffectUuid);
         const existingEffects = target.effects.filter(e => sourceEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid));
         if (existingEffects.length) {
             await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
         }
         const targetEffects = await target.createEmbeddedDocuments("ActiveEffect", data);
-        createdEffects = [...createdEffects, ...targetEffects];
+        queue.push(...targetEffects);
     }
 
     for (let target of allTargetActors) {
-        await applyEffect(target, allTargetsEffectData);
+        await applyEffect(target, allTargetsTrackedEffectData, trackedEffects);
+        await applyEffect(target, allTargetsIndependentEffectData, independentEffects);
     }
     for (let target of effectiveTargetActors) {
-        await applyEffect(target, effectiveTargetsEffectData);
+        await applyEffect(target, effectiveTargetsTrackedEffectData, trackedEffects);
+        await applyEffect(target, effectiveTargetsIndependentEffectData, independentEffects);
     }
 
     const masterEffectChildEffectUuids = masterEffect?.data.flags.wire?.childEffectUuids || [];
-    await masterEffect?.setFlag("wire", "childEffectUuids", [...masterEffectChildEffectUuids, ...createdEffects.map(e => e.uuid)]);
+    await masterEffect?.setFlag("wire", "childEffectUuids", [...masterEffectChildEffectUuids, ...trackedEffects.map(e => e.uuid)]);
 
-    return createdEffects;
+    return [...trackedEffects, ...independentEffects];
 }

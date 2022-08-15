@@ -64,7 +64,7 @@ export function initAreaConditionHooks() {
     Hooks.on("updateCombat", async (combat, change, options, userId) => {
         if (game.user.isGM) {
             const token = canvas.tokens.get(game.combat.current.tokenId);
-            token.document.setFlag("wire", "visitedTemplateIds", getTokenTemplateIds(token));
+            await token.document.setFlag("wire", "visitedTemplateIds", getTokenTemplateIds(token));
         }
     });
 
@@ -72,7 +72,7 @@ export function initAreaConditionHooks() {
         if (options.envelopmentUpdate) { return; }
 
         if (game.user.isGM) {
-            checkTemplateEnvelopment(templateDoc);
+            await checkTemplateEnvelopment(templateDoc);
         }
     });
 }
@@ -80,7 +80,7 @@ export function initAreaConditionHooks() {
 async function checkTemplateEnvelopment(templateDoc) {
     const effect = fromUuid(templateDoc.getFlag("wire", "masterEffectUuid"));
     if (effect && !effect.isSuppressed) {
-        const previous = templateDoc.getFlag("wire", "envelopedTokenUuids") || [];
+        const previous = await templateDoc.getFlag("wire", "envelopedTokenUuids") || [];
         const current = getTemplateTokenUuids(templateDoc);
 
         const previousSet = new Set(previous);
@@ -90,9 +90,9 @@ async function checkTemplateEnvelopment(templateDoc) {
         const exitedSet = new Set([...previousSet].filter(x => !currentSet.has(x)));
 
         // Enter
-        await Promise.all([...enteredSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a).map(async actor => {
+        for (let actor of [...enteredSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a)) {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.startsWith("area-envelops")) ?? [];
-            await Promise.all(conditions.map(async condition => {
+            for (let condition of conditions) {
                 const item = fromUuid(effect.data.origin);
 
                 let dispositionCheck = false;
@@ -104,34 +104,32 @@ async function checkTemplateEnvelopment(templateDoc) {
                     const updater = makeUpdater(condition, effect, item, actor);
                     await updater?.process();
                 }
-            }));
-        }));
+            };
+        }
 
         // Exit
-        await Promise.all([...exitedSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a).map(async actor => {
+        for (let actor of [...exitedSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a)) {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.startsWith("area-reveals")) ?? [];
-            await Promise.all(conditions.map(async condition => {
+            for (let condition of conditions) {
                 const item = fromUuid(effect.data.origin);
+                const effects = actor.effects.filter(e => {
+                    const itemEffectUuids = item.effects.map(e => e.uuid);
+                    return itemEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid);
+                })
 
-                await Promise.all(actor.effects
-                    .filter(e => {
-                        const itemEffectUuids = item.effects.map(e => e.uuid);
-                        return itemEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid);
-                    })
-                    .map(async effect => {
-                        let dispositionCheck = false;
-                        if (condition.condition.endsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
-                        else if (condition.condition.endsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
-                        else if (condition.condition.endsWith("creature")) { dispositionCheck = true; }
-    
-                        if (dispositionCheck) {
-                            const updater = makeUpdater(condition, effect, item, actor);
-                            await updater?.process();
-                        }
-                    })
-                );
-            }));
-        }));
+                for (let effect of effects) {
+                    let dispositionCheck = false;
+                    if (condition.condition.endsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
+                    else if (condition.condition.endsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
+                    else if (condition.condition.endsWith("creature")) { dispositionCheck = true; }
+
+                    if (dispositionCheck) {
+                        const updater = makeUpdater(condition, effect, item, actor);
+                        await updater?.process();
+                    }
+                }
+            }
+        }
 
         await templateDoc.update({ "flags.wire.envelopedTokenUuids": current }, { envelopmentUpdate: true });
     }

@@ -304,6 +304,7 @@ export class Resolver {
     async _applyConcentration() {
         const item = this.activation.item;
         const actor = item.actor;
+        const activationConfig = this.activation.config;
 
         let effect;
 
@@ -321,7 +322,8 @@ export class Resolver {
             effectData.duration = effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor));
             effectData.flags = foundry.utils.mergeObject(effectData.flags, {
                 wire: {
-                    isMasterEffect: true
+                    isMasterEffect: true,
+                    activationConfig
                 }
             });
 
@@ -341,7 +343,8 @@ export class Resolver {
                 duration: effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor)),
                 flags: {
                     wire: {
-                        isMasterEffect: true
+                        isMasterEffect: true,
+                        activationConfig
                     }
                 }
             };
@@ -359,6 +362,7 @@ export class Resolver {
     async _applyDurationEffect() {
         const item = this.activation.item;
         const actor = item.actor;
+        const activationConfig = this.activation.config;
 
         const effectData = {
             changes: [],
@@ -369,7 +373,8 @@ export class Resolver {
             duration: effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor)),
             flags: {
                 wire: {
-                    isMasterEffect: true
+                    isMasterEffect: true,
+                    activationConfig
                 }
             }
         };
@@ -388,7 +393,8 @@ export class Resolver {
             applicationType,
             this.activation.allTargets.map(t => t.actor),
             this.activation.effectiveTargets.map(t => t.actor),
-            this.activation.masterEffect
+            this.activation.masterEffect,
+            this.activation.config
         );
 
         for (let effect of createdEffects) {
