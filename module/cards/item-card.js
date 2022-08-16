@@ -19,7 +19,6 @@ export class ItemCard {
                 tokenId: token?.uuid || null,
                 item: item.data,
                 data: item.getChatData(),
-                isHealing: item.isHealing,
                 isVersatile: item.isVersatile,
                 isSpell: item.data.type === "spell",
                 activation: activationData,

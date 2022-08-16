@@ -3,13 +3,13 @@ import { getDamageMultiplier } from "./effect-flags.js";
 
 
 export class DamageParts {
-    static async roll(item, applicationType, onlyUnavoidable, { spellLevel, isCritical, attackTarget } = {}) {
+    static async roll(item, applicationType, onlyUnavoidable, { spellLevel, isCritical, attackTarget, variant } = {}) {
         if (!item.hasDamage) throw new Error("You may not make a Damage Roll with this Item.");
         const itemData = item.data.data;
         const actorData = item.actor.data.data;
     
         // Get damage components
-        let parts = this._itemDamageParts(item, applicationType, onlyUnavoidable);
+        let parts = this._itemDamageParts(item, applicationType, onlyUnavoidable, variant);
         const primaryModifiers = [];
 
         if (!parts.length) {
@@ -140,19 +140,27 @@ export class DamageParts {
         return new DamageParts(partsWithRolls);
     }
 
-    static _itemDamageParts(item, applicationType, onlyUnavoidable) {
+    static _itemDamageParts(item, applicationType, onlyUnavoidable, variant) {
         const itemData = item.data.data;
         return itemData.damage.parts
             .map(d => {
+                let variant;
+                const formula = d[0].replace(RollTerm.FLAVOR_REGEXP, flavor => {
+                    variant = flavor;
+                    return "";
+                });
+              
                 return {
-                    formula: d[0],
+                    formula,
                     type: d[1],
                     halving: d[2] || "none",
                     applicationType: d[3] || "immediate",
-                    multiplier: 1
+                    multiplier: 1,
+                    variant
                 }
             })
-            .filter(d => d.applicationType === applicationType && (!onlyUnavoidable || d.halving !== "none"));
+            .filter(d => d.applicationType === applicationType && (!onlyUnavoidable || d.halving !== "none"))
+            .filter(d => !variant || d.variant.toLowerCase() === `[${variant}]`.toLowerCase());
     }
 
     static fromData(data) {

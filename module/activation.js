@@ -51,6 +51,7 @@ export class Activation {
     get state() { return this.data.state; }
     get flowSteps() { return this.data.flowSteps; }
     get config() { return this.data.config; }
+    get variant() { return this.config?.variant; }
     get templateUuid() { return this.data.templateUuid; }
     get masterEffectUuid() { return this.data.masterEffectUuid; }
     get targetUuids() { return this.data.targetUuids; }
@@ -104,6 +105,9 @@ export class Activation {
         const attackRollResultType = getAttackRollResultType(attackRoll);
         const damageRoll = await this.getCombinedDamageRoll();
         const damageRollTooltip = await damageRoll?.getTooltip();
+
+        const isHealing = this.item.data.data.damage?.parts?.every(p => ["healing", "temphp"].includes(p[1])) || this.damageParts?.result?.every(p => ["healing", "temphp"].includes(p.part.type));
+
         return {
             state: this.state,
             attack: {
@@ -115,7 +119,8 @@ export class Activation {
             },
             damage: {
                 roll: damageRoll,
-                tooltip: damageRollTooltip
+                tooltip: damageRollTooltip,
+                isHealing
             },
             saves: this.data.saves,
             allTargets: this.allTargets,
@@ -149,10 +154,6 @@ export class Activation {
             foundry.utils.setProperty(this.data, "targetUuids", targetUuids);
         }
         this.update();
-    }
-
-    _restoreProperties(sourceEffect) {
-
     }
 
     getCustomFlowStepHandlers() {

@@ -1,3 +1,4 @@
+import { SelectVariantDialog } from "./apps/select-variant.js";
 import { initAreaConditionHooks } from "./conditions/area-effects.js";
 import { initCombatTurnConditionHooks } from "./conditions/combat-turns.js";
 import { DamageParts } from "./game/damage-parts.js";
@@ -20,7 +21,8 @@ Hooks.once("init", () => {
     initAreaConditionHooks();
 
     game.wire = {
-        DamageParts
+        DamageParts,
+        SelectVariantDialog
     }
 });
 

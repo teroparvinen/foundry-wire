@@ -1,0 +1,10 @@
+<div class="dialog-content">
+    {{localize "wire.select-variant.prompt"}}
+</div>
+<div class="dialog-buttons">
+    {{#each variants as |variant|}}
+        <button class="dialog-button" data-button="{{variant}}">
+            {{variant}}
+        </button>
+    {{/each}}
+</div>

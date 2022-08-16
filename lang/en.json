@@ -5,8 +5,6 @@
             "remove-template": "Remove Measured Template"
         },
         "ui": {
-            "attack-roll-label": "Attack",
-            "damage-roll-label": "Damage",
             "apply-damage": "Apply",
             "undo-damage": "Undo",
             "saving-throw-heading": "{ability} Saving Throw",
@@ -20,7 +18,7 @@
             "dv": "Vulnerability",
             "no-damage": "No damage was done",
             "end-concentration-dialog-title": "End Concentration?",
-            "end-concentration-dialog-content": "You are concentrating on {originName}",
+            "end-concentration-dialog-content": "You are concentrating on {originName}. Are you sure you want to cast another concentration spell to replace it?",
             "activate-reaction": "Take a reaction",
             "activate-action": "Take an action"
         },
@@ -86,6 +84,9 @@
             "application-phase-hint": "The conditions for the activation are determined in the effect application section below and on the main item sheet",
             "track-independent-duration": "Track duration independently from concentration or master effect",
             "track-independent-duration-hint": "With this enabled, this effect will stay running until the end of its duration even if the caster drops the effect. Does not make sense without a duration given above."
+        },
+        "select-variant": {
+            "prompt": "Select a variant"
         },
         "warn": {
             "select-single-target-for-attack": "Select a target for the attack",

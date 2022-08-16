@@ -1,4 +1,5 @@
 import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, isInCombat } from "../utils.js";
+import { applyConditionImmunity } from "./effect-flags.js";
 
 export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config) {
     const actor = item.actor;
@@ -6,7 +7,9 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     const staticDuration = effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor));
     const appliedDuration = masterEffect ? copyEffectDuration(masterEffect) : staticDuration;
 
-    const effects = item.effects.filter(e => !e.isSuppressed && !e.data.transfer && (e.getFlag("wire", "applicationType") || "immediate") === applicationType);
+    const effects = item.effects
+        .filter(e => !e.isSuppressed && !e.data.transfer && (e.getFlag("wire", "applicationType") || "immediate") === applicationType)
+        .filter(e => !config.variant || e.data.label.toLowerCase() === config.variant.toLowerCase());
     const allTargetsEffects = effects.filter(e => e.getFlag("wire", "applyOnSaveOrMiss"));
     const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
 
@@ -49,10 +52,11 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     const applyEffect = async (target, data, queue) => {
         const sourceEffectUuids = data.map(d => d.flags.wire.sourceEffectUuid);
         const existingEffects = target.effects.filter(e => sourceEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid));
-        if (existingEffects.length) {
-            await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
-        }
-        const targetEffects = await target.createEmbeddedDocuments("ActiveEffect", data);
+        // if (existingEffects.length) {
+        //     await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
+        // }
+        const checkedData = applyConditionImmunity(target, data);
+        const targetEffects = await target.createEmbeddedDocuments("ActiveEffect", checkedData);
         queue.push(...targetEffects);
     }
 

@@ -112,6 +112,28 @@ export function getDamageMultiplier(item, actor, target) {
     return globalMultiplier * actionTypeMultiplier * creatureTypeMultiplier * abilityMultiplier;
 }
 
+export function applyConditionImmunity(actor, effectDataList) {
+    return effectDataList
+        .map(effectData => {
+            return foundry.utils.mergeObject(effectData, {
+                changes: effectData.changes.filter(change => {
+                    const keys = [
+                        "macro.CE",
+                        "StatusEffect"
+                    ]
+                    const immunities = [
+                        ...actor.data.data.traits?.ci?.value,
+                        ...actor.data.data.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase())
+                    ];
+                    return !keys.includes(change.key) || !immunities.includes(change.value.toLowerCase())
+                })
+            });
+        })
+        .filter(effectData => {
+            return effectData.changes.length;
+        });
+}
+
 export function setupRollFlagWrappers() {
     // libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.prepareDerivedData", onActorPrepareDerivedData, "MIXED");
     libWrapper.register("wire", "CONFIG.ActiveEffect.documentClass.prototype.apply", onActiveEffectApply, "MIXED");

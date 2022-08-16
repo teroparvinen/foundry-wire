@@ -396,3 +396,18 @@
 .sheet .condition-parts .condition-part select:first-of-type {
     margin-left: 0;
 }
+
+
+.select-variant.dialog .dialog-buttons {
+    flex-direction: column;
+    padding: 0 10px;
+}
+
+.select-variant.dialog .dialog-buttons button {
+    margin: 1px 0;
+}
+
+.select-variant.dialog .dialog-content {
+    text-align: center;
+    padding: 5px;
+}

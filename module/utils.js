@@ -272,3 +272,8 @@ export function setTemplateTargeting(state) {
         game.settings.set("df-templates", "template-targeting-toggle", state);
     }
 }
+
+export function damagePartMatchesVariant(formula, variant) {
+    const result = formula.match(RollTerm.FLAVOR_REGEXP);
+    return (result && result.length && result[0].toLowerCase() === `[${variant.toLowerCase()}]`);
+}

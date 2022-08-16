@@ -1,3 +1,4 @@
+import { damagePartMatchesVariant } from "./utils.js";
 
 const durationUnits = ["day", "hour", "minute", "month", "round", "turn", "year"];
 const attackTypes = ["msak", "mwak", "rsak", "rwak"];
@@ -40,47 +41,50 @@ export function isSelfRange(item) {
     return item.data.data.range.units === "self";
 }
 
-export function hasDamageOfType(item, applicationType) {
-    return item.data.data.damage.parts.some(part => (part[3] || "immediate") === applicationType);
+export function hasDamageOfType(item, applicationType, variant) {
+    return item.data.data.damage.parts.some(part => (part[3] || "immediate") === applicationType && (!variant || damagePartMatchesVariant(part[0], variant)));
 }
 
-export function hasEffectsOfType(item, applicationType) {
+export function hasEffectsOfType(item, applicationType, variant) {
     return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
-        (e.getFlag("wire", "applicationType") || "immediate") === applicationType);
+        (e.getFlag("wire", "applicationType") || "immediate") === applicationType &&
+        (!variant || e.data.label.toLowerCase() === variant.toLowerCase()));
 }
 
-export function hasApplicationsOfType(item, applicationType) {
-    return hasDamageOfType(item, applicationType) || hasEffectsOfType(item, applicationType);
+export function hasApplicationsOfType(item, applicationType, variant) {
+    return hasDamageOfType(item, applicationType, variant) || hasEffectsOfType(item, applicationType, variant);
 }
 
-export function hasSaveableDamageOfType(item, applicationType) {
-    return item.data.data.damage?.parts.some(part => part[3] === applicationType && ["none", "half"].includes(part[2] || "none"));
+export function hasSaveableDamageOfType(item, applicationType, variant) {
+    return item.data.data.damage?.parts.some(part => (part[3] || "immediate") === applicationType && ["none", "half"].includes(part[2] || "none") && (!variant || damagePartMatchesVariant(part[0], variant)));
 }
 
-export function hasSaveableEffectsOfType(item, applicationType) {
-    return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
-        (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
-        !e.getFlag("wire", "applyOnSaveOrMiss"));
-}
-
-export function hasSaveableApplicationsOfType(item, applicationType) {
-    return hasSaveableDamageOfType(item, applicationType) || hasSaveableEffectsOfType(item, applicationType);
-}
-
-export function hasUnavoidableDamageOfType(item, applicationType) {
-    return item.data.data.damage?.parts.some(part => part[3] === applicationType && ["full", "half"].includes(part[2]));
-}
-
-export function hasUnavoidableEffectsOfType(item, applicationType) {
+export function hasSaveableEffectsOfType(item, applicationType, variant) {
     return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
         (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
-        e.getFlag("wire", "applyOnSaveOrMiss"));
+        !e.getFlag("wire", "applyOnSaveOrMiss") &&
+        (!variant || e.data.label.toLowerCase() === variant.toLowerCase()));
 }
 
-export function hasUnavoidableApplicationsOfType(item, applicationType) {
-    return hasUnavoidableDamageOfType(item, applicationType) || hasUnavoidableEffectsOfType(item, applicationType);
+export function hasSaveableApplicationsOfType(item, applicationType, variant) {
+    return hasSaveableDamageOfType(item, applicationType, variant) || hasSaveableEffectsOfType(item, applicationType, variant);
 }
 
-export function hasOnlyUnavoidableEffectsOfType(item, applicationType) {
-    return !hasSaveableApplicationsOfType(item, applicationType) && hasUnavoidableEffectsOfType(item, applicationType);
+export function hasUnavoidableDamageOfType(item, applicationType, variant) {
+    return item.data.data.damage?.parts.some(part => (part[3] || "immediate") === applicationType && ["full", "half"].includes(part[2]) && (!variant || damagePartMatchesVariant(part[0], variant)));
+}
+
+export function hasUnavoidableEffectsOfType(item, applicationType, variant) {
+    return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
+        (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
+        e.getFlag("wire", "applyOnSaveOrMiss") &&
+        (!variant || e.data.label.toLowerCase() === variant.toLowerCase()));
+}
+
+export function hasUnavoidableApplicationsOfType(item, applicationType, variant) {
+    return hasUnavoidableDamageOfType(item, applicationType, variant) || hasUnavoidableEffectsOfType(item, applicationType, variant);
+}
+
+export function hasOnlyUnavoidableEffectsOfType(item, applicationType, variant) {
+    return !hasSaveableApplicationsOfType(item, applicationType, variant) && hasUnavoidableEffectsOfType(item, applicationType, variant);
 }

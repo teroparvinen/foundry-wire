@@ -122,7 +122,7 @@ export class Resolver {
             }
 
         } else if (isAuthor && this.activation.state === "confirmTargets") {
-            if (hasApplicationsOfType(item, this.activation.applicationType)) {
+            if (hasApplicationsOfType(item, this.activation.applicationType, this.activation.variant)) {
                 await this.activation.applyState("waiting-for-target-confirmation");
             } else {
                 await this.activation.applyState("targets-confirmed");
@@ -142,7 +142,7 @@ export class Resolver {
             }
 
         } else if (isAuthor && this.activation.state === "performAttackDamageRoll") {
-            if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType)) || hasUnavoidableDamageOfType(item, applicationType)) {
+            if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType, this.activation.variant)) || hasUnavoidableDamageOfType(item, applicationType, this.activation.variant)) {
                 await this.activation.applyState("waiting-for-attack-damage-roll");
                 this.step(n);
             } else {
@@ -154,9 +154,10 @@ export class Resolver {
 
             const isCritical = getAttackRollResultType(this.activation.attackRoll) == "critical";
             const spellLevel = this.activation.config?.spellLevel;
+            const variant = this.activation.config?.variant;
             const onlyUnavoidable = this.activation.effectiveTargets.length == 0;
             const attackTarget = this.activation.singleTarget?.actor;
-            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical, spellLevel, attackTarget });
+            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical, spellLevel, attackTarget, variant });
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
@@ -164,7 +165,7 @@ export class Resolver {
             await this.step(n);
 
         } else if (isAuthor && this.activation.state === "performSaveDamageRoll") {
-            if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType)) || hasUnavoidableDamageOfType(item, applicationType)) {
+            if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType, this.activation.variant)) || hasUnavoidableDamageOfType(item, applicationType, this.activation.variant)) {
                 await this.activation.applyState("waiting-for-save-damage-roll");
             } else {
                 await this.activation.applyState("idle");
@@ -174,7 +175,8 @@ export class Resolver {
             await this.activation.applyState("waiting-for-save-damage");
 
             const spellLevel = this.activation.config?.spellLevel;
-            const damageParts = await DamageParts.roll(item, applicationType, false, { spellLevel });
+            const variant = this.activation.config?.variant;
+            const damageParts = await DamageParts.roll(item, applicationType, false, { spellLevel, variant });
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
@@ -182,7 +184,7 @@ export class Resolver {
             await this.step(n);
 
         } else if (isGM && this.activation.state === "performSavingThrow") {
-            if (hasOnlyUnavoidableEffectsOfType(item, applicationType)) {
+            if (hasOnlyUnavoidableEffectsOfType(item, applicationType, this.activation.variant)) {
                 await this.activation.applyEffectiveTargets(this.activation.allTargets.map(a => a.actor));
                 await this.activation.applyState("idle");
                 await this.step(n);
