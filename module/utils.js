@@ -226,11 +226,11 @@ export async function runAndAwait(fn, ...args) {
 export async function triggerConditions(actor, condition, externalTargetActor = null) {
     actor.effects.filter(e => !e.isSuppressed).forEach(async effect => {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
-        await Promise.all(conditions.map(async condition => {
+        for (let condition of conditions) {
             const item = fromUuid(effect.data.origin);
             const updater = makeUpdater(condition, effect, item, externalTargetActor);
             await updater?.process();
-        }));
+        }
     });
 }
 
@@ -276,4 +276,12 @@ export function setTemplateTargeting(state) {
 export function damagePartMatchesVariant(formula, variant) {
     const result = formula.match(RollTerm.FLAVOR_REGEXP);
     return (result && result.length && result[0].toLowerCase() === `[${variant.toLowerCase()}]`);
+}
+
+export function isActorEffect(effect) {
+    return effect.parent && effect.parent instanceof CONFIG.Actor.documentClass;
+}
+
+export function isItemEffect(effect) {
+    return effect.parent && effect.parent instanceof CONFIG.Item.documentClass;
 }

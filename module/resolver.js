@@ -144,7 +144,7 @@ export class Resolver {
         } else if (isAuthor && this.activation.state === "performAttackDamageRoll") {
             if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType, this.activation.variant)) || hasUnavoidableDamageOfType(item, applicationType, this.activation.variant)) {
                 await this.activation.applyState("waiting-for-attack-damage-roll");
-                this.step(n);
+                await this.step(n);
             } else {
                 await this.activation.applyState("idle");
                 await this.step(n);
@@ -238,14 +238,13 @@ export class Resolver {
 
             this.activation.message.setFlag("wire", "isHidden", true);
             await this.activation.applyState("idle");
-            // await this.activation.message.delete();
 
         } else if (isAuthor && this.activation.state === "idle") {
             const flow = this.activation.flowSteps;
             const next = flow.shift();
             await this.activation.updateFlowSteps(flow);
             await this.activation.applyState(next);
-            this.step(n);
+            await this.step(n);
         } else if (this.activation.state && !this.knownStates.includes(this.activation.state)) {
             const handlers = this.activation.getCustomFlowStepHandlers();
             const handler = handlers[this.activation.state];

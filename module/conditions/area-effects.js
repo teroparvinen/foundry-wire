@@ -20,7 +20,7 @@ export function initAreaConditionHooks() {
 
                     if (effect && !effect.isSuppressed) {
                         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith("enters-area")) ?? [];
-                        await Promise.all(conditions.map(async condition => {
+                        for (let condition of conditions) {
                             const item = fromUuid(effect.data.origin);
 
                             let dispositionCheck = false;
@@ -32,7 +32,7 @@ export function initAreaConditionHooks() {
                                 const updater = makeUpdater(condition, effect, item, actor);
                                 await updater?.process();
                             }
-                        }));
+                        }
 
                         visitedSet.add(templateId);
                         await tokenDoc.setFlag("wire", "visitedTemplateIds", [...visitedSet]);
@@ -47,15 +47,12 @@ export function initAreaConditionHooks() {
             }
 
             // Walked out of
-            await Promise.all((lastOccupiedTemplateIds || [])
-                .filter(id => !currentTemplateIds.includes(id))
-                .map(async id => {
-                    const template = canvas.templates.get(id);
-                    if (template && template.data.flags.wire?.masterEffectUuid) {
-                        await checkTemplateEnvelopment(template.document);
-                    }
-                })
-            );
+            for (let id of (lastOccupiedTemplateIds || []).filter(id => !currentTemplateIds.includes(id))) {
+                const template = canvas.templates.get(id);
+                if (template && template.data.flags.wire?.masterEffectUuid) {
+                    await checkTemplateEnvelopment(template.document);
+                }
+            }
 
             await tokenDoc.update({ "flags.wire.occupiedTemplateIds": currentTemplateIds }, { occupationUpdate: true });
         }

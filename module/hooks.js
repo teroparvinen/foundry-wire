@@ -2,7 +2,7 @@ import { Activation } from "./activation.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { getWireFlags } from "./game/effect-flags.js";
-import { fromUuid } from "./utils.js";
+import { fromUuid, isActorEffect } from "./utils.js";
 
 export function initHooks() {
     Hooks.on("renderChatLog", (app, html, data) => {
@@ -47,9 +47,9 @@ export function initHooks() {
         }
     });
 
-    
     Hooks.on("deleteActiveEffect", async (effect, options, user) => {
-        if (game.user.isGM) {
+        if (game.user.isGM && isActorEffect(effect)) {
+            // Master effect deleted
             if (effect.getFlag("wire", "isMasterEffect")) {
                 const templateUuid = effect.getFlag("wire", "templateUuid");
                 if (templateUuid) {
@@ -65,6 +65,7 @@ export function initHooks() {
                 }
             }
 
+            // Turn update linked effect deleted
             const casterUuid = effect.getFlag("wire", "castingActorUuid");
             if (casterUuid) {
                 const caster = fromUuid(casterUuid);

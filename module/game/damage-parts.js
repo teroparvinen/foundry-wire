@@ -125,7 +125,9 @@ export class DamageParts {
         });
     
         // Evaluate the configured roll
-        await Promise.all(partsWithRolls.map(pr => pr.roll.evaluate({ async: true })));
+        for (let pr of partsWithRolls) {
+            await pr.roll.evaluate({ async: true });
+        }
 
         let criticalThreshold = 20;
         if (item.data.type === "weapon") { criticalThreshold = item.actor.data.flags?.dnd5e?.weaponCriticalThreshold || criticalThreshold }

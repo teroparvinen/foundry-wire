@@ -1,3 +1,4 @@
+import { setupActionQueue } from "./action-queue.js";
 import { SelectVariantDialog } from "./apps/select-variant.js";
 import { initAreaConditionHooks } from "./conditions/area-effects.js";
 import { initCombatTurnConditionHooks } from "./conditions/combat-turns.js";
@@ -32,4 +33,5 @@ Hooks.once("setup", () => {
     setupActiveEffectSheetWrappers();
     setupRollFlagWrappers();
     setupSocket();
+    setupActionQueue();
 });

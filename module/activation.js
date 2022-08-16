@@ -1,3 +1,4 @@
+import { runInQueue } from "./action-queue.js";
 import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
 import { DamageParts } from "./game/damage-parts.js";
@@ -223,12 +224,12 @@ export class Activation {
 
     async activate() {
         const resolver = new Resolver(this);
-        await resolver.start();
+        runInQueue(async () => { await resolver.start(); });
     }
 
     async step() {
         const resolver = new Resolver(this);
-        await resolver.step();
+        await runInQueue(async () => { await resolver.step(); });
     }
 
     async updateFlowSteps(flowSteps) {
@@ -240,13 +241,18 @@ export class Activation {
         await template.setFlag("wire", "activationMessageId", this.message.id);
         foundry.utils.setProperty(this.data, "templateUuid", template.uuid);
         await this.update();
+
+        if (this.masterEffect) {
+            await this.masterEffect.setFlag("wire", "templateUuid", template.uuid);
+            await template.setFlag("wire", "masterEffectUuid", this.masterEffectUuid);
+        }
     }
 
     async assignMasterEffect(effect) {
         foundry.utils.setProperty(this.data, "masterEffectUuid", effect.uuid);
         await this.update();
 
-        if (this.templateUuid) {
+        if (this.template) {
             await effect.setFlag("wire", "templateUuid", this.templateUuid);
             await this.template.setFlag("wire", "masterEffectUuid", effect.uuid);
         }

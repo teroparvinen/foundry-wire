@@ -13,64 +13,84 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     const allTargetsEffects = effects.filter(e => e.getFlag("wire", "applyOnSaveOrMiss"));
     const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
 
-    const makeEffectInfo = (effect) => {
-        return foundry.utils.mergeObject(
-            {
-                changes: copyEffectChanges(effect),
-                origin: item.uuid,
-                disabled: false,
-                icon: effect.data.icon,
-                label: effect.data.label,
-                duration: checkEffectDurationOverride(appliedDuration, effect),
-                flags: {
-                    wire: {
-                        castingActorUuid: actor.uuid,
-                        sourceEffectUuid: effect.uuid,
-                        conditions: copyConditions(effect),
-                        activationConfig: config
-                    }
+    const makeEffectData = (effect) => {
+        return {
+            changes: copyEffectChanges(effect),
+            origin: item.uuid,
+            disabled: false,
+            icon: effect.data.icon,
+            label: effect.data.label,
+            duration: checkEffectDurationOverride(appliedDuration, effect),
+            flags: {
+                wire: {
+                    castingActorUuid: actor.uuid,
+                    sourceEffectUuid: effect.uuid,
+                    conditions: copyConditions(effect),
+                    activationConfig: config,
+                    masterEffectUuid: (masterEffect && !effect.data.flags.wire?.independentDuration)
                 }
-            },
-            (masterEffect && !effect.data.flags.wire?.independentDuration) ? {
-                flags: {
-                    wire: {
-                        masterEffectUuid: masterEffect.uuid
-                    }
-                }
-            } : {}
-        );
+            }
+        }
     };
 
-    const allTargetsTrackedEffectData = allTargetsEffects.filter(e => !e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
-    const allTargetsIndependentEffectData = allTargetsEffects.filter(e => e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
-    const effectiveTargetsTrackedEffectData = effectiveTargetsEffects.filter(e => !e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
-    const effectiveTargetsIndependentEffectData = effectiveTargetsEffects.filter(e => e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
+    const allTargetsEffectData = allTargetsEffects.map(effect => makeEffectData(effect));
+    const effectiveTargetsEffectData = effectiveTargetsEffects.map(effect => makeEffectData(effect));
 
-    let trackedEffects = [];
-    let independentEffects = [];
+    let createdEffects = [];
 
-    const applyEffect = async (target, data, queue) => {
+    const targetSet = new Set([...allTargetActors, ...effectiveTargetActors]);
+    for (let target of targetSet) {
+        const data = effectiveTargetActors.includes(target) ? [...allTargetsEffectData, ...effectiveTargetsEffectData] : allTargetsEffectData;
+
         const sourceEffectUuids = data.map(d => d.flags.wire.sourceEffectUuid);
         const existingEffects = target.effects.filter(e => sourceEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid));
-        // if (existingEffects.length) {
-        //     await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
-        // }
+        if (existingEffects.length) {
+            await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
+        }
         const checkedData = applyConditionImmunity(target, data);
-        const targetEffects = await target.createEmbeddedDocuments("ActiveEffect", checkedData);
-        queue.push(...targetEffects);
+        if (checkedData.length) {
+            const targetEffects = await target.createEmbeddedDocuments("ActiveEffect", checkedData);
+            createdEffects.push(...targetEffects);
+        }
     }
 
-    for (let target of allTargetActors) {
-        await applyEffect(target, allTargetsTrackedEffectData, trackedEffects);
-        await applyEffect(target, allTargetsIndependentEffectData, independentEffects);
-    }
-    for (let target of effectiveTargetActors) {
-        await applyEffect(target, effectiveTargetsTrackedEffectData, trackedEffects);
-        await applyEffect(target, effectiveTargetsIndependentEffectData, independentEffects);
-    }
+    const trackedEffectUuids = createdEffects.filter(e => e.data.flags.wire?.masterEffectUuid).map(e => e.uuid);
+    await masterEffect?.setFlag("wire", "childEffectUuids", [...(masterEffect?.data.flags.wire?.childEffectUuids || []), ...trackedEffectUuids]);
 
-    const masterEffectChildEffectUuids = masterEffect?.data.flags.wire?.childEffectUuids || [];
-    await masterEffect?.setFlag("wire", "childEffectUuids", [...masterEffectChildEffectUuids, ...trackedEffects.map(e => e.uuid)]);
+    return createdEffects;
 
-    return [...trackedEffects, ...independentEffects];
+    // const allTargetsTrackedEffectData = allTargetsEffects.filter(e => !e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
+    // const allTargetsIndependentEffectData = allTargetsEffects.filter(e => e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
+    // const effectiveTargetsTrackedEffectData = effectiveTargetsEffects.filter(e => !e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
+    // const effectiveTargetsIndependentEffectData = effectiveTargetsEffects.filter(e => e.data.flags.wire?.independentDuration).map(effect => makeEffectInfo(effect));
+
+    // let trackedEffects = [];
+    // let independentEffects = [];
+
+    // const applyEffect = async (target, data, queue) => {
+    //     const sourceEffectUuids = data.map(d => d.flags.wire.sourceEffectUuid);
+    //     const existingEffects = target.effects.filter(e => sourceEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid));
+    //     if (existingEffects.length) {
+    //         await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
+    //     }
+    //     const checkedData = applyConditionImmunity(target, data);
+    //     if (checkedData.length) {
+    //         const targetEffects = await target.createEmbeddedDocuments("ActiveEffect", checkedData);
+    //         queue.push(...targetEffects);
+    //     }
+    // }
+
+    // for (let target of allTargetActors) {
+    //     await applyEffect(target, allTargetsTrackedEffectData, trackedEffects);
+    //     await applyEffect(target, allTargetsIndependentEffectData, independentEffects);
+    // }
+    // for (let target of effectiveTargetActors) {
+    //     await applyEffect(target, effectiveTargetsTrackedEffectData, trackedEffects);
+    //     await applyEffect(target, effectiveTargetsIndependentEffectData, independentEffects);
+    // }
+
+    // const masterEffectChildEffectUuids = masterEffect?.data.flags.wire?.childEffectUuids || [];
+    // await masterEffect?.setFlag("wire", "childEffectUuids", [...masterEffectChildEffectUuids, ...trackedEffects.map(e => e.uuid)]);
+
+    // return [...trackedEffects, ...independentEffects];
 }

@@ -9,7 +9,7 @@ export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
     libWrapper.register("wire", "game.dnd5e.canvas.AbilityTemplate.prototype.activatePreviewListeners", onTemplatePreviewListeners, "MIXED");
     libWrapper.register("wire", "ClientKeybindings._onDismiss", onEscape, "OVERRIDE");
-    libWrapper.register("wire", "CONFIG.ui.chat.prototype.scrollBottom", onChatLogScrollBottom, "OVERRIDE");
+    libWrapper.register("wire", "CONFIG.ui.chat.prototype.scrollBottom", onChatLogScrollBottom, "MIXED");
 }
 
 let templateInfo = null;
@@ -139,13 +139,20 @@ function onEscape(context) {
     return true;
 }
 
-function onChatLogScrollBottom({popout}={}) {
-    const el = this.element;
-    const log = el.length ? el[0].querySelector("#chat-log") : null;
+let didStart = false;
 
-    const scrolled = log.scrollHeight - log.scrollTop - log.clientHeight;
-    const pageHeight = log.clientHeight;
-
-    if (log && scrolled < pageHeight) log.scrollTop = log.scrollHeight;
-    if (popout) this._popout?.scrollBottom();
+function onChatLogScrollBottom(wrapped, {popout}={}) {
+    if (!didStart) {
+        wrapped({ popout });
+        didStart = true;
+    } else {
+        const el = this.element;
+        const log = el.length ? el[0].querySelector("#chat-log") : null;
+    
+        const scrolled = log.scrollHeight - log.scrollTop - log.clientHeight;
+        const pageHeight = log.clientHeight;
+    
+        if (log && scrolled < pageHeight) log.scrollTop = log.scrollHeight;
+        if (popout) this._popout?.scrollBottom();
+    }
 }

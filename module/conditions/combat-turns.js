@@ -33,13 +33,13 @@ async function handleTurn(actor, token, isStart) {
 
     actor.data.flags.wire?.turnUpdatedEffectUuids?.map(uuid => fromUuid(uuid)).filter(e => !e.isSuppressed).forEach(async effect => {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === handledCasterCondition) ?? [];
-        await Promise.all(conditions.map(async condition => {
+        for (let condition of conditions) {
             const item = fromUuid(effect.data.origin);
             if (effect.parent instanceof CONFIG.Actor.documentClass) {
                 const updater = makeUpdater(condition, effect, item);
                 await updater?.process();
             }
-        }));
+        }
     });
 
     // Area lingers
@@ -52,7 +52,7 @@ async function handleTurn(actor, token, isStart) {
     
         if (effect && !effect.isSuppressed) {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith(handledAreaCondition)) ?? [];
-            await Promise.all(conditions.map(async condition => {
+            for (let condition of conditions) {
                 const item = fromUuid(effect.data.origin);
 
                 let dispositionCheck = false;
@@ -64,7 +64,7 @@ async function handleTurn(actor, token, isStart) {
                     const updater = makeUpdater(condition, effect, item, token.actor);
                     await updater?.process();
                 }
-            }));
+            }
         }
     }
 
@@ -72,11 +72,11 @@ async function handleTurn(actor, token, isStart) {
     if (isStart) {
         actor.effects.filter(e => !e.isSuppressed).forEach(async effect => {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === "take-an-action") ?? [];
-            await Promise.all(conditions.map(async condition => {
+            for (let condition of conditions) {
                 const item = fromUuid(effect.data.origin);
                 const flow = new Flow(item, "immediate", takeAnActionFlow, { allowMacro: false });
                 await Activation.createConditionMessage(condition, item, effect, flow, { playerMessageOnly: item.actor.hasPlayerOwner });
-            }));
+            }
         });
     }
 }
