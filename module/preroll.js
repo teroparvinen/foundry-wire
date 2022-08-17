@@ -12,7 +12,7 @@ export function preRollCheck(item) {
     return true;  
 }
 
-export async function preRollConfig(item, options = {}) {
+export async function preRollConfig(item, options = {}, event) {
     const id = item.data.data;                // Item system data
     const actor = item.actor;
     const ad = actor.data.data;               // Actor system data
@@ -36,6 +36,10 @@ export async function preRollConfig(item, options = {}) {
     let consumedItemQuantity = uses.autoDestroy;     // Consume quantity of the item in lieu of uses
     let consumedSpellLevel = null;               // Consume a specific category of spell slot
     if (requireSpellSlot) consumedSpellLevel = id.preparation.mode === "pact" ? "pact" : `spell${id.level}`;
+
+    if (options.variantOptions) {
+        activationConfig.variant = await new game.wire.SelectVariantDialog(item, options.variantOptions).render(true);
+    }
 
     const skipDefaultDialog = false;
     const useConfig = {

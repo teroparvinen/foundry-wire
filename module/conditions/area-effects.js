@@ -1,5 +1,5 @@
 import { makeUpdater } from "../updater-utility.js";
-import { areAllied, areEnemies, fromUuid, getTemplateTokenUuids, getTokenTemplateIds, triggerConditions } from "../utils.js";
+import { areAllied, areEnemies, fromUuid, getTemplateTokenUuids, getTokenTemplateIds, isEffectEnabled, triggerConditions } from "../utils.js";
 
 export function initAreaConditionHooks() {
     Hooks.on("updateToken", async (tokenDoc, change, update, userId) => {
@@ -18,7 +18,7 @@ export function initAreaConditionHooks() {
                     const effectUuid = canvas.templates.get(templateId)?.data.flags.wire?.masterEffectUuid;
                     const effect = fromUuid(effectUuid);
 
-                    if (effect && !effect.isSuppressed) {
+                    if (effect && isEffectEnabled(effect)) {
                         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith("enters-area")) ?? [];
                         for (let condition of conditions) {
                             const item = fromUuid(effect.data.origin);
@@ -76,7 +76,7 @@ export function initAreaConditionHooks() {
 
 async function checkTemplateEnvelopment(templateDoc) {
     const effect = fromUuid(templateDoc.getFlag("wire", "masterEffectUuid"));
-    if (effect && !effect.isSuppressed) {
+    if (effect && isEffectEnabled(effect)) {
         const previous = await templateDoc.getFlag("wire", "envelopedTokenUuids") || [];
         const current = getTemplateTokenUuids(templateDoc);
 

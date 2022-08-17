@@ -48,12 +48,12 @@ export function itemRollFlow() {
                                     this.hasDamage(
                                         this.performAttackDamageRoll(
                                             this.applyDamage(
-                                                this.triggerAttackConditions()
+                                                this.attackCompleted()
                                             )
                                         )
                                     ),
                                     this.applyEffects(
-                                        this.triggerAttackConditions()
+                                        this.attackCompleted()
                                     )
                                 )
                             )

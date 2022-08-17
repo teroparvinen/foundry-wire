@@ -223,8 +223,8 @@ export async function runAndAwait(fn, ...args) {
     }
 }
 
-export async function triggerConditions(actor, condition, externalTargetActor = null) {
-    actor.effects.filter(e => !e.isSuppressed).forEach(async effect => {
+export async function triggerConditions(actor, condition, { externalTargetActor = null, ignoredEffects = [] } = {}) {
+    actor.effects.filter(e => isEffectEnabled(e) && !ignoredEffects.includes(e)).forEach(async effect => {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
         for (let condition of conditions) {
             const item = fromUuid(effect.data.origin);
@@ -284,4 +284,8 @@ export function isActorEffect(effect) {
 
 export function isItemEffect(effect) {
     return effect.parent && effect.parent instanceof CONFIG.Item.documentClass;
+}
+
+export function isEffectEnabled(effect) {
+    return !effect.isSuppressed && !effect.data.disabled;
 }

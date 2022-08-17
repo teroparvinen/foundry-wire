@@ -223,8 +223,8 @@ export class Flow {
         return ["triggerAction", ...this.chain(this.pick(...arguments))];
     }
 
-    triggerAttackConditions() {
-        return ["triggerAttackConditions", ...this.chain(this.pick(...arguments))];
+    attackCompleted() {
+        return ["attackCompleted", ...this.chain(this.pick(...arguments))];
     }
 
     triggerAction() {
@@ -241,6 +241,10 @@ export class Flow {
 
     requestCustomConfiguration(callback) {
         this.preRollOptions["customConfigurationCallback"] = callback;
+    }
+
+    selectVariant(options) {
+        this.preRollOptions["variantOptions"] = options;
     }
 
     skipConfigurationDialog() {

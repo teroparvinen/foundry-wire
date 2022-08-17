@@ -14,12 +14,12 @@ export function setupWrappers() {
 
 let templateInfo = null;
 
-async function onItemRoll(wrapped, options) {
+async function onItemRoll(wrapped, options, event) {
     const item = this;
     console.log("ROLLING ITEM", item, options);
 
     const concentrationEffect = item.actor.effects.find(effect => effect.getFlag("wire", "isConcentration"));
-    if (concentrationEffect) {
+    if (concentrationEffect && item.data.data.components.concentration) {
         const originName = fromUuid(concentrationEffect.data.origin).name;
         if (!await Dialog.confirm({
             title: i18n("wire.ui.end-concentration-dialog-title"),
@@ -36,7 +36,7 @@ async function onItemRoll(wrapped, options) {
     const flow = new Flow(item, "immediate", itemRollFlow);
     flow.evaluate();
 
-    const result = await preRollConfig(item, flow.preRollOptions);
+    const result = await preRollConfig(item, flow.preRollOptions, event);
 
     if (result) {
         const { messageData, config, template } = result;

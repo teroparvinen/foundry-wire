@@ -1,4 +1,4 @@
-import { damagePartMatchesVariant } from "./utils.js";
+import { damagePartMatchesVariant, isEffectEnabled } from "./utils.js";
 
 const durationUnits = ["day", "hour", "minute", "month", "round", "turn", "year"];
 const attackTypes = ["msak", "mwak", "rsak", "rwak"];
@@ -42,11 +42,11 @@ export function isSelfRange(item) {
 }
 
 export function hasDamageOfType(item, applicationType, variant) {
-    return item.data.data.damage.parts.some(part => (part[3] || "immediate") === applicationType && (!variant || damagePartMatchesVariant(part[0], variant)));
+    return item.data.data.damage.parts.some(part => (part.application || "immediate") === applicationType && (!variant || damagePartMatchesVariant(part[0], variant)));
 }
 
 export function hasEffectsOfType(item, applicationType, variant) {
-    return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
+    return item.effects.some(e => isEffectEnabled(e) && !e.data.transfer && 
         (e.getFlag("wire", "applicationType") || "immediate") === applicationType &&
         (!variant || e.data.label.toLowerCase() === variant.toLowerCase()));
 }
@@ -56,11 +56,11 @@ export function hasApplicationsOfType(item, applicationType, variant) {
 }
 
 export function hasSaveableDamageOfType(item, applicationType, variant) {
-    return item.data.data.damage?.parts.some(part => (part[3] || "immediate") === applicationType && ["none", "half"].includes(part[2] || "none") && (!variant || damagePartMatchesVariant(part[0], variant)));
+    return item.data.data.damage?.parts.some(part => (part.application || "immediate") === applicationType && ["none", "half"].includes(part.halving || "none") && (!variant || damagePartMatchesVariant(part[0], variant)));
 }
 
 export function hasSaveableEffectsOfType(item, applicationType, variant) {
-    return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
+    return item.effects.some(e => isEffectEnabled(e) && !e.data.transfer && 
         (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
         !e.getFlag("wire", "applyOnSaveOrMiss") &&
         (!variant || e.data.label.toLowerCase() === variant.toLowerCase()));
@@ -71,11 +71,11 @@ export function hasSaveableApplicationsOfType(item, applicationType, variant) {
 }
 
 export function hasUnavoidableDamageOfType(item, applicationType, variant) {
-    return item.data.data.damage?.parts.some(part => (part[3] || "immediate") === applicationType && ["full", "half"].includes(part[2]) && (!variant || damagePartMatchesVariant(part[0], variant)));
+    return item.data.data.damage?.parts.some(part => (part.application || "immediate") === applicationType && ["full", "half"].includes(part.halving) && (!variant || damagePartMatchesVariant(part[0], variant)));
 }
 
 export function hasUnavoidableEffectsOfType(item, applicationType, variant) {
-    return item.effects.some(e => !e.isSuppressed && !e.data.transfer && 
+    return item.effects.some(e => isEffectEnabled(e) && !e.data.transfer && 
         (e.getFlag("wire", "applicationType") || "immediate") === applicationType && 
         e.getFlag("wire", "applyOnSaveOrMiss") &&
         (!variant || e.data.label.toLowerCase() === variant.toLowerCase()));

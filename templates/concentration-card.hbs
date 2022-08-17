@@ -1,0 +1,17 @@
+<div class="dnd5e chat-card concentration-card">
+    <header class="card-header flexrow">
+        <h3 class="item-name">{{localize "wire.ui.concentration-save-header" dc=dc}}</h3>
+    </header>
+
+    <div class="concentration-row flexrow">
+        <img class="flex0 actor-image" src="{{actor.data.token.img}}" />
+        <div class="flex1 actor-name">{{originName}}</div>
+        {{#if this.result}}
+            <div class="flex0 concentration-save-result {{#if (gte result dc)}}success{{else}}fail{{/if}}">
+                {{result}}
+            </div>
+        {{else}}
+            <a data-action="concentration-save" class="flex0 concentration-save"></a>
+        {{/if}}
+    </div>
+</div>

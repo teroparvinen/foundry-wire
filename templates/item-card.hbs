@@ -16,6 +16,16 @@
         {{/unless}}
     {{/unless}}
 
+    {{#unless (eq activation.state "waiting-for-action-trigger")}}
+        {{#if activation.condition}}
+            <div class="card-condition-update flexrow">
+                <div class="flex1 condition">{{activation.condition.condition}}</div>
+                <i class="fas fa-arrow-right flex0"></i>
+                <div class="flex1 update">{{activation.condition.update}}</div>
+            </div>
+        {{/if}}
+    {{/unless}}
+
     <div class="card-phases">
         {{#unless isGMActorPlayerView}}
             {{#if (eq activation.state "performAttackRoll")}}
@@ -153,7 +163,7 @@
 
         {{#if (eq activation.state "waiting-for-action-trigger")}}
             <div class="phase-action">
-                {{localize activation.actionUpdate}}
+                {{localize activation.condition.update}}
             </div>
         {{/if}}
     </div>

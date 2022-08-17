@@ -51,6 +51,7 @@ export class Resolver {
         "applyDefaultTargetsAsEffective",
         "applyDurationEffect", 
         "applyEffects",
+        "attackCompleted",
         "confirmTargets",
         "idle", 
         "performAttackDamageRoll",
@@ -213,7 +214,7 @@ export class Resolver {
             await this.activation.applyState("idle");
             await this.step(n);
 
-        } else if (isGM && this.activation.state === "triggerAttackConditions") {
+        } else if (isGM && this.activation.state === "attackCompleted") {
             await this._triggerAttackConditions();
             await this.activation.applyState("idle");
             await this.step(n);
@@ -279,7 +280,7 @@ export class Resolver {
                     return {
                         actor: target.actor,
                         token: target.token,
-                        points: damageParts.appliedToActor(target.actor, effectiveTargets.map(t => t.actor).includes(target.actor))
+                        points: damageParts.appliedToActor(item, target.actor, effectiveTargets.map(t => t.actor).includes(target.actor))
                     };
                 });
             const actualDamage = targetDamage.filter(t => t.points.damage > 0 || t.points.healing > 0 || t.points.temphp > 0);
@@ -324,6 +325,7 @@ export class Resolver {
             effectData.flags = foundry.utils.mergeObject(effectData.flags, {
                 wire: {
                     isMasterEffect: true,
+                    isConcentration: true,
                     activationConfig
                 }
             });
@@ -345,6 +347,7 @@ export class Resolver {
                 flags: {
                     wire: {
                         isMasterEffect: true,
+                        isConcentration: true,
                         activationConfig
                     }
                 }
@@ -407,6 +410,8 @@ export class Resolver {
         const actor = this.activation.item.actor;
         const casterDependentEffectUuids = createdEffects.filter(e => isCasterDependentEffect(e)).map(e => e.uuid);
         await actor.setFlag("wire", "turnUpdatedEffectUuids", [...(actor.data.flags.wire?.turnUpdatedEffectUuids || []), ...casterDependentEffectUuids]);
+
+        await this.activation.registerCreatedEffects(createdEffects);
     }
 
     async _endEffect(force = false) {
@@ -421,19 +426,21 @@ export class Resolver {
     async _triggerAttackConditions() {
         const attacker = this.activation.item.actor;
         const attackType = this.activation.item.data.data.actionType;
+        const triggerOptions = { ignoredEffects: this.activation.createdEffects }
+        const attackTarget = this.activation.attackTarget.actor;
 
-        await triggerConditions(attacker, "target-attacks.all");
-        await triggerConditions(attacker, `target-attacks.${attackType}`);
+        await triggerConditions(attacker, "target-attacks.all", triggerOptions);
+        await triggerConditions(attacker, `target-attacks.${attackType}`, triggerOptions);
 
-        const targets = this.activation.effectiveTargets;
-        if (targets.length) {
-            const target = targets[0].actor;
+        await triggerConditions(attackTarget, "target-is-attacked.all", triggerOptions);
+        await triggerConditions(attackTarget, `target-is-attacked.${attackType}`, triggerOptions);
 
-            await triggerConditions(attacker, "target-hits.all");
-            await triggerConditions(attacker, `target-hits.${attackType}`);
+        if (this.activation.effectiveTargets.length) {
+            await triggerConditions(attacker, "target-hits.all", triggerOptions);
+            await triggerConditions(attacker, `target-hits.${attackType}`, triggerOptions);
 
-            await triggerConditions(target, "target-is-hit.all");
-            await triggerConditions(target, `target-is-hit.${attackType}`);
+            await triggerConditions(attackTarget, "target-is-hit.all", triggerOptions);
+            await triggerConditions(attackTarget, `target-is-hit.${attackType}`, triggerOptions);
         }
     }
 

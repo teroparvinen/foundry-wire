@@ -1,4 +1,5 @@
 import { Activation } from "./activation.js";
+import { ConcentrationCard } from "./cards/concentration-card.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { getWireFlags } from "./game/effect-flags.js";
@@ -8,6 +9,7 @@ export function initHooks() {
     Hooks.on("renderChatLog", (app, html, data) => {
          ItemCard.activateListeners(html)
          DamageCard.activateListeners(html);
+         ConcentrationCard.activateListeners(html);
     });
     Hooks.on("renderChatPopout", (app, html, data) => ItemCard.activateListeners(html));
 
@@ -97,7 +99,11 @@ export function initHooks() {
     });
 
     Hooks.on("preUpdateActor", async (actor, change, options, userId) => {
+        if (options.hpCache) { return };
+
         const hpUpdate = getProperty(change, "data.attributes.hp.value");
+        const tempUpdate = getProperty(change, "data.attributes.hp.temp");
+
         if (hpUpdate !== undefined) {
             const maxHp = actor.data.data.attributes.hp.max;
             const woundedThreshold = Math.floor(0.5 * maxHp);
@@ -131,6 +137,24 @@ export function initHooks() {
                     await combatant.update({ defeated: needsDead });
                 }
             }
+        }
+
+        if (hpUpdate !== undefined || tempUpdate !== undefined) {
+            const current = actor.data.data.attributes.hp;
+            const lastKnown = actor.data.flags.wire?.lastKnownHp || { value: current.max, temp: current.temp };
+            const damage = (lastKnown.value - hpUpdate) + (lastKnown.temp - tempUpdate);
+
+            if (damage > 0) {
+                const concentrationEffect = actor.effects.find(e => e.data.flags.wire?.isConcentration);
+                if (concentrationEffect) {
+                    const concentrationCard = new ConcentrationCard(actor, concentrationEffect, damage);
+                    await concentrationCard.make();
+                }
+            }
+
+            await actor.update({
+                'flags.wire.lastKnownHp': current
+            }, { hpCache: true });
         }
     });
 

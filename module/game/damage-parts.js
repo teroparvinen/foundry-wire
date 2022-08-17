@@ -155,8 +155,8 @@ export class DamageParts {
                 return {
                     formula,
                     type: d[1],
-                    halving: d[2] || "none",
-                    applicationType: d[3] || "immediate",
+                    halving: d.halving || "none",
+                    applicationType: d.application || "immediate",
                     multiplier: 1,
                     variant
                 }
@@ -202,7 +202,7 @@ export class DamageParts {
         return this.result.pr.reduce((prev, part) => prev + part.roll.total, 0);
     }
 
-    appliedToActor(actor, isEffective) {
+    appliedToActor(item, actor, isEffective) {
         function halvingFactor(halving, isEffective) {
             if (!isEffective) {
                 if (halving == "full") return 1;
@@ -224,9 +224,14 @@ export class DamageParts {
             if (type === "temphp") { return { temphp: caused } };
             
             const traits = actor.data.data.traits;
-            const di = traits.di.value.includes(type) ? 0 : 1;
-            const dr = traits.dr.value.includes(type) ? 0.5 : 1;
-            const dv = traits.dv.value.includes(type) ? 2 : 1;
+            const isAttackMagical = (item.type === "weapon" && item.data.data.properties.mgc) || item.type === "spell";
+            const nmi = traits.di.value.includes("physical") && !isAttackMagical;
+            const nmr = traits.dr.value.includes("physical") && !isAttackMagical;
+            const nmv = traits.dv.value.includes("physical") && !isAttackMagical;
+
+            const di = traits.di.value.includes(type) || nmi ? 0 : 1;
+            const dr = traits.dr.value.includes(type) || nmr ? 0.5 : 1;
+            const dv = traits.dv.value.includes(type) || nmv ? 2 : 1;
 
             return {
                 damage: Math.floor(caused * di * dr * dv),

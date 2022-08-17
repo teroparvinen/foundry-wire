@@ -2,7 +2,7 @@ import { Activation } from "../activation.js";
 import { Flow } from "../flow.js";
 import { takeAnActionFlow } from "../flows/take-an-action.js";
 import { makeUpdater } from "../updater-utility.js";
-import { areAllied, areEnemies, fromUuid, getTokenTemplateIds, triggerConditions } from "../utils.js";
+import { areAllied, areEnemies, fromUuid, getTokenTemplateIds, isEffectEnabled, triggerConditions } from "../utils.js";
 
 export function initCombatTurnConditionHooks() {
     Hooks.on("updateCombat", async (combat, change, options, userId) => {
@@ -31,7 +31,7 @@ async function handleTurn(actor, token, isStart) {
     // Caster turn changes
     const handledCasterCondition = isStart ? "start-of-turn-caster" : "end-of-turn-caster";
 
-    actor.data.flags.wire?.turnUpdatedEffectUuids?.map(uuid => fromUuid(uuid)).filter(e => !e.isSuppressed).forEach(async effect => {
+    actor.data.flags.wire?.turnUpdatedEffectUuids?.map(uuid => fromUuid(uuid)).filter(e => isEffectEnabled(e)).forEach(async effect => {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === handledCasterCondition) ?? [];
         for (let condition of conditions) {
             const item = fromUuid(effect.data.origin);
@@ -50,7 +50,7 @@ async function handleTurn(actor, token, isStart) {
         const effectUuid = canvas.templates.get(templateId)?.data.flags.wire?.masterEffectUuid;
         const effect = fromUuid(effectUuid);
     
-        if (effect && !effect.isSuppressed) {
+        if (effect && isEffectEnabled(effect)) {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith(handledAreaCondition)) ?? [];
             for (let condition of conditions) {
                 const item = fromUuid(effect.data.origin);
@@ -70,7 +70,7 @@ async function handleTurn(actor, token, isStart) {
 
     // Actions
     if (isStart) {
-        actor.effects.filter(e => !e.isSuppressed).forEach(async effect => {
+        actor.effects.filter(e => isEffectEnabled(e)).forEach(async effect => {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === "take-an-action") ?? [];
             for (let condition of conditions) {
                 const item = fromUuid(effect.data.origin);

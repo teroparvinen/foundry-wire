@@ -6,7 +6,7 @@ import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
 import { wireSocket } from "./socket.js";
 import { determineUpdateTargetUuids } from "./updater-utility.js";
-import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker } from "./utils.js";
+import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, i18n } from "./utils.js";
 
 export class Activation {
     static async initializeGmMessage(gmMessage, masterMessage) {
@@ -55,6 +55,7 @@ export class Activation {
     get variant() { return this.config?.variant; }
     get templateUuid() { return this.data.templateUuid; }
     get masterEffectUuid() { return this.data.masterEffectUuid; }
+    get createdEffectUuids() { return this.data.createdEffectUuids; }
     get targetUuids() { return this.data.targetUuids; }
     get effectiveTargetUuids() { return this.data.effectiveTargetUuids; }
     get attackTargetUuid() { return this.data.attack?.targetActorUuid; }
@@ -67,12 +68,18 @@ export class Activation {
             roll: CONFIG.Dice.D20Roll.fromData(e.roll)
         };
     })}
+    get condition() { return this.data.condition; }
+    get localizedCondition() { return this.condition ? { 
+        condition: i18n(`wire.item.condition-${this.condition.condition}`),
+        update: i18n(`wire.item.update-${this.condition.update}`)
+    } : null}
 
     get item() {return this.itemUuid ? fromUuid(this.itemUuid) : null; }
     get actor() { return this.item?.actor; }
     get template() { return this.templateUuid ? fromUuid(this.templateUuid) : null; }
     get masterEffect() { return this.masterEffectUuid ? fromUuid(this.masterEffectUuid) : null; }
     get sourceEffect() { return this.data.sourceEffectUuid ? fromUuid(this.data.sourceEffectUuid) : null; }
+    get createdEffects() { return this.data.createdEffectUuids?.map(uuid => fromUuid(uuid)) ?? []; }
 
     get allTargets() { return this.targetUuids?.map(uuid => this._targetRecord(uuid)) ?? []; }
     get pcTargets() { return this.allTargets.filter(t => t.actor.hasPlayerOwner); }
@@ -80,7 +87,7 @@ export class Activation {
     get effectiveTargets() { return this.effectiveTargetUuids?.map(uuid => this._targetRecord(uuid)) ?? []; }
     get attackTarget() { return this._targetRecord(this.attackTargetUuid); }
 
-    get actionUpdate() { return this.sourceEffect?.data.flags.wire?.conditions?.find(c => c.condition === "take-an-action")?.update || ''; }
+    // get actionUpdate() { return this.sourceEffect?.data.flags.wire?.conditions?.find(c => c.condition === "take-an-action")?.update || ''; }
 
     _targetRecord(uuid) {
         if (uuid) {
@@ -127,8 +134,9 @@ export class Activation {
             allTargets: this.allTargets,
             pcTargets: this.pcTargets,
             singleTarget: this.singleTarget,
-            customHtml: this.data.customHtml,
-            actionUpdate: this.actionUpdate ? "wire.item.update-" + this.actionUpdate : null
+            condition: this.localizedCondition,
+            customHtml: this.data.customHtml
+            // actionUpdate: this.actionUpdate ? "wire.item.update-" + this.actionUpdate : null
         }
     }
 
@@ -258,6 +266,12 @@ export class Activation {
         }
 
         await effect.setFlag("wire", "originatorUserId", this.message.data.flags.wire?.originatorUserId);
+        await this.registerCreatedEffects([effect]);
+    }
+
+    async registerCreatedEffects(effects) {
+        await foundry.utils.setProperty(this.data, "createdEffectUuids", [...(this.data.createdEffectUuids || []), ...effects.map(e => e.uuid)]);
+        await this.update();
     }
 
     async assignTargets(targets) {
