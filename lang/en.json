@@ -21,7 +21,8 @@
             "end-concentration-dialog-content": "You are concentrating on {originName}. Are you sure you want to cast another concentration spell to replace it?",
             "activate-reaction": "Take a reaction",
             "activate-action": "Take an action",
-            "concentration-save-header": "Concentration Save DC {dc}"
+            "concentration-save-header": "Concentration Save DC {dc}",
+            "temporary-hp": "Temporary HP"
         },
         "item": {
             "damage-none": "None on save/miss",

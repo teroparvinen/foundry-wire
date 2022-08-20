@@ -1,11 +1,11 @@
 import AbilityUseDialog from "../../../systems/dnd5e/module/apps/ability-use-dialog.js";
-import { isAttack, isSelfRange, targetsSingleToken } from "./item-properties.js";
+import { hasSaveableApplicationsOfType, isAttack, isSelfRange, isSelfTarget, targetsSingleToken } from "./item-properties.js";
 import { getActorToken, localizedWarning, runAndAwait, setTemplateTargeting } from "./utils.js";
 
 export function preRollCheck(item) {
     if (isAttack(item) && !item.hasAreaTarget && game.user.targets.size != 1) {
         return localizedWarning("wire.warn.select-single-target-for-attack");
-    } else if (item.hasSave && !item.hasAreaTarget && game.user.targets.size == 0) {
+    } else if (!isSelfTarget(item) && hasSaveableApplicationsOfType(item, "immediate") && !item.hasAreaTarget && game.user.targets.size == 0) {
         return localizedWarning("wire.warn.select-targets-for-effect");
     }
 
@@ -17,7 +17,7 @@ export async function preRollConfig(item, options = {}, event) {
     const actor = item.actor;
     const ad = actor.data.data;               // Actor system data
 
-    let activationConfig = {};
+    let activationConfig = foundry.utils.mergeObject({}, options.config || {});
 
     // Reference aspects of the item data necessary for usage
     const hasArea = item.hasAreaTarget;       // Is the ability usage an AoE?
@@ -66,21 +66,24 @@ export async function preRollConfig(item, options = {}, event) {
         if (!configuration) return;
 
         // Determine consumption preferences
-        doCreateMeasuredTemplate = Boolean(configuration.placeTemplate);
-        consumedUsageCount = Boolean(configuration.consumeUse) ? 1 : 0;
-        doConsumeRecharge = Boolean(configuration.consumeRecharge);
-        doConsumeResource = Boolean(configuration.consumeResource);
-        doConsumeSpellSlot = Boolean(configuration.consumeSlot);
+        useConfig.doCreateMeasuredTemplate = Boolean(configuration.placeTemplate);
+        useConfig.consumedUsageCount = Boolean(configuration.consumeUse) ? 1 : 0;
+        useConfig.doConsumeRecharge = Boolean(configuration.consumeRecharge);
+        useConfig.doConsumeResource = Boolean(configuration.consumeResource);
+        useConfig.doConsumeSpellSlot = Boolean(configuration.consumeSlot);
 
         // Handle spell upcasting
         if (requireSpellSlot) {
-            consumedSpellLevel = configuration.level === "pact" ? "pact" : `spell${configuration.level}`;
-            if (doConsumeSpellSlot === false) useConfig.consumedSpellLevel = null;
+            useConfig.consumedSpellLevel = configuration.level === "pact" ? "pact" : `spell${configuration.level}`;
+            if (useConfig.doConsumeSpellSlot === false) useConfig.consumedSpellLevel = null;
             const upcastLevel = configuration.level === "pact" ? ad.spells.pact.level : parseInt(configuration.level);
-            if (!Number.isNaN(upcastLevel) && (upcastLevel !== id.level)) {
-                activationConfig.spellLevel = upcastLevel;
-            }
+
+            activationConfig.spellLevel = upcastLevel;
+            activationConfig.upcastLevel = upcastLevel - id.level;
         }
+    } else if (requireSpellSlot) {
+        activationConfig.spellLevel = id.level;
+        activationConfig.upcastLevel = 0;
     }
 
     // Determine whether the item can be used by testing for resource consumption

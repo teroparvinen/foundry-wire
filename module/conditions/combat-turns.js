@@ -75,7 +75,22 @@ async function handleTurn(actor, token, isStart) {
             for (let condition of conditions) {
                 const item = fromUuid(effect.data.origin);
                 const flow = new Flow(item, "immediate", takeAnActionFlow, { allowMacro: false });
-                await Activation.createConditionMessage(condition, item, effect, flow, { playerMessageOnly: item.actor.hasPlayerOwner });
+                await Activation.createConditionMessage(condition, item, effect, flow, { 
+                    revealToPlayers: effect.parent.hasPlayerOwner, 
+                    suppressPlayerMessage: !effect.parent.hasPlayerOwner,
+                    speakerIsEffectOwner: true
+                });
+            }
+        });
+        actor.effects.filter(e => isEffectEnabled(e)).forEach(async effect => {
+            const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === "take-a-reaction") ?? [];
+            for (let condition of conditions) {
+                const item = fromUuid(effect.data.origin);
+                const flow = new Flow(item, "immediate", takeAnActionFlow, { allowMacro: false });
+                await Activation.createConditionMessage(condition, item, effect, flow, {
+                    revealToPlayers: item.actor.hasPlayerOwner,
+                    suppressPlayerMessage: !item.actor.hasPlayerOwner
+                });
             }
         });
     }

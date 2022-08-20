@@ -1,10 +1,11 @@
 import { runInQueue } from "../action-queue.js";
-import { isActorEffect, isEffectEnabled } from "../utils.js";
+import { fromUuid, isActorEffect, isEffectEnabled } from "../utils.js";
 
 export function getWireFlags() {
     return [
         ...[
             "wire.custom.statusEffect",
+            "wire.custom.persistentStatusEffect",
             "wire.custom.tokenFX"
         ],
         ...[
@@ -146,11 +147,12 @@ export function initEffectFlagHooks() {
         if (game.user.isGM && isActorEffect(effect) && isEffectEnabled(effect)) {
             const actor = effect.parent;
             for (let change of effect.data.changes) {
-                if (change.key === "wire.custom.statusEffect") {
+                if (change.key === "wire.custom.statusEffect" || change.key === "wire.custom.persistentStatusEffect") {
                     await runInQueue(async () => {
                         const effectName = change.value;
                         const uuid = actor.uuid;
-                        const origin = effect.data.origin;
+                        const isLinked = change.key !== "wire.custom.persistentStatusEffect";
+                        const origin = isLinked ? effect.data.origin : null;
                         await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
                     });
                 }
@@ -162,12 +164,13 @@ export function initEffectFlagHooks() {
         if (game.user.isGM && isActorEffect(effect)) {
             const actor = effect.parent;
             for (let change of effect.data.changes) {
-                if (change.key === "wire.custom.statusEffect") {
+                if (change.key === "wire.custom.statusEffect" || change.key === "wire.custom.persistentStatusEffect") {
                     if (isEffectEnabled && changes.disabled === false) {
                         await runInQueue(async () => {
                             const effectName = change.value;
                             const uuid = actor.uuid;
-                            const origin = effect.data.origin;
+                            const isLinked = change.key !== "wire.custom.persistentStatusEffect";
+                            const origin = isLinked ? effect.data.origin : null;
                             await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
                         });
                     }
@@ -187,7 +190,7 @@ export function initEffectFlagHooks() {
         if (game.user.isGM && isActorEffect(effect)) {
             const actor = effect.parent;
             for (let change of effect.data.changes) {
-                if (change.key === "wire.custom.statusEffect") {
+                if (change.key === "wire.custom.statusEffect" || change.key === "wire.custom.persistentStatusEffect") {
                     await runInQueue(async () => {
                         const effectName = change.value;
                         const uuid = actor.uuid;
@@ -200,7 +203,8 @@ export function initEffectFlagHooks() {
 }
 
 export function setupRollFlagWrappers() {
-    libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.prepareDerivedData", onActorPrepareDerivedData, "MIXED");
+    // libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.prepareDerivedData", onActorPrepareDerivedData, "MIXED");
+    // libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.applyActiveEffects", onActorApplyActiveEffects, "MIXED");
     libWrapper.register("wire", "CONFIG.ActiveEffect.documentClass.prototype.apply", onActiveEffectApply, "MIXED");
 
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.rollSkill", onActorRollSkill, "MIXED");
@@ -209,11 +213,35 @@ export function setupRollFlagWrappers() {
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.rollDeathSave", onActorRollDeathSave, "MIXED");
 }
 
-function onActorPrepareDerivedData(wrapped, ...args) {
-    wrapped.apply(this, [...args]);
+// function onActorPrepareDerivedData(wrapped, ...args) {
+//     wrapped.apply(this, [...args]);
+//
+// }
 
-    // this.data.fooize = [];
-}
+
+// TODO: Might be nice, unfortunately DAE makes it impossible
+// function onActorApplyActiveEffects(wrapped) {
+//     for (let effect of this.effects) {
+//         for (let change of effect.data.changes) {
+//             const item = fromUuid(effect.data.origin);
+//             if (isActorEffect(effect) && item && item instanceof CONFIG.Item.documentClass) {
+//                 const rollData = this.getRollData();
+//                 const itemRollData = item.getRollData();
+//                 const config = effect.data.flags?.wire?.activationConfig;
+//                 const spellLevel = config?.spellLevel;
+//                 itemRollData.level = spellLevel;
+//                 rollData.itemLevel = spellLevel;
+//                 rollData.spellLevel = spellLevel;
+//                 rollData.origin = itemRollData;
+//                 rollData.config = config;
+
+//                 change.value = Roll.replaceFormulaData(change.value, rollData);
+//             }
+//         }
+//     }
+
+//     return wrapped();
+// }
 
 function onActiveEffectApply(wrapped, actor, change) {
     if (change.key.startsWith("flags.wire.")) {

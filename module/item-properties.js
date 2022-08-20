@@ -1,4 +1,4 @@
-import { damagePartMatchesVariant, isEffectEnabled } from "./utils.js";
+import { compositeDamageParts, damagePartMatchesVariant, isEffectEnabled } from "./utils.js";
 
 const durationUnits = ["day", "hour", "minute", "month", "round", "turn", "year"];
 const attackTypes = ["msak", "mwak", "rsak", "rwak"];
@@ -42,7 +42,7 @@ export function isSelfRange(item) {
 }
 
 export function hasDamageOfType(item, applicationType, variant) {
-    return item.data.data.damage.parts.some(part => (part.application || "immediate") === applicationType && (!variant || damagePartMatchesVariant(part[0], variant)));
+    return compositeDamageParts(item).some(part => (part.application || "immediate") === applicationType && (!variant || damagePartMatchesVariant(part[0], variant)));
 }
 
 export function hasEffectsOfType(item, applicationType, variant) {
@@ -56,7 +56,7 @@ export function hasApplicationsOfType(item, applicationType, variant) {
 }
 
 export function hasSaveableDamageOfType(item, applicationType, variant) {
-    return item.data.data.damage?.parts.some(part => (part.application || "immediate") === applicationType && ["none", "half"].includes(part.halving || "none") && (!variant || damagePartMatchesVariant(part[0], variant)));
+    return compositeDamageParts(item).some(part => (part.application || "immediate") === applicationType && ["none", "half"].includes(part.halving || "none") && (!variant || damagePartMatchesVariant(part[0], variant)));
 }
 
 export function hasSaveableEffectsOfType(item, applicationType, variant) {
@@ -71,7 +71,7 @@ export function hasSaveableApplicationsOfType(item, applicationType, variant) {
 }
 
 export function hasUnavoidableDamageOfType(item, applicationType, variant) {
-    return item.data.data.damage?.parts.some(part => (part.application || "immediate") === applicationType && ["full", "half"].includes(part.halving) && (!variant || damagePartMatchesVariant(part[0], variant)));
+    return compositeDamageParts(item).some(part => (part.application || "immediate") === applicationType && ["full", "half"].includes(part.halving) && (!variant || damagePartMatchesVariant(part[0], variant)));
 }
 
 export function hasUnavoidableEffectsOfType(item, applicationType, variant) {

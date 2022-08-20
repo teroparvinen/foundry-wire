@@ -1,9 +1,10 @@
 import { applyTargetEffects } from "../game/active-effects.js";
+import { determineUpdateTargets } from "../updater-utility.js";
 import { Updater } from "./base-updater.js";
 
 export class ApplyEffectsUpdater extends Updater {
-    constructor(condition, effect, item, externalTargetActor) {
-        super(condition, effect, item, externalTargetActor)
+    constructor(condition, effect, item, externalTargetActor, details) {
+        super(condition, effect, item, externalTargetActor, details);
 
         const applicationTypes = {
             "apply-effects-immediate": "immediate",
@@ -16,6 +17,7 @@ export class ApplyEffectsUpdater extends Updater {
     async process() {
         const masterEffect = this.item.actor.effects.find(e => e.data.origin === this.item.uuid && e.data.flags.wire?.isMasterEffect);
         const activationConfig = this.effect.data.flags.wire?.activationConfig;
-        await applyTargetEffects(this.item, this.applicationType, [this.externalTargetActor], [this.externalTargetActor], masterEffect, activationConfig);
+        const targets = determineUpdateTargets(this.item, this.effect, this.condition, this.externalTargetActor);
+        await applyTargetEffects(this.item, this.applicationType, targets, targets, masterEffect, activationConfig);
     }
 }

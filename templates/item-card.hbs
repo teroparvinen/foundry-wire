@@ -36,7 +36,16 @@
             {{#if activation.attack.roll}}
                 <div class="phase-attack roll-container">
                     <div class="dice-roll flexrow">
-                        <div class="flex1 dice-label"><i class="fas fa-dice-d20"></i> {{localize "DND5E.Attack"}}</div>
+                        <div class="flex1 dice-label flexrow">
+                            <i class="flex0 fas fa-dice-d20"></i>
+                            <div class="flex1">{{localize "DND5E.Attack"}}</div>
+                            {{#if activation.attack.options.advantage}}
+                                <i class="flex0 fas fa-angle-double-up"></i>
+                            {{/if}}
+                            {{#if activation.attack.options.disadvantage}}
+                                <i class="flex0 fas fa-angle-double-down"></i>
+                            {{/if}}
+                        </div>
                         <div class="flex1 dice-total {{activation.attack.resultType}}">{{activation.attack.roll.total}}</div>
                     </div>
                     <div class="dice-roll">
@@ -77,10 +86,16 @@
             {{#if activation.damage.roll}}
                 <div class="phase-damage roll-container">
                     <div class="dice-roll flexrow">
-                        <div class="flex1 dice-label">
-                            <i class="fas fa-dice-d20"></i>
-                            {{#if activation.damage.isHealing}}{{ localize "DND5E.Healing" }}
-                            {{else}}{{localize "DND5E.Damage" }}{{/if}}
+                        <div class="flex1 dice-label flexrow">
+                            <i class="flex0 fas fa-dice-d20"></i>
+                            <div class="flex1">
+                                {{#if activation.damage.isTempHps}}
+                                    {{localize "wire.ui.temporary-hp"}}
+                                {{else}}
+                                    {{#if activation.damage.isHealing}}{{ localize "DND5E.Healing" }}
+                                    {{else}}{{localize "DND5E.Damage" }}{{/if}}
+                                {{/if}}
+                            </div>
                         </div>
                         <div class="flex1 dice-total">{{activation.damage.roll.total}}</div>
                     </div>
@@ -178,8 +193,12 @@
         {{#unless isGMActorPlayerView}}
             {{#if (or (eq activation.state "waiting-for-attack-damage-roll") (eq activation.state "waiting-for-save-damage-roll"))}}
                 <button data-action="wire-damage">
-                    {{#if activation.damage.isHealing}}{{ localize "DND5E.Healing" }}
-                    {{else}}{{localize "DND5E.Damage" }}{{/if}}
+                    {{#if activation.damage.isTempHps}}
+                        {{localize "wire.ui.temporary-hp"}}
+                    {{else}}
+                        {{#if activation.damage.isHealing}}{{ localize "DND5E.Healing" }}
+                        {{else}}{{localize "DND5E.Damage" }}{{/if}}
+                    {{/if}}
                 </button>
             {{/if}}
             {{#if (eq activation.state "waiting-for-target-confirmation")}}

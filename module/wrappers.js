@@ -1,4 +1,5 @@
 import { Activation } from "./activation.js";
+import { ConcentrationCard } from "./cards/concentration-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
@@ -10,6 +11,7 @@ export function setupWrappers() {
     libWrapper.register("wire", "game.dnd5e.canvas.AbilityTemplate.prototype.activatePreviewListeners", onTemplatePreviewListeners, "MIXED");
     libWrapper.register("wire", "ClientKeybindings._onDismiss", onEscape, "OVERRIDE");
     libWrapper.register("wire", "CONFIG.ui.chat.prototype.scrollBottom", onChatLogScrollBottom, "MIXED");
+    libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype._preUpdate", onActorPreUpdate, "MIXED");
 }
 
 let templateInfo = null;
@@ -19,7 +21,7 @@ async function onItemRoll(wrapped, options, event) {
     console.log("ROLLING ITEM", item, options);
 
     const concentrationEffect = item.actor.effects.find(effect => effect.getFlag("wire", "isConcentration"));
-    if (concentrationEffect && item.data.data.components.concentration) {
+    if (concentrationEffect && item.data.data.components?.concentration) {
         const originName = fromUuid(concentrationEffect.data.origin).name;
         if (!await Dialog.confirm({
             title: i18n("wire.ui.end-concentration-dialog-title"),
@@ -89,6 +91,63 @@ function onTemplatePreviewListeners(wrapped, initialLayer) {
         cmListener?.apply(this, arguments);
         setTemplateTargeting(false);
     };
+}
+
+async function onActorPreUpdate(wrapped, change, options, user) {
+    wrapped.apply(this, [change, options, user]);
+
+    const actor = this;
+
+    const hpUpdate = getProperty(change, "data.attributes.hp.value");
+    const tempUpdate = getProperty(change, "data.attributes.hp.temp");
+
+    if (hpUpdate !== undefined) {
+        const maxHp = actor.data.data.attributes.hp.max;
+        const woundedThreshold = Math.floor(0.5 * maxHp);
+
+        const isDamaged = hpUpdate < maxHp;
+        const isWounded = hpUpdate <= woundedThreshold;
+        const isAtZero = hpUpdate == 0;
+
+        const needsDamaged = isDamaged && !isAtZero && !isWounded;
+        const needsWounded = isWounded && !isAtZero;
+        const needsUnconscious = actor.hasPlayerOwner && isAtZero;
+        const needsDead = !actor.hasPlayerOwner && isAtZero;
+
+        const ceApi = game.dfreds?.effectInterface;
+
+        if (ceApi) {
+            const damagedExists = ceApi.findEffectByName("Damaged");
+
+            const hasDamaged = damagedExists && ceApi.hasEffectApplied("Damaged", actor.uuid);
+            const hasWounded = ceApi.hasEffectApplied("Wounded", actor.uuid);
+            const hasUnconscious = ceApi.hasEffectApplied("Unconscious", actor.uuid);
+            const hasDead = ceApi.hasEffectApplied("Dead", actor.uuid);
+
+            if (damagedExists && (needsDamaged != hasDamaged)) { await ceApi.toggleEffect("Damaged", { uuids: [actor.uuid] }); }
+            if (needsWounded != hasWounded) { await ceApi.toggleEffect("Wounded", { uuids: [actor.uuid] }); }
+            if (needsUnconscious != hasUnconscious) { await ceApi.toggleEffect("Unconscious", { uuids: [actor.uuid] }); }
+            if (needsDead != hasDead) {
+                await ceApi.toggleEffect("Dead", { uuids: [actor.uuid], overlay: true });
+                
+                const combatant = actor.token ? game.combat?.getCombatantByToken(actor.token.id) : game.combat?.getCombatantByActor(actor.id);
+                await combatant.update({ defeated: needsDead });
+            }
+        }
+    }
+
+    if (hpUpdate !== undefined || tempUpdate !== undefined) {
+        const current = actor.data.data.attributes.hp;
+        const damage = (current.value - (hpUpdate || current.value)) + (current.temp - (tempUpdate || current.temp));
+
+        if (damage > 0) {
+            const concentrationEffect = actor.effects.find(e => e.data.flags.wire?.isConcentration);
+            if (concentrationEffect) {
+                const concentrationCard = new ConcentrationCard(actor, concentrationEffect, damage);
+                await concentrationCard.make();
+            }
+        }
+    }
 }
 
 function onEscape(context) {

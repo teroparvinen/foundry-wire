@@ -4,7 +4,7 @@ import { DamageParts } from "./game/damage-parts.js";
 import { getAttackOptions } from "./game/effect-flags.js";
 import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableEffectsOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
 import { makeUpdater } from "./updater-utility.js";
-import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, getAttackRollResultType, isCasterDependentEffect, isInCombat, localizedWarning, runAndAwait, triggerConditions } from "./utils.js";
+import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, fromUuid, getAttackRollResultType, isCasterDependentEffect, isInCombat, localizedWarning, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
     constructor(activation) {
@@ -105,12 +105,29 @@ export class Resolver {
             await this.activation.applyState("idle");
             await this.step(n);
 
+        } else if (isAuthor && this.activation.state === "applyTargetFromCondition") {
+            const conditionDetails = this.activation.condition.details;
+            const targetActor = fromUuid(conditionDetails.attackTargetUuid) || fromUuid(conditionDetails.attackerUuid);
+            const targetActors = targetActor ? [targetActor] : [];
+            await this.activation.assignTargets(targetActors);
+            await this.activation.applyState("idle");
+            await this.step(n);
+        } else if (isAuthor && this.activation.state === "applyTargetFromConditionAsEffective") {
+            const conditionDetails = this.activation.condition.details;
+            const targetActor = fromUuid(conditionDetails.attackTargetUuid) || fromUuid(conditionDetails.attackerUuid);
+            const targetActors = targetActor ? [targetActor] : [];
+            await this.activation.assignTargets(targetActors);
+            await this.activation.applyEffectiveTargets(targetActors);
+            await this.activation.applyState("idle");
+            await this.step(n);
+
         } else if (isOriginator && this.activation.state === "performAttackRoll") {
             const options = getAttackOptions(this.activation);
             const roll = await item.rollAttack(foundry.utils.mergeObject({ chatMessage: false, fastForward: true }, options));
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.activation.applyAttackTarget(this.activation.singleTarget.actor);
             await this.activation.applyAttackRoll(roll);
+            await this.activation.registerAttackOptions(options);
             await this.activation.applyState("waiting-for-attack-result");
         } else if (isGM && this.activation.state === "waiting-for-attack-result") {
             if (this.activation.attackResult == "hit") {
@@ -155,10 +172,11 @@ export class Resolver {
 
             const isCritical = getAttackRollResultType(this.activation.attackRoll) == "critical";
             const spellLevel = this.activation.config?.spellLevel;
+            const upcastInterval = this.activation.config?.upcastInterval;
             const variant = this.activation.config?.variant;
             const onlyUnavoidable = this.activation.effectiveTargets.length == 0;
             const attackTarget = this.activation.singleTarget?.actor;
-            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical, spellLevel, attackTarget, variant });
+            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical, spellLevel, upcastInterval, attackTarget, variant });
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
@@ -176,8 +194,9 @@ export class Resolver {
             await this.activation.applyState("waiting-for-save-damage");
 
             const spellLevel = this.activation.config?.spellLevel;
+            const upcastInterval = this.activation.config?.upcastInterval;
             const variant = this.activation.config?.variant;
-            const damageParts = await DamageParts.roll(item, applicationType, false, { spellLevel, variant });
+            const damageParts = await DamageParts.roll(item, applicationType, false, { spellLevel, upcastInterval, variant });
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
@@ -426,21 +445,29 @@ export class Resolver {
     async _triggerAttackConditions() {
         const attacker = this.activation.item.actor;
         const attackType = this.activation.item.data.data.actionType;
-        const triggerOptions = { ignoredEffects: this.activation.createdEffects }
         const attackTarget = this.activation.attackTarget.actor;
 
-        await triggerConditions(attacker, "target-attacks.all", triggerOptions);
-        await triggerConditions(attacker, `target-attacks.${attackType}`, triggerOptions);
+        const attackOptions = { 
+            ignoredEffects: this.activation.cratedEffects,
+            details: { attackTargetUuid: attackTarget.uuid }
+        };
+        const targetOptions = { 
+            ignoredEffects: this.activation.cratedEffects,
+            details: { attackerUuid: attacker.uuid }
+        };
 
-        await triggerConditions(attackTarget, "target-is-attacked.all", triggerOptions);
-        await triggerConditions(attackTarget, `target-is-attacked.${attackType}`, triggerOptions);
+        await triggerConditions(attacker, "target-attacks.all", attackOptions);
+        await triggerConditions(attacker, `target-attacks.${attackType}`, attackOptions);
+
+        await triggerConditions(attackTarget, "target-is-attacked.all", targetOptions);
+        await triggerConditions(attackTarget, `target-is-attacked.${attackType}`, targetOptions);
 
         if (this.activation.effectiveTargets.length) {
-            await triggerConditions(attacker, "target-hits.all", triggerOptions);
-            await triggerConditions(attacker, `target-hits.${attackType}`, triggerOptions);
+            await triggerConditions(attacker, "target-hits.all", attackOptions);
+            await triggerConditions(attacker, `target-hits.${attackType}`, attackOptions);
 
-            await triggerConditions(attackTarget, "target-is-hit.all", triggerOptions);
-            await triggerConditions(attackTarget, `target-is-hit.${attackType}`, triggerOptions);
+            await triggerConditions(attackTarget, "target-is-hit.all", targetOptions);
+            await triggerConditions(attackTarget, `target-is-hit.${attackType}`, targetOptions);
         }
     }
 

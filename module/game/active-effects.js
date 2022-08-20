@@ -1,4 +1,4 @@
-import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, isEffectEnabled, isInCombat } from "../utils.js";
+import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, isEffectEnabled, isInCombat, substituteEffectConfig } from "../utils.js";
 import { applyConditionImmunity } from "./effect-flags.js";
 
 export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config) {
@@ -15,7 +15,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
 
     const makeEffectData = (effect) => {
         return {
-            changes: copyEffectChanges(effect),
+            changes: substituteEffectConfig(config, copyEffectChanges(effect)),
             origin: item.uuid,
             disabled: false,
             icon: effect.data.icon,
@@ -27,7 +27,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                     sourceEffectUuid: effect.uuid,
                     conditions: copyConditions(effect),
                     activationConfig: config,
-                    masterEffectUuid: (masterEffect && !effect.data.flags.wire?.independentDuration)
+                    masterEffectUuid: (masterEffect && !effect.data.flags.wire?.independentDuration) ? masterEffect.uuid : null
                 }
             }
         }

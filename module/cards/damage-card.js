@@ -109,9 +109,10 @@ export class DamageCard {
         const dv = points.dv;
 
         const hp = actor.data.data.attributes.hp.value;
+        const effectiveMaxHp = actor.data.data.attributes.hp.max + actor.data.data.attributes.hp.tempmax;
         const tempHp = actor.data.data.attributes.hp.temp || 0;
         const newTempHp = Math.max(0, tempHp - dmg, tempHpReceived);
-        const newHp = Math.min(Math.max(0, hp + tempHp - dmg + healing), actor.data.data.attributes.hp.max);
+        const newHp = Math.min(Math.max(0, hp + tempHp - dmg + healing), effectiveMaxHp);
         const hpDmg = Math.max(hp - newHp, 0);
         const tempHpDmg = Math.max(tempHp - newTempHp, 0);
         const hpHeal = Math.max(newHp - hp, 0);

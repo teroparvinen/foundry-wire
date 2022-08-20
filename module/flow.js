@@ -187,6 +187,14 @@ export class Flow {
         return ["applySelectedTargets", ...this.chain(this.pick(...arguments))];
     }
 
+    applyTargetFromCondition() {
+        return ["applyTargetFromCondition", ...this.chain(this.pick(...arguments))];
+    }
+
+    applyTargetFromConditionAsEffective() {
+        return ["applyTargetFromConditionAsEffective", ...this.chain(this.pick(...arguments))];
+    }
+
     confirmTargets() {
         return ["confirmTargets", ...this.chain(this.pick(...arguments))];
     }
@@ -249,5 +257,9 @@ export class Flow {
 
     skipConfigurationDialog() {
         this.preRollOptions["skipConfigurationDialog"] = true;
+    }
+
+    setUpcastInterval(interval) {
+        foundry.utils.setProperty(this.preRollOptions, "config.upcastInterval", interval);
     }
 }

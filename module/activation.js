@@ -5,7 +5,7 @@ import { DamageParts } from "./game/damage-parts.js";
 import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
 import { wireSocket } from "./socket.js";
-import { determineUpdateTargetUuids } from "./updater-utility.js";
+import { determineUpdateTargets } from "./updater-utility.js";
 import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, i18n } from "./utils.js";
 
 export class Activation {
@@ -15,18 +15,21 @@ export class Activation {
         return new Activation(gmMessage);
     }
 
-    static async createConditionMessage(condition, item, effect, flow, { playerMessageOnly = false, externalTargetActor = null } = {}) {
+    static async createConditionMessage(
+        condition, item, effect, flow, 
+        { revealToPlayers = false, externalTargetActor = null, suppressPlayerMessage = false, speakerIsEffectOwner = false } = {}
+    ) {
         const messageData = await item.displayCard({ createMessage: false });
         messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
-        messageData.speaker = getSpeaker(item.actor);
+        messageData.speaker = getSpeaker(speakerIsEffectOwner ? effect.parent : item.actor);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", effect.data.flags.wire?.originatorUserId);
-        if (playerMessageOnly) { messageData.whisper = null; }
+        if (revealToPlayers) { messageData.whisper = null; }
         const message = await ChatMessage.create(messageData);
 
         if (message) {
             const activation = new Activation(message);
 
-            if (item.hasPlayerOwner && !playerMessageOnly) {
+            if (item.hasPlayerOwner && !revealToPlayers && !suppressPlayerMessage) {
                 activation.createPlayerMessage();
             }
 
@@ -61,6 +64,7 @@ export class Activation {
     get attackTargetUuid() { return this.data.attack?.targetActorUuid; }
     get attackRoll() { return this.data.attack?.roll ? CONFIG.Dice.D20Roll.fromData(this.data.attack.roll) : null; }
     get attackResult() { return this.data.attack?.result; }
+    get attackOptions() { return this.data.attack?.options; }
     get damageParts() { return this.data.damage?.parts ? DamageParts.fromData(this.data.damage.parts) : null; }
     get saveResults() { return this.data.saves?.map(e => {
         return {
@@ -87,8 +91,6 @@ export class Activation {
     get effectiveTargets() { return this.effectiveTargetUuids?.map(uuid => this._targetRecord(uuid)) ?? []; }
     get attackTarget() { return this._targetRecord(this.attackTargetUuid); }
 
-    // get actionUpdate() { return this.sourceEffect?.data.flags.wire?.conditions?.find(c => c.condition === "take-an-action")?.update || ''; }
-
     _targetRecord(uuid) {
         if (uuid) {
             const actor = fudgeToActor(fromUuid(uuid));
@@ -114,7 +116,8 @@ export class Activation {
         const damageRoll = await this.getCombinedDamageRoll();
         const damageRollTooltip = await damageRoll?.getTooltip();
 
-        const isHealing = this.item.data.data.damage?.parts?.every(p => ["healing", "temphp"].includes(p[1])) || this.damageParts?.result?.every(p => ["healing", "temphp"].includes(p.part.type));
+        const isTempHps = this.item.data.data.damage?.parts?.every(p => p[1] === "temphp") || this.damageParts?.result?.every(p => p.part.type === "temphp");
+        const isHealing = !isTempHps && this.item.data.data.damage?.parts?.every(p => ["healing", "temphp"].includes(p[1])) || this.damageParts?.result?.every(p => ["healing", "temphp"].includes(p.part.type));
 
         return {
             state: this.state,
@@ -123,12 +126,14 @@ export class Activation {
                 tooltip: attackRollTooltip,
                 resultType: attackRollResultType,
                 result: this.attackResult,
-                target: this.attackTarget
+                target: this.attackTarget,
+                options: this.attackOptions
             },
             damage: {
                 roll: damageRoll,
                 tooltip: damageRollTooltip,
-                isHealing
+                isHealing,
+                isTempHps
             },
             saves: this.data.saves,
             allTargets: this.allTargets,
@@ -136,7 +141,6 @@ export class Activation {
             singleTarget: this.singleTarget,
             condition: this.localizedCondition,
             customHtml: this.data.customHtml
-            // actionUpdate: this.actionUpdate ? "wire.item.update-" + this.actionUpdate : null
         }
     }
 
@@ -145,6 +149,7 @@ export class Activation {
         foundry.utils.setProperty(this.data, "applicationType", applicationType);
 
         const flowSteps = flow.isEvaluated ? flow.evaluatedSteps : flow.evaluate();
+        console.log("FLOW STEPS", flowSteps);
         foundry.utils.setProperty(this.data, "flowSteps", flowSteps);
         this.flow = flow;
 
@@ -159,7 +164,7 @@ export class Activation {
                 foundry.utils.setProperty(this.data, "masterEffectUuid", sourceEffect.data.flags.wire?.masterEffectUuid);
             }
 
-            const targetUuids = determineUpdateTargetUuids(item, sourceEffect, condition, externalEffectTarget);
+            const targetUuids = determineUpdateTargets(item, sourceEffect, condition, externalEffectTarget).map(a => a.uuid);
             foundry.utils.setProperty(this.data, "targetUuids", targetUuids);
         }
         this.update();
@@ -271,6 +276,11 @@ export class Activation {
 
     async registerCreatedEffects(effects) {
         await foundry.utils.setProperty(this.data, "createdEffectUuids", [...(this.data.createdEffectUuids || []), ...effects.map(e => e.uuid)]);
+        await this.update();
+    }
+
+    async registerAttackOptions(options) {
+        await foundry.utils.setProperty(this.data, "attack.options", options);
         await this.update();
     }
 

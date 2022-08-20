@@ -5,12 +5,13 @@ export function initItemSheetHooks() {
     Hooks.on("renderItemSheet5e", async (app, html, data) => {
         const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
 
-        const parts = app.object.data.data.damage.parts;
+        const parts = app.object.data.data.damage?.parts || [];
+        const wireParts = app.object.data.flags.wire?.damageParts || [];
         
         html.find('.damage-part').each(function() {
             const i = this.dataset.damagePart;
-            const halving = parts[i]["halving"] || parts[i][2];
-            const application = parts[i]["application"] || parts[i][3];
+            const halving = wireParts[i]?.halving || parts[i]["halving"];
+            const application = wireParts[i]?.application || parts[i]["application"];
             const fields = `
                 <select name="data.damage.parts.${i}.halving">
                     <option value="none">${i18n("wire.item.damage-none")}</option>
@@ -50,10 +51,8 @@ function onItemSubmit(wrapped, updateData) {
 
     // Re-handle Damage array
     const damage = data.data?.damage;
-    if ( damage ) submitData['data.damage.parts'] = Object.values(damage?.parts || {}).map(d => {
+    if ( damage ) submitData['flags.wire.damageParts'] = Object.values(damage?.parts || {}).map(d => {
         return {
-            0: d[0] || "",
-            1: d[1] || "",
             halving: d["halving"] || "",
             application: d["application"] || ""
         }

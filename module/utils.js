@@ -142,6 +142,18 @@ export function copyEffectChanges(effect) {
     })
 }
 
+export function substituteEffectConfig(config, changes) {
+    const rollData = { config };
+    return changes.map(c => {
+        return {
+            key: c.key,
+            mode: c.mode,
+            priority: c.priority,
+            value: Roll.replaceFormulaData(c.value, rollData)
+        };
+    });
+}
+
 export function copyConditions(effect) {
     const conditions = effect.data.flags.wire?.conditions;
     if (conditions) {
@@ -223,12 +235,12 @@ export async function runAndAwait(fn, ...args) {
     }
 }
 
-export async function triggerConditions(actor, condition, { externalTargetActor = null, ignoredEffects = [] } = {}) {
+export async function triggerConditions(actor, condition, { externalTargetActor = null, ignoredEffects = [], details = null } = {}) {
     actor.effects.filter(e => isEffectEnabled(e) && !ignoredEffects.includes(e)).forEach(async effect => {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
         for (let condition of conditions) {
             const item = fromUuid(effect.data.origin);
-            const updater = makeUpdater(condition, effect, item, externalTargetActor);
+            const updater = makeUpdater(condition, effect, item, externalTargetActor, details);
             await updater?.process();
         }
     });
@@ -260,7 +272,7 @@ export function isCastersTurn(item) {
     const actor = item.actor;
     if (game.combat) {
         const combatant = game.combat.getCombatantByActor(actor.id);
-        return game.combat.current.combatantId === combatant.id;
+        return game.combat.current.combatantId === combatant?.id;
     } else {
         // Assume out of combat to be the caster's to operate freely
         return true;
@@ -288,4 +300,18 @@ export function isItemEffect(effect) {
 
 export function isEffectEnabled(effect) {
     return !effect.isSuppressed && !effect.data.disabled;
+}
+
+export function compositeDamageParts(item) {
+    const itemParts = item.data.data.damage?.parts || [];
+    const wireParts = item.data.flags.wire?.damageParts;
+
+    return itemParts.map((parts, i) => {
+        return {
+            0: parts[0],
+            1: parts[1],
+            halving: wireParts[i]?.halving,
+            application: wireParts[i]?.application
+        };
+    });
 }

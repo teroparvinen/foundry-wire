@@ -1,9 +1,9 @@
-import { localizedWarning } from "../utils.js";
+import { compositeDamageParts, localizedWarning } from "../utils.js";
 import { getDamageMultiplier } from "./effect-flags.js";
 
 
 export class DamageParts {
-    static async roll(item, applicationType, onlyUnavoidable, { spellLevel, isCritical, attackTarget, variant } = {}) {
+    static async roll(item, applicationType, onlyUnavoidable, { spellLevel, upcastInterval, isCritical, attackTarget, variant } = {}) {
         if (!item.hasDamage) throw new Error("You may not make a Damage Roll with this Item.");
         const itemData = item.data.data;
         const actorData = item.actor.data.data;
@@ -42,18 +42,19 @@ export class DamageParts {
     
         // Scale damage from up-casting spells
         if ((item.data.type === "spell")) {
-            let scalingMultiplier = 0;
+            let levelMultiplier = 0;
             if ((itemData.scaling.mode === "cantrip")) {
                 let level;
                 if ( item.actor.type === "character" ) level = actorData.details.level;
                 else if ( itemData.preparation.mode === "innate" ) level = Math.ceil(actorData.details.cr);
                 else level = actorData.details.spellLevel;
 
-                scalingMultiplier = Math.floor((level + 1) / 6);
+                levelMultiplier = Math.floor((level + 1) / 6);
             } else if (spellLevel && (itemData.scaling.mode === "level") && itemData.scaling.formula) {
-                scalingMultiplier = Math.max(spellLevel - itemData.level, 0);
+                levelMultiplier = Math.max(spellLevel - itemData.level, 0);
             }
-            if (scalingMultiplier > 0) {
+            if (levelMultiplier > 0) {
+                const scalingMultiplier = upcastInterval ? Math.floor(levelMultiplier / upcastInterval) : levelMultiplier;
                 const s = new Roll(itemData.scaling.formula, rollData).alter(scalingMultiplier);
                 primaryModifiers.push(s.formula);
             }
@@ -63,16 +64,21 @@ export class DamageParts {
         const actorBonus = getProperty(actorData, `bonuses.${itemData.actionType}`) || {};
         if (actorBonus.damage && (parseInt(actorBonus.damage) !== 0)) {
             const { isValid, terms } = simplifyDamageFormula(actorBonus.damage, rollData);
-            const nonOperatorTerms = terms.filter(t => !(t instanceof OperatorTerm));
-            const recognizedTerms = nonOperatorTerms.filter(t => CONFIG.DND5E.damageTypes[t.flavor]);
-            if (isValid && recognizedTerms.length === nonOperatorTerms.length) {
-                for (let t of recognizedTerms) {
+            const termsWithMults = terms.map((term, i) => {
+                const op = i > 0 ? (terms[i-1].operator || "+") : "+";
+                return { term, mult: op === "-" ? -1 : 1 }
+            });
+            const nonOperatorTermsWithMults = termsWithMults.filter(tm => !(tm.term instanceof OperatorTerm));
+            const allTypesValid = nonOperatorTermsWithMults.every(tm => CONFIG.DND5E.damageTypes[tm.term.flavor]);
+            if (isValid && allTypesValid) {
+                const recognizedTermsWithMults = nonOperatorTermsWithMults.filter(tm => CONFIG.DND5E.damageTypes[tm.term.flavor]);
+                for (let tm of recognizedTermsWithMults) {
                     parts.push({
-                        formula: t.formula,
-                        type: t.flavor || parts[0].type,
+                        formula: tm.term.formula,
+                        type: tm.term.flavor || parts[0].type,
                         halving: parts[0].halving,
                         applicationType: parts[0].applicationType,
-                        multiplier: 1
+                        multiplier: tm.mult
                     });
                 }
             } else {
@@ -143,8 +149,8 @@ export class DamageParts {
     }
 
     static _itemDamageParts(item, applicationType, onlyUnavoidable, variant) {
-        const itemData = item.data.data;
-        return itemData.damage.parts
+        const parts = compositeDamageParts(item);
+        return parts
             .map(d => {
                 let variant;
                 const formula = d[0].replace(RollTerm.FLAVOR_REGEXP, flavor => {

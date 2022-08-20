@@ -62,6 +62,7 @@
     align-self: center;
     font-size: 15px;
     font-weight: bold;
+    gap: 4px;
 }
 
 .item-card .card-phases .dice-tooltip {
@@ -309,7 +310,11 @@
 }
 
 .damage-card .target-damage-info .damage-state {
-    padding: 0 10px;
+    padding: 0;
+}
+
+.damage-card .target-damage-info > i {
+    padding: 0 5px;
 }
 
 .damage-card .target-damage-info .damage-state:first-of-type {

@@ -44,17 +44,17 @@ export function itemRollFlow() {
                     this.pick(
                         this.isAttack(
                             this.performAttackRoll(
-                                this.sequence(
-                                    this.hasDamage(
-                                        this.performAttackDamageRoll(
-                                            this.applyDamage(
+                                this.hasDamage(
+                                    this.performAttackDamageRoll(
+                                        this.applyDamage(
+                                            this.applyEffects(
                                                 this.attackCompleted()
                                             )
                                         )
-                                    ),
-                                    this.applyEffects(
-                                        this.attackCompleted()
                                     )
+                                ),
+                                this.applyEffects(
+                                    this.attackCompleted()
                                 )
                             )
                         ),
@@ -92,10 +92,12 @@ export function itemRollFlow() {
             )
         ),
         this.hasDamage(
-            this.performSaveDamageRoll(
-                this.sequence(
-                    this.applyDamage(),
-                    this.applyEffects()
+            this.applyDefaultTargetsAsEffective(
+                this.performSaveDamageRoll(
+                    this.sequence(
+                        this.applyDamage(),
+                        this.applyEffects()
+                    )
                 )
             )
         ),
