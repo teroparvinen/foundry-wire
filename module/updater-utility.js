@@ -39,12 +39,15 @@ export function determineUpdateTargets(item, effect, condition, externalTargetAc
         case "creature-enters-area":
         case "creature-starts-turn-inside-area":
         case "creature-ends-turn-inside-area":
+        case "creature-moves-within-area":
         case "ally-enters-area":
         case "ally-starts-turn-inside-area":
         case "ally-ends-turn-inside-area":
+        case "ally-moves-within-area":
         case "enemy-enters-area":
         case "enemy-starts-turn-inside-area":
         case "enemy-ends-turn-inside-area":
+        case "enemy-moves-within-area":
         case "area-envelops-creature":
         case "area-envelops-ally":
         case "area-envelops-enemy":
@@ -77,6 +80,8 @@ export function determineUpdateTargets(item, effect, condition, externalTargetAc
         case "target-is-hit.rwak":
         case "target-is-hit.msak":
         case "target-is-hit.rsak":
+        case "takes-damage":
+        case "saving-throw-completed":
             return [effect.parent];
         case "take-an-action":
             if (isCastersTurn(item)) {
@@ -84,5 +89,7 @@ export function determineUpdateTargets(item, effect, condition, externalTargetAc
             } else {
                 return [effect.parent];
             }
-        }
+        case "this-attack-hits":
+            return [externalTargetActor];
+    }
 }

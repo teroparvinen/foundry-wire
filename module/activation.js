@@ -6,7 +6,7 @@ import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
 import { wireSocket } from "./socket.js";
 import { determineUpdateTargets } from "./updater-utility.js";
-import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, i18n } from "./utils.js";
+import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, i18n, triggerConditions } from "./utils.js";
 
 export class Activation {
     static async initializeGmMessage(gmMessage, masterMessage) {
@@ -21,8 +21,8 @@ export class Activation {
     ) {
         const messageData = await item.displayCard({ createMessage: false });
         messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
-        messageData.speaker = getSpeaker(speakerIsEffectOwner ? effect.parent : item.actor);
-        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", effect.data.flags.wire?.originatorUserId);
+        messageData.speaker = getSpeaker((speakerIsEffectOwner && effect) ? effect.parent : item.actor);
+        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", effect?.data.flags.wire?.originatorUserId || game.user.id);
         if (revealToPlayers) { messageData.whisper = null; }
         const message = await ChatMessage.create(messageData);
 
@@ -54,7 +54,7 @@ export class Activation {
     get applicationType() { return this.data.applicationType; }
     get state() { return this.data.state; }
     get flowSteps() { return this.data.flowSteps; }
-    get config() { return this.data.config; }
+    get config() { return this.data.config || {}; }
     get variant() { return this.config?.variant; }
     get templateUuid() { return this.data.templateUuid; }
     get masterEffectUuid() { return this.data.masterEffectUuid; }
@@ -164,7 +164,11 @@ export class Activation {
                 foundry.utils.setProperty(this.data, "masterEffectUuid", sourceEffect.data.flags.wire?.masterEffectUuid);
             }
 
-            const targetUuids = determineUpdateTargets(item, sourceEffect, condition, externalEffectTarget).map(a => a.uuid);
+            const targetUuids = determineUpdateTargets(item, sourceEffect, condition, externalEffectTarget)?.map(a => a.uuid);
+            foundry.utils.setProperty(this.data, "targetUuids", targetUuids);
+        } else if (condition) {
+            foundry.utils.setProperty(this.data, "condition", condition);
+            const targetUuids = determineUpdateTargets(item, sourceEffect, condition, externalEffectTarget)?.map(a => a.uuid);
             foundry.utils.setProperty(this.data, "targetUuids", targetUuids);
         }
         this.update();
@@ -413,11 +417,12 @@ export class Activation {
             const roll = await new CONFIG.Dice.D20Roll(formula, {}, { configured: true }).evaluate({ async: true });
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.applySave(actor, roll);
-            return;
+        } else {
+            const roll = await actor.rollAbilitySave(this.item.data.data.save.ability, foundry.utils.mergeObject(options, { chatMessage: false, fastForward: true }));
+            await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
+            await this.applySave(actor, roll);
         }
 
-        const roll = await actor.rollAbilitySave(this.item.data.data.save.ability, foundry.utils.mergeObject(options, { chatMessage: false, fastForward: true }));
-        await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
-        await this.applySave(actor, roll);
+        await triggerConditions(actor, "saving-throw-completed");
     }
 }

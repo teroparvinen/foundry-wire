@@ -1,4 +1,4 @@
-import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, isEffectEnabled, isInCombat, substituteEffectConfig } from "../utils.js";
+import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, effectMatchesVariant, isEffectEnabled, isInCombat, substituteEffectConfig } from "../utils.js";
 import { applyConditionImmunity } from "./effect-flags.js";
 
 export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config) {
@@ -9,7 +9,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
 
     const effects = item.effects
         .filter(e => isEffectEnabled(e) && !e.data.transfer && (e.getFlag("wire", "applicationType") || "immediate") === applicationType)
-        .filter(e => !config.variant || e.data.label.toLowerCase() === config.variant.toLowerCase());
+        .filter(e => !config.variant || effectMatchesVariant(e, config.variant));
     const allTargetsEffects = effects.filter(e => e.getFlag("wire", "applyOnSaveOrMiss"));
     const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
 
@@ -28,6 +28,9 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                     conditions: copyConditions(effect),
                     activationConfig: config,
                     masterEffectUuid: (masterEffect && !effect.data.flags.wire?.independentDuration) ? masterEffect.uuid : null
+                },
+                core: {
+                    statusId: " "
                 }
             }
         }

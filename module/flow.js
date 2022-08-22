@@ -195,6 +195,10 @@ export class Flow {
         return ["applyTargetFromConditionAsEffective", ...this.chain(this.pick(...arguments))];
     }
 
+    attackCompleted() {
+        return ["attackCompleted", ...this.chain(this.pick(...arguments))];
+    }
+
     confirmTargets() {
         return ["confirmTargets", ...this.chain(this.pick(...arguments))];
     }
@@ -227,12 +231,8 @@ export class Flow {
         return ["performSavingThrow", ...this.chain(this.pick(...arguments))];
     }
 
-    triggerAction() {
-        return ["triggerAction", ...this.chain(this.pick(...arguments))];
-    }
-
-    attackCompleted() {
-        return ["attackCompleted", ...this.chain(this.pick(...arguments))];
+    removeTemplate() {
+        return ["removeTemplate", ...this.chain(this.pick(...arguments))];
     }
 
     triggerAction() {
@@ -251,8 +251,8 @@ export class Flow {
         this.preRollOptions["customConfigurationCallback"] = callback;
     }
 
-    selectVariant(options) {
-        this.preRollOptions["variantOptions"] = options;
+    selectVariant() {
+        this.preRollOptions["variantOptions"] = Array.isArray(arguments[0]) ? arguments[0] : [...arguments];
     }
 
     skipConfigurationDialog() {

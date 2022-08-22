@@ -1,4 +1,4 @@
-<div class="dnd5e chat-card item-card {{#if isSecondary}}item-card-secondary{{/if}} {{#if (eq activation.state "waiting-for-action-trigger")}}item-card-action{{/if}}" data-actor-id="{{actor._id}}" data-item-id="{{item._id}}"
+<div class="dnd5e chat-card item-card wire-item-card {{#if isSecondary}}item-card-secondary{{/if}} {{#if (eq activation.state "waiting-for-action-trigger")}}item-card-action{{/if}}" data-actor-id="{{actor._id}}" data-item-id="{{item._id}}"
     {{#if tokenId}}data-token-id="{{tokenId}}"{{/if}} {{#if isSpell}}data-spell-level="{{item.data.level}}"{{/if}}>
     {{#unless isGMActorPlayerView}}
         <header class="card-header flexrow">

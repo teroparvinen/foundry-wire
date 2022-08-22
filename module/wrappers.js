@@ -4,7 +4,7 @@ import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
 import { preRollCheck, preRollConfig } from "./preroll.js";
-import { fromUuid, i18n, setTemplateTargeting } from "./utils.js";
+import { fromUuid, i18n, setTemplateTargeting, triggerConditions } from "./utils.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
@@ -17,6 +17,11 @@ export function setupWrappers() {
 let templateInfo = null;
 
 async function onItemRoll(wrapped, options, event) {
+    if (event?.shiftKey) {
+        console.log("SKIPPED WIRE", this, options);
+        return wrapped(options);
+    }
+
     const item = this;
     console.log("ROLLING ITEM", item, options);
 
@@ -42,6 +47,9 @@ async function onItemRoll(wrapped, options, event) {
 
     if (result) {
         const { messageData, config, template } = result;
+
+        if (event?.altKey) { config.advantage = true; }
+        if (event?.metaKey || event?.ctrlKey) { config.disadvantage = true; }
 
         messageData.content = await ItemCard.renderHtml(item);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
@@ -101,7 +109,7 @@ async function onActorPreUpdate(wrapped, change, options, user) {
     const hpUpdate = getProperty(change, "data.attributes.hp.value");
     const tempUpdate = getProperty(change, "data.attributes.hp.temp");
 
-    if (hpUpdate !== undefined) {
+    if (hpUpdate !== undefined && !this.hasPlayerOwner) {
         const maxHp = actor.data.data.attributes.hp.max;
         const woundedThreshold = Math.floor(0.5 * maxHp);
 
@@ -141,11 +149,15 @@ async function onActorPreUpdate(wrapped, change, options, user) {
         const damage = (current.value - (hpUpdate || current.value)) + (current.temp - (tempUpdate || current.temp));
 
         if (damage > 0) {
+            // Concentration check
             const concentrationEffect = actor.effects.find(e => e.data.flags.wire?.isConcentration);
             if (concentrationEffect) {
                 const concentrationCard = new ConcentrationCard(actor, concentrationEffect, damage);
                 await concentrationCard.make();
             }
+
+            // Damage taken condition
+            triggerConditions(actor, "takes-damage");
         }
     }
 }

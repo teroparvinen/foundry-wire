@@ -4,7 +4,7 @@ import { DamageParts } from "./game/damage-parts.js";
 import { getAttackOptions } from "./game/effect-flags.js";
 import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableEffectsOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
 import { makeUpdater } from "./updater-utility.js";
-import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, fromUuid, getAttackRollResultType, isCasterDependentEffect, isInCombat, localizedWarning, runAndAwait, triggerConditions } from "./utils.js";
+import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, fromUuid, getActorToken, getAttackRollResultType, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
     constructor(activation) {
@@ -97,6 +97,7 @@ export class Resolver {
             await this.step(n);
         } else if (isAuthor && this.activation.state === "applyDefaultTargetsAsEffective") {
             await this.activation.assignDefaultTargets(true);
+            playAutoAnimation(getActorToken(item.actor), this.activation.effectiveTargets.map(t => t.token), item);
             await this.activation.applyState("idle");
             await this.step(n);
 
@@ -123,6 +124,7 @@ export class Resolver {
 
         } else if (isOriginator && this.activation.state === "performAttackRoll") {
             const options = getAttackOptions(this.activation);
+            playAutoAnimation(getActorToken(item.actor), [this.activation.singleTarget.token], item);
             const roll = await item.rollAttack(foundry.utils.mergeObject({ chatMessage: false, fastForward: true }, options));
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.activation.applyAttackTarget(this.activation.singleTarget.actor);
@@ -158,6 +160,11 @@ export class Resolver {
                 await this.activation.applyState("idle");
                 await this.step(n);
             }
+
+        } else if (isOriginator && this.activation.state === "removeTemplate") {
+            await this.activation.template?.delete();
+            await this.activation.applyState("idle");
+            await this.step(n);
 
         } else if (isAuthor && this.activation.state === "performAttackDamageRoll") {
             if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType, this.activation.variant)) || hasUnavoidableDamageOfType(item, applicationType, this.activation.variant)) {
@@ -218,6 +225,7 @@ export class Resolver {
             if (this.activation.saveResults?.length === this.activation.allTargets.length) {
                 const dc = item.data.data.save.dc;
                 const failedActors = this.activation.saveResults.filter(r => r.roll.total < dc).map(r => r.actor);
+                playAutoAnimation(getActorToken(item.actor), failedActors.map(a => getActorToken(a)), item);
                 await this.activation.applyEffectiveTargets(failedActors);
                 await this.activation.applyState("idle");
                 await this.step(n);
@@ -294,14 +302,15 @@ export class Resolver {
         }
 
         if (damageParts && damageParts.result.length) {
-            const targetDamage = targets
-                .map(target => {
+            const targetDamage = await Promise.all(targets
+                .map(async target => {
+                    const points = await damageParts.appliedToActor(item, target.actor, effectiveTargets.map(t => t.actor).includes(target.actor));
                     return {
                         actor: target.actor,
                         token: target.token,
-                        points: damageParts.appliedToActor(item, target.actor, effectiveTargets.map(t => t.actor).includes(target.actor))
+                        points
                     };
-                });
+                }));
             const actualDamage = targetDamage.filter(t => t.points.damage > 0 || t.points.healing > 0 || t.points.temphp > 0);
 
             const pcDamage = actualDamage.filter(t => t.actor.hasPlayerOwner);
@@ -448,11 +457,11 @@ export class Resolver {
         const attackTarget = this.activation.attackTarget.actor;
 
         const attackOptions = { 
-            ignoredEffects: this.activation.cratedEffects,
+            ignoredEffects: this.activation.createdEffects,
             details: { attackTargetUuid: attackTarget.uuid }
         };
         const targetOptions = { 
-            ignoredEffects: this.activation.cratedEffects,
+            ignoredEffects: this.activation.createdEffects,
             details: { attackerUuid: attacker.uuid }
         };
 
@@ -468,6 +477,13 @@ export class Resolver {
 
             await triggerConditions(attackTarget, "target-is-hit.all", targetOptions);
             await triggerConditions(attackTarget, `target-is-hit.${attackType}`, targetOptions);
+        }
+
+        const item = this.activation.item;
+        const conditions = item.data.flags.wire?.conditions?.filter(c => c.condition === "this-attack-hits") ?? [];
+        for (let condition of conditions) {
+            const updater = makeUpdater(condition, null, item, attackTarget);
+            await updater?.process();
         }
     }
 

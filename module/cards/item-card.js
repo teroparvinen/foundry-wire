@@ -42,19 +42,19 @@ export class ItemCard {
     }
 
     static activateListeners(html) {
-        html.off("click", ".card-buttons button");
+        html.off("click", ".wire-item-card .card-buttons button");
 
-        html.on("click", ".card-buttons button", this._onChatCardAction.bind(this));
-        html.on("click", ".card-phases a", this._onChatCardAction.bind(this));
+        html.on("click", ".wire-item-card .card-buttons button", this._onChatCardAction.bind(this));
+        html.on("click", ".wire-item-card .card-phases a", this._onChatCardAction.bind(this));
 
-        html.on("click", ".card-phases .dice-total", function(event) {
+        html.on("click", ".wire-item-card .card-phases .dice-total", function(event) {
             const tip = event.target.closest('.roll-container').querySelector('.dice-tooltip');
             if ( !tip.classList.contains("expanded") ) $(tip).slideDown(200);
             else $(tip).slideUp(200);
             tip.classList.toggle("expanded");
         });
 
-        html.on("click", ".save-popup-toggle", function(event) {
+        html.on("click", ".wire-item-card .save-popup-toggle", function(event) {
             event.target.closest('.phase-saving-throws').classList.toggle('popup');
         });
     }
@@ -92,7 +92,7 @@ export class ItemCard {
                 const actor = fudgeToActor(fromUuid(actorUuid));
                 if (actor && (game.user.isGM || actor.isOwner)) {
                     const advantage = !!event.altKey;
-                    const disadvantage = !advantage && !!event.metaKey;
+                    const disadvantage = !advantage && (!!event.metaKey || !!event.ctrlKey);
                     const success = action === "wire-save-success";
                     const failure = action === "wire-save-failure";
                     activation.rollSave(actor, { advantage, disadvantage, success, failure });

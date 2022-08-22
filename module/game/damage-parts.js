@@ -1,5 +1,5 @@
-import { compositeDamageParts, localizedWarning } from "../utils.js";
-import { getDamageMultiplier } from "./effect-flags.js";
+import { compositeDamageParts, localizedWarning, stringMatchesVariant } from "../utils.js";
+import { getDamageMultiplier, getDamageOptions } from "./effect-flags.js";
 
 
 export class DamageParts {
@@ -168,7 +168,7 @@ export class DamageParts {
                 }
             })
             .filter(d => d.applicationType === applicationType && (!onlyUnavoidable || d.halving !== "none"))
-            .filter(d => !variant || d.variant.toLowerCase() === `[${variant}]`.toLowerCase());
+            .filter(d => !variant || stringMatchesVariant(d.variant, variant));
     }
 
     static fromData(data) {
@@ -208,7 +208,7 @@ export class DamageParts {
         return this.result.pr.reduce((prev, part) => prev + part.roll.total, 0);
     }
 
-    appliedToActor(item, actor, isEffective) {
+    async appliedToActor(item, actor, isEffective) {
         function halvingFactor(halving, isEffective) {
             if (!isEffective) {
                 if (halving == "full") return 1;
@@ -218,11 +218,17 @@ export class DamageParts {
             return 1;
         }
 
-        const components = this.result.map(pr => {
+        const components = await Promise.all(this.result.map(async pr => {
+            const { maximize, minimize } = getDamageOptions(item, actor, pr.part.type);
+
+            let roll = pr.roll;
+            if (maximize) { roll = await pr.roll.reroll({ maximize, async: true }); }
+            if (minimize) { roll = await pr.roll.reroll({ minimize, async: true }); }
+
             const mult = typeof pr.part.multiplier === "number" ? pr.part.multiplier : 1;
             const type = pr.part.type;
             const halving = pr.part.halving;
-            const points = Math.floor(pr.roll.total * mult);
+            const points = Math.floor(roll.total * mult);
 
             const caused = Math.floor(halvingFactor(halving, isEffective) * points);
 
@@ -245,7 +251,7 @@ export class DamageParts {
                 dr: caused - Math.floor(dr * caused),
                 dv: caused * dv - caused
             };
-        });
+        }));
         return components.reduce((prev, c) => {
             return {
                 damage: prev.damage + c.damage || 0,
@@ -307,10 +313,10 @@ function splitByOperator(terms) {
             if (t instanceof ParentheticalTerm) {
                 const pterms = Roll.parse(t.term);
                 const r = splitByOperator(pterms);
-                if (r.every(r => r instanceof NumericTerm || r instanceof OperatorTerm)) {
+                if (Array.isArray(r) && r.every(r => r instanceof NumericTerm || r instanceof OperatorTerm)) {
                     current.push(new NumericTerm({ number: Roll.fromTerms(r, { flavor: t.flavor }).evaluate({ async: false }).total }));
                 } else {
-                    r.flavor = t.flavor;
+                    r.options.flavor = t.flavor;
                     current.push(r);
                 }
             } else {

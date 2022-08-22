@@ -54,6 +54,29 @@ export function initAreaConditionHooks() {
                 }
             }
 
+            // Walked inside of
+            const areaEffects = currentTemplateIds
+                .map(t => canvas.templates.get(t)?.data.flags.wire?.masterEffectUuid)
+                .filter(u => u)
+                .map(uuid => fromUuid(uuid))
+                .filter(e => e);
+            for (let effect of areaEffects) {
+                const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith("moves-within-area")) ?? [];
+                for (let condition of conditions) {
+                    const item = fromUuid(effect.data.origin);
+
+                    let dispositionCheck = false;
+                    if (condition.condition.startsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
+                    else if (condition.condition.startsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
+                    else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
+
+                    if (dispositionCheck) {
+                        const updater = makeUpdater(condition, effect, item, actor);
+                        await updater?.process();
+                    }
+                }
+    }
+
             await tokenDoc.update({ "flags.wire.occupiedTemplateIds": currentTemplateIds }, { occupationUpdate: true });
         }
     });

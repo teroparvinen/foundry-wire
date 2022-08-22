@@ -480,3 +480,30 @@
 .concentration-card .taconcentrationrget-save-result.fail {
     color: red;
 }
+
+.round-change-card {
+    font-size: 20px;
+    text-align: center;
+    position: relative;
+    top: -9px;
+    font-weight: bold;
+}
+
+.turn-change-card {
+    position: relative;
+    top: -15px;
+    margin-bottom: -10px;
+    align-items: center;
+    gap: 15px;
+}
+
+.turn-change-card img {
+    width: 50px;
+    height: 50px;
+    flex: 0 50px;
+    border: 0;
+}
+
+.turn-change-card div {
+    font-size: 16px;
+}

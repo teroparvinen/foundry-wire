@@ -22,7 +22,13 @@
             "activate-reaction": "Take a reaction",
             "activate-action": "Take an action",
             "concentration-save-header": "Concentration Save DC {dc}",
-            "temporary-hp": "Temporary HP"
+            "temporary-hp": "Temporary HP",
+            "declare-roll-as-damage-targeted": "Declare as damage to targeted tokens",
+            "declare-roll-as-damage-selected": "Declare as damage to selected tokens",
+            "round": "Round {number}",
+            "turn": "{name}'s turn",
+            "ability-check": "Ability Check",
+            "use-save-for-check": "Match save"
         },
         "item": {
             "damage-none": "None on save/miss",
@@ -36,12 +42,15 @@
             "condition-creature-enters-area": "A creature first enters the area on its turn",
             "condition-creature-starts-turn-inside-area": "A creature starts its turn inside the area",
             "condition-creature-ends-turn-inside-area": "A creature ends its turn inside the area",
+            "condition-creature-moves-within-area": "A creature moves within the area",
             "condition-ally-enters-area": "An ally first enters the area on its turn",
             "condition-ally-starts-turn-inside-area": "An ally starts its turn inside the area",
             "condition-ally-ends-turn-inside-area": "An ally ends its turn inside the area",
+            "condition-ally-moves-within-area": "An ally moves within the area",
             "condition-enemy-enters-area": "An enemy first enters the area on its turn",
             "condition-enemy-starts-turn-inside-area": "An enemy starts its turn inside the area",
             "condition-enemy-ends-turn-inside-area": "An enemy ends its turn inside the area",
+            "condition-enemy-moves-within-area": "An enemy moves within the area",
             "condition-area-envelops-creature": "The area envelops a creature",
             "condition-area-envelops-ally": "The area envelops an ally",
             "condition-area-envelops-enemy": "The area envelops an enemy",
@@ -52,6 +61,8 @@
             "condition-end-of-turn-caster": "End of caster's turn",
             "condition-start-of-turn-target": "Start of target's turn",
             "condition-end-of-turn-target": "End of target's turn",
+            "condition-take-an-action": "As an action",
+            "condition-this-attack-hits": "This attack hits",
             "condition-target-attacks.all": "Make any attack",
             "condition-target-attacks.mwak": "Make a melee weapon attack",
             "condition-target-attacks.rwak": "Make a ranged weapon attack",
@@ -72,7 +83,9 @@
             "condition-target-is-hit.rwak": "Is hit by a ranged weapon attack",
             "condition-target-is-hit.msak": "Is hit by a melee spell attack",
             "condition-target-is-hit.rsak": "Is hit by a ranged spell attack",
-            "condition-take-an-action": "As an action",
+            "condition-takes-damage": "Takes damage",
+            "condition-saving-throw-completed": "Actor has made a saving throw",
+            "condition-skill-check-completed": "Actor has made a skill check",
             "update-apply-delayed": "Activate delayed damage and effects",
             "update-apply-overtime": "Activate over time damage and effects",
             "update-apply-effects-immediate": "Apply immediate effects",
@@ -90,7 +103,7 @@
             "application-phase": "Application phase",
             "application-phase-hint": "The conditions for the activation are determined in the effect application section below and on the main item sheet",
             "track-independent-duration": "Track duration independently from concentration or master effect",
-            "track-independent-duration-hint": "With this enabled, this effect will stay running until the end of its duration even if the caster drops the effect. Does not make sense without a duration given above."
+            "track-independent-duration-hint": "With this enabled, this effect will stay running until the end of its duration even if the caster drops the effect."
         },
         "select-variant": {
             "prompt": "Select a variant"
@@ -100,6 +113,10 @@
             "select-targets-for-effect": "Make a target selection",
             "damage-roll-has-no-parts": "There is no damage to roll!",
             "could-not-parse-bonus-damage": "Could not parse bonus damage!"
+        },
+        "keybindings": {
+            "next-turn": "Next turn",
+            "previous-turn": "Previous turn"
         }
     }
 }

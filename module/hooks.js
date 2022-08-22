@@ -37,6 +37,12 @@ export function initHooks() {
             await removeLinkedMessage(message.getFlag("wire", "masterMessageUuid"));
             await removeLinkedMessage(message.getFlag("wire", "gmMessageUuid"));
             await removeLinkedMessage(message.getFlag("wire", "playerMessageUuid"));
+
+            const templateUuid = message.data.flags.wire?.activation?.templateUuid;
+            const masterEffectUuid = message.data.flags.wire?.activation?.masterEffectUuid;
+            if (!masterEffectUuid && templateUuid) {
+                fromUuid(templateUuid)?.delete();
+            }
         }
     });
 
@@ -71,7 +77,7 @@ export function initHooks() {
             const casterUuid = effect.getFlag("wire", "castingActorUuid");
             if (casterUuid) {
                 const caster = fromUuid(casterUuid);
-                const effectUuids = caster.data.flags.wire?.turnUpdatedEffectUuids.filter(uuid => uuid !== effect.uuid);
+                const effectUuids = caster?.data.flags.wire?.turnUpdatedEffectUuids?.filter(uuid => uuid !== effect.uuid);
                 caster.setFlag("wire", "turnUpdatedEffectUuids", effectUuids);
             }
         }
@@ -101,9 +107,27 @@ export function initHooks() {
     Hooks.on("updateCombat", async (combat, change, options, userId) => {
         if (game.user.isGM) {
             const combatant = combat.combatants.get(combat.current.combatantId);
-            if (combatant?.isNPC) {
+
+            if (combatant?.isNPC && !combatant.isDefeated) {
                 combatant.token?.object?.control();
                 canvas.animatePan({ x: combatant.token?._object?.x, y: combatant.token?._object?.y })
+            }
+
+            if (change.round) {
+                ChatMessage.create({
+                    content: await renderTemplate("modules/wire/templates/round-change-card.hbs", { round: change.round }),
+                    whisper: null,
+                    emote: true,
+                    speaker: { alias: " " }
+                })
+            }
+            if (change.turn !== undefined && !combatant.isDefeated) {
+                ChatMessage.create({
+                    content: await renderTemplate("modules/wire/templates/turn-change-card.hbs", { token: combatant.token }),
+                    whisper: combatant.isNPC ? [game.user.id] : null,
+                    emote: true,
+                    speaker: { alias: " " }
+                })              
             }
         }
     });
@@ -114,6 +138,58 @@ export function initHooks() {
         }
     });
 
+    Hooks.on("getChatLogEntryContext", (html, entryOptions) => {
+        entryOptions.push(
+            {
+                name: "wire.ui.declare-roll-as-damage-targeted",
+                icon: '<i class="fas fa-tint"></i>',
+                condition: li => {
+                    const message = game.messages.get(li.data("messageId"));
+                    return message.isRoll && game.user.targets.size > 0;
+                },
+                callback: li => {
+                    const message = game.messages.get(li.data("messageId"));
+                    const actors = [...game.user.targets];
+                    declareDamage(message.roll, actors);
+                }
+            },
+            {
+                name: "wire.ui.declare-roll-as-damage-selected",
+                icon: '<i class="fas fa-tint"></i>',
+                condition: li => {
+                    const message = game.messages.get(li.data("messageId"));
+                    return message.isRoll && game.user.targets.size === 0 && canvas.tokens.controlled.length > 0;
+                },
+                callback: li => {
+                    const message = game.messages.get(li.data("messageId"));
+                    const actors = canvas.tokens.controlled;
+                    declareDamage(message.roll, actors);
+                }
+            }
+        );
+    });
+}
+
+async function declareDamage(roll, tokens) {
+    const damage = tokens.map(token => {
+        return {
+            actor: token.actor,
+            token,
+            points: { damage: roll.total }
+        }
+    });
+
+    const pcDamage = damage.filter(d => d.actor.hasPlayerOwner);
+    const npcDamage = damage.filter(d => !d.actor.hasPlayerOwner);
+
+    if (pcDamage.length) {
+        const pcDamageCard = new DamageCard(true, null, pcDamage);
+        await pcDamageCard.make();
+    }
+    if (npcDamage.length) {
+        const npcDamageCard = new DamageCard(false, null, npcDamage);
+        await npcDamageCard.make();
+    }
 }
 
 // Jump some hoops to safely clear linked messages even when clearing the chat log

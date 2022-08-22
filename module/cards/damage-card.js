@@ -101,18 +101,18 @@ export class DamageCard {
     }
 
     _getActorInfo(actor, points) {
-        const dmg = points.damage;
-        const healing = points.healing;
-        const tempHpReceived = points.temphp;
-        const di = points.di;
-        const dr = points.dr;
-        const dv = points.dv;
+        const dmg = points.damage || 0;
+        const healing = points.healing || 0;
+        const tempHpReceived = points.temphp || 0;
+        const di = points.di || 0;
+        const dr = points.dr || 0;
+        const dv = points.dv || 0;
 
         const hp = actor.data.data.attributes.hp.value;
         const effectiveMaxHp = actor.data.data.attributes.hp.max + actor.data.data.attributes.hp.tempmax;
         const tempHp = actor.data.data.attributes.hp.temp || 0;
         const newTempHp = Math.max(0, tempHp - dmg, tempHpReceived);
-        const newHp = Math.min(Math.max(0, hp + tempHp - dmg + healing), effectiveMaxHp);
+        const newHp = Math.min(Math.max(0, Math.min(hp + tempHp - dmg, hp)) + healing, effectiveMaxHp);
         const hpDmg = Math.max(hp - newHp, 0);
         const tempHpDmg = Math.max(tempHp - newTempHp, 0);
         const hpHeal = Math.max(newHp - hp, 0);

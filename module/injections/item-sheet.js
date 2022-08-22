@@ -3,6 +3,8 @@ import { injectConditionList } from "./condition-list.js";
 
 export function initItemSheetHooks() {
     Hooks.on("renderItemSheet5e", async (app, html, data) => {
+        const disabled = app.isEditable ? "" : "disabled";
+
         const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
 
         const parts = app.object.data.data.damage?.parts || [];
@@ -13,12 +15,12 @@ export function initItemSheetHooks() {
             const halving = wireParts[i]?.halving || parts[i]["halving"];
             const application = wireParts[i]?.application || parts[i]["application"];
             const fields = `
-                <select name="data.damage.parts.${i}.halving">
+                <select name="data.damage.parts.${i}.halving" ${disabled}>
                     <option value="none">${i18n("wire.item.damage-none")}</option>
                     <option value="half" ${selected(halving, "half")}>${i18n("wire.item.damage-half")}</option>
                     <option value="full" ${selected(halving, "full")}>${i18n("wire.item.damage-full")}</option>
                 </select>
-                <select name="data.damage.parts.${i}.application">
+                <select name="data.damage.parts.${i}.application" ${disabled}>
                     <option value="immediate">${i18n("wire.item.application-immediate")}</option>
                     <option value="delayed" ${selected(application, "delayed")}>${i18n("wire.item.application-delayed")}</option>
                     <option value="overtime" ${selected(application, "overtime")}>${i18n("wire.item.application-overtime")}</option>
@@ -30,6 +32,21 @@ export function initItemSheetHooks() {
         html.find('.damage-parts option[value="temphp"]').each(function() {
             if ($(this).text() === "Healing (Temporary)") $(this).text("Healing (Temp)");
         });
+
+        const checkedAbility = app.object.data.flags.wire?.checkedAbility;
+        const abilityOptions = Object.entries(CONFIG.DND5E.abilities).map(a => `<option value="${a[0]}" ${selected(checkedAbility, a[0])}>${a[1]}</option>`)
+        html.find('.damage-parts').nextAll('.input-select').first().after(`
+            <div class="form-group input-select">
+                <label>${i18n("wire.ui.ability-check")}</label>
+                <div class="form-fields">
+                    <select name="flags.wire.checkedAbility" ${disabled}>
+                        <option>${i18n("wire.ui.use-save-for-check")}</option>
+                        ${abilityOptions}
+                    </select>
+                    <div style="flex: 4"></div>
+                </div>
+            </div>
+        `);
 
         await injectConditionList(app.object, html, '.tab.details', "item");
     });

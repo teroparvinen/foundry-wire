@@ -128,11 +128,13 @@ export function getAttackRollResultType(roll) {
 }
 
 export function getSpeaker(actor) {
-    const speaker = ChatMessage.getSpeaker({ actor });
-    const token = getActorToken(actor);
-    if (token)
-        speaker.alias = token.name;
-    return speaker;
+    if (actor) {
+        const speaker = ChatMessage.getSpeaker({ actor });
+        const token = getActorToken(actor);
+        if (token)
+            speaker.alias = token.name;
+        return speaker;
+    }
 }
 
 export function copyEffectChanges(effect) {
@@ -287,7 +289,15 @@ export function setTemplateTargeting(state) {
 
 export function damagePartMatchesVariant(formula, variant) {
     const result = formula.match(RollTerm.FLAVOR_REGEXP);
-    return (result && result.length && result[0].toLowerCase() === `[${variant.toLowerCase()}]`);
+    return (result && result.length && result[0].toLowerCase().includes(variant.toLowerCase()));
+}
+
+export function effectMatchesVariant(effect, variant) {
+    return effect?.data.label.toLowerCase().includes(variant?.toLowerCase());
+}
+
+export function stringMatchesVariant(str, variant) {
+    return str.toLowerCase().includes(variant.toLowerCase());
 }
 
 export function isActorEffect(effect) {
@@ -304,7 +314,7 @@ export function isEffectEnabled(effect) {
 
 export function compositeDamageParts(item) {
     const itemParts = item.data.data.damage?.parts || [];
-    const wireParts = item.data.flags.wire?.damageParts;
+    const wireParts = item.data.flags.wire?.damageParts || [];
 
     return itemParts.map((parts, i) => {
         return {
@@ -314,4 +324,22 @@ export function compositeDamageParts(item) {
             application: wireParts[i]?.application
         };
     });
+}
+
+export function playAutoAnimation(...args) {
+    if (typeof AutoAnimations !== "undefined") {
+        AutoAnimations.playAnimation(...args);
+    }
+}
+
+export function addTokenFX(token, effect) {
+    if (typeof TokenMagic !== "undefined") {
+        TokenMagic.addFilters(token, effect);
+    }
+}
+
+export function deleteTokenFX(token, effect) {
+    if (typeof TokenMagic !== "undefined") {
+        TokenMagic.deleteFilters(token, effect);
+    }
 }
