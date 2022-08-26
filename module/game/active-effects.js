@@ -27,6 +27,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                     sourceEffectUuid: effect.uuid,
                     conditions: copyConditions(effect),
                     activationConfig: config,
+                    blocksAreaConditions: effect.data.flags.wire?.blocksAreaConditions,
                     masterEffectUuid: (masterEffect && !effect.data.flags.wire?.independentDuration) ? masterEffect.uuid : null
                 },
                 core: {

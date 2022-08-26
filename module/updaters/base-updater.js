@@ -16,8 +16,8 @@ export class Updater {
     }
 
     async process() {
-        const flow = new Flow(this.item, this.applicationType, this.flow, { allowMacro: this.allowFlowMacro });
+        const flow = new Flow(this.item, this.applicationType, this.flow, { allowMacro: this.allowFlowMacro, isConditionTriggered: true });
         const condition = foundry.utils.mergeObject(this.condition, this.details ? { details: this.details } : {});
-        await Activation.createConditionMessage(this.condition, this.item, this.effect, flow, { externalTargetActor: this.externalTargetActor });
+        await Activation._createConditionMessage(this.condition, this.item, this.effect, flow, { externalTargetActor: this.externalTargetActor });
     }
 }

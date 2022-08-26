@@ -6,23 +6,21 @@ import { fromUuid, isCastersTurn } from "./utils.js";
 
 export function makeUpdater(condition, effect, item, externalTargetActor = null, details = null) {
     switch (condition.update) {
+    case "apply-immediate":
     case "apply-delayed":
     case "apply-overtime":
         return new ApplySecondaryUpdater(condition, effect, item, externalTargetActor, details);
-        break;
     case "apply-effects-immediate":
     case "apply-effects-delayed":
     case "apply-effects-overtime":
         return new ApplyEffectsUpdater(condition, effect, item, externalTargetActor, details);
-        break;
     case "end":
         return new EndUpdater(condition, effect, item, externalTargetActor, details);
-        break;
     case "end-on-save":
+    case "end-on-check":
         return new EndOnSaveUpdater(condition, effect, item, externalTargetActor, details);
-        break;
     default:
-        console.warn("MISSING UPDATER", update.condition);
+        console.warn("MISSING UPDATER", condition.update);
     }
 }
 

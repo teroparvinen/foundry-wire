@@ -57,16 +57,16 @@ async function onItemRoll(wrapped, options, event) {
     
         if (message) {
             const activation = new Activation(message);
-            await activation.initialize(item, "immediate", flow);
+            await activation._initialize(item, flow);
     
             if (item.hasAreaTarget && !template) {
                 templateInfo = { config, message };
             } else {
                 await activation.assignConfig(config);
                 if (template) {
-                    await activation.assignTemplate(template);
+                    await activation._assignTemplate(template);
                 }
-                await activation.activate();
+                await activation._activate();
             }
     
         }
@@ -80,10 +80,19 @@ function onTemplatePreviewListeners(wrapped, initialLayer) {
 
     const mdHandler = function(event) {
         Hooks.once("createMeasuredTemplate", async (templateDoc, data, user) => {
+            // Many modules assume MeasuredTemplate.refresh to only happen once it has already been drawn
+            // This hack delays updates which would trigger the refresh until the template has been drawn at least once
+            while (!templateDoc.object?.controlIcon?.renderable) {
+                await new Promise(resolve => {
+                    console.log("wait");
+                    setTimeout(() => { resolve(); }, 100);
+                });
+            }
+
             const activation = new Activation(templateInfo.message);
             await activation.assignConfig(templateInfo.config);
-            await activation.activate();
-            await activation.assignTemplate(templateDoc);
+            await activation._activate();
+            await activation._assignTemplate(templateDoc);
             templateInfo = null;
             canvas.stage.off("mousedown", mdHandler);
             setTemplateTargeting(false);
@@ -179,8 +188,14 @@ function onEscape(context) {
     }
 
     // Return to token controls
-    if (ui.controls.activeControl !== "token") {
+    if (ui.controls.activeControl !== "token" || ui.controls.activeTool !== "select") {
+        if (game.user.isGM && canvas.activeLayer && canvas.activeLayer !== canvas.tokens) {
+            canvas.activeLayer.deactivate();
+        }
+
         canvas.tokens.activate();
+        ui.controls.control.activeTool = "select";
+        setTimeout(() => { ui.controls.render(); }, 1);
         return true;
     }
 

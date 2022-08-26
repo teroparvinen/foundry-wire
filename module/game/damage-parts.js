@@ -315,6 +315,10 @@ function splitByOperator(terms) {
                 const r = splitByOperator(pterms);
                 if (Array.isArray(r) && r.every(r => r instanceof NumericTerm || r instanceof OperatorTerm)) {
                     current.push(new NumericTerm({ number: Roll.fromTerms(r, { flavor: t.flavor }).evaluate({ async: false }).total }));
+                } else if (Array.isArray(r) && r.length == 1 && r[0] instanceof Die) {
+                    const die = r[0];
+                    die.options.flavor = t.flavor;
+                    current.push(die);
                 } else {
                     r.options.flavor = t.flavor;
                     current.push(r);

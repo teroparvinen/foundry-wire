@@ -312,6 +312,11 @@ export function isEffectEnabled(effect) {
     return !effect.isSuppressed && !effect.data.disabled;
 }
 
+export function areAreaConditionsBlockedForActor(item, actor) {
+    const itemUuid = item.uuid;
+    return !!actor.effects.find(e => isEffectEnabled(e) && e.data.origin === itemUuid && e.data.flags.wire?.blocksAreaConditions);
+}
+
 export function compositeDamageParts(item) {
     const itemParts = item.data.data.damage?.parts || [];
     const wireParts = item.data.flags.wire?.damageParts || [];
@@ -342,4 +347,8 @@ export function deleteTokenFX(token, effect) {
     if (typeof TokenMagic !== "undefined") {
         TokenMagic.deleteFilters(token, effect);
     }
+}
+
+export function isActorDefeated(actor) {
+    return actor.effects.some(e => e.getFlag("core", "statusId") === CONFIG.Combat.defeatedStatusId);
 }

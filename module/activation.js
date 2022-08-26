@@ -1,21 +1,23 @@
 import { runInQueue } from "./action-queue.js";
 import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
+import { itemRollFlow } from "./flows/item-roll.js";
 import { DamageParts } from "./game/damage-parts.js";
+import { getAbilityCheckOptions, getSaveOptions } from "./game/effect-flags.js";
 import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
 import { wireSocket } from "./socket.js";
 import { determineUpdateTargets } from "./updater-utility.js";
-import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, i18n, triggerConditions } from "./utils.js";
+import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, i18n, isActorDefeated, triggerConditions } from "./utils.js";
 
 export class Activation {
-    static async initializeGmMessage(gmMessage, masterMessage) {
+    static async _initializeGmMessage(gmMessage, masterMessage) {
         await masterMessage.setFlag("wire", "gmMessageUuid", gmMessage.uuid);
         await gmMessage.setFlag("wire", "masterMessageUuid", masterMessage.uuid);
         return new Activation(gmMessage);
     }
 
-    static async createConditionMessage(
+    static async _createConditionMessage(
         condition, item, effect, flow, 
         { revealToPlayers = false, externalTargetActor = null, suppressPlayerMessage = false, speakerIsEffectOwner = false } = {}
     ) {
@@ -30,11 +32,28 @@ export class Activation {
             const activation = new Activation(message);
 
             if (item.hasPlayerOwner && !revealToPlayers && !suppressPlayerMessage) {
-                activation.createPlayerMessage();
+                activation._createPlayerMessage();
             }
 
-            await activation.initialize(item, flow.applicationType, flow, condition, effect, externalTargetActor);
-            await activation.activate();
+            await activation._initialize(item, flow, { condition, sourceEffect: effect, externalEffectTarget: externalTargetActor });
+            await activation._activate();
+        }
+    }
+
+    async spawnActivation(applicationType, config) {
+        const item = this.item;
+        const messageData = await item.displayCard({ createMessage: false });
+        messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
+        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
+        const message = await ChatMessage.create(messageData);
+
+        if (message) {
+            const activation = new Activation(message);
+            const flow = new Flow(item, applicationType, itemRollFlow);
+
+            await activation._initialize(item, flow, { isSecondary: true });
+            await activation.assignConfig(config);
+            await activation._activate();
         }
     }
 
@@ -91,6 +110,8 @@ export class Activation {
     get effectiveTargets() { return this.effectiveTargetUuids?.map(uuid => this._targetRecord(uuid)) ?? []; }
     get attackTarget() { return this._targetRecord(this.attackTargetUuid); }
 
+    get abilityToCheckForSave() { return this.condition?.update === "end-on-check" ? (this.item.data.flags.wire?.checkedAbility || this.item.data.data.save?.ability) : null; }
+
     _targetRecord(uuid) {
         if (uuid) {
             const actor = fudgeToActor(fromUuid(uuid));
@@ -109,7 +130,7 @@ export class Activation {
         }
     }
 
-    async getChatTemplateData() {
+    async _getChatTemplateData() {
         const attackRoll = this.attackRoll;
         const attackRollTooltip = await attackRoll?.getTooltip();
         const attackRollResultType = getAttackRollResultType(attackRoll);
@@ -140,22 +161,19 @@ export class Activation {
             pcTargets: this.pcTargets,
             singleTarget: this.singleTarget,
             condition: this.localizedCondition,
-            customHtml: this.data.customHtml
+            customHtml: this.data.customHtml,
+            abilityToCheckForSave: this.abilityToCheckForSave
         }
     }
 
-    async initialize(item, applicationType, flow, condition = null, sourceEffect = null, externalEffectTarget = null) {
+    async _initialize(item, flow, { condition = null, sourceEffect = null, externalEffectTarget = null, isSecondary = false } = {}) {
         foundry.utils.setProperty(this.data, "itemUuid", item.uuid);
-        foundry.utils.setProperty(this.data, "applicationType", applicationType);
-
-        const flowSteps = flow.isEvaluated ? flow.evaluatedSteps : flow.evaluate();
-        console.log("FLOW STEPS", flowSteps);
-        foundry.utils.setProperty(this.data, "flowSteps", flowSteps);
-        this.flow = flow;
+        foundry.utils.setProperty(this.data, "applicationType", flow.applicationType);
 
         if (condition && sourceEffect) {
             foundry.utils.setProperty(this.data, "condition", condition);
             foundry.utils.setProperty(this.data, "sourceEffectUuid", sourceEffect.uuid);
+            foundry.utils.setProperty(this.data, "isSecondary", true);
 
             foundry.utils.setProperty(this.data, "config", sourceEffect.data.flags.wire?.activationConfig);
             if (sourceEffect.data.flags.wire?.isMasterEffect) {
@@ -170,11 +188,21 @@ export class Activation {
             foundry.utils.setProperty(this.data, "condition", condition);
             const targetUuids = determineUpdateTargets(item, sourceEffect, condition, externalEffectTarget)?.map(a => a.uuid);
             foundry.utils.setProperty(this.data, "targetUuids", targetUuids);
+        } else {
+            if (isSecondary) {
+                foundry.utils.setProperty(this.data, "isSecondary", true);
+            }
         }
-        this.update();
+
+        const flowSteps = flow.isEvaluated ? flow.evaluatedSteps : flow.evaluate();
+        console.log("FLOW STEPS", flowSteps);
+        foundry.utils.setProperty(this.data, "flowSteps", flowSteps);
+        this.flow = flow;
+
+        this._update();
     }
 
-    getCustomFlowStepHandlers() {
+    _getCustomFlowStepHandlers() {
         if (!this.flow) {
             this.flow = new Flow(this.item, this.applicationType);
             this.flow.evaluate();
@@ -183,7 +211,7 @@ export class Activation {
         return this.flow.customSteps;
     }
 
-    async update() {
+    async _update() {
         if (game.user.isGM || this.message.isAuthor) {
             await this.message.setFlag("wire", "activation", this.data);
         } else {
@@ -191,13 +219,13 @@ export class Activation {
         }
     }
 
-    async updateCard() {
+    async _updateCard() {
         // If a player calls this on a view that has a player view (which is managed by the GM), bail out
         if (!game.user.isGM && (this.message.getFlag("wire", "playerMessageUuid") || !this.message.isAuthor)) {
             return;
         }
 
-        const isSecondary = this.data.sourceEffectUuid;
+        const isSecondary = this.data.isSecondary;
 
         // If this is called as a GM on a player roll, you actually want to update the GM card
         const gmMessageUuid = this.message.getFlag("wire", "gmMessageUuid");
@@ -220,7 +248,7 @@ export class Activation {
         }
     }
 
-    async createPlayerMessage() {
+    async _createPlayerMessage() {
         const playerMessageData = {
             content: await ItemCard.renderHtml(this.item, this, { isPlayerView: true }),
             flags: {
@@ -239,25 +267,25 @@ export class Activation {
         ui.chat.scrollBottom();
     }
 
-    async activate() {
+    async _activate() {
         const resolver = new Resolver(this);
         runInQueue(async () => { await resolver.start(); });
     }
 
-    async step() {
+    async _step() {
         const resolver = new Resolver(this);
         await runInQueue(async () => { await resolver.step(); });
     }
 
     async updateFlowSteps(flowSteps) {
         foundry.utils.setProperty(this.data, 'flowSteps', flowSteps);
-        this.update();
+        await this._update();
     }
 
-    async assignTemplate(template) {
+    async _assignTemplate(template) {
         await template.setFlag("wire", "activationMessageId", this.message.id);
         foundry.utils.setProperty(this.data, "templateUuid", template.uuid);
-        await this.update();
+        await this._update();
 
         if (this.masterEffect) {
             await this.masterEffect.setFlag("wire", "templateUuid", template.uuid);
@@ -265,9 +293,9 @@ export class Activation {
         }
     }
 
-    async assignMasterEffect(effect) {
+    async _assignMasterEffect(effect) {
         foundry.utils.setProperty(this.data, "masterEffectUuid", effect.uuid);
-        await this.update();
+        await this._update();
 
         if (this.template) {
             await effect.setFlag("wire", "templateUuid", this.templateUuid);
@@ -280,17 +308,17 @@ export class Activation {
 
     async registerCreatedEffects(effects) {
         await foundry.utils.setProperty(this.data, "createdEffectUuids", [...(this.data.createdEffectUuids || []), ...effects.map(e => e.uuid)]);
-        await this.update();
+        await this._update();
     }
 
     async registerAttackOptions(options) {
         await foundry.utils.setProperty(this.data, "attack.options", options);
-        await this.update();
+        await this._update();
     }
 
     async assignTargets(targets) {
-        foundry.utils.setProperty(this.data, "targetUuids", targets.map(t => t.uuid));
-        await this.update();
+        foundry.utils.setProperty(this.data, "targetUuids", targets.filter(a => !isActorDefeated(a)).map(t => t.uuid));
+        await this._update();
     }
 
     async assignDefaultTargets(makeEffective) {
@@ -304,7 +332,7 @@ export class Activation {
         } else if (this.allTargets.length) {
             if (makeEffective) { await this.applyEffectiveTargets(this.allTargets.map(t => t.actor)); }
         } else if (game.user.targets.size) {
-            const actors = [...game.user.targets].map(t => t.actor);
+            const actors = [...game.user.targets].map(t => t.actor).filter(a => !isActorDefeated(a));
             await apply(actors);
         }
     }
@@ -312,64 +340,64 @@ export class Activation {
     async clearTargets() {
         await this.assignTargets([]);
         await this.applyEffectiveTargets([]);
-        this.update();
+        await this._update();
     }
 
     async assignConfig(config) {
         foundry.utils.setProperty(this.data, "config", config);
-        await this.update();
+        await this._update();
     }
 
     async assignCustomHtml(html) {
         foundry.utils.setProperty(this.data, "customHtml", html);
-        await this.update();
-        await this.updateCard();
+        await this._update();
+        await this._updateCard();
     }
 
     async applyEffectiveTargets(targets) {
-        foundry.utils.setProperty(this.data, "effectiveTargetUuids", targets.map(t => t.uuid));
-        await this.update();
+        foundry.utils.setProperty(this.data, "effectiveTargetUuids", targets.filter(a => !isActorDefeated(a)).map(t => t.uuid));
+        await this._update();
     }
 
     async applyState(state) {
         console.log("STATE", state, "for message", this.message.id);
         foundry.utils.setProperty(this.data, "state", state);
-        await this.update();
-        await this.updateCard();
+        await this._update();
+        await this._updateCard();
         await wireSocket.executeForOthers("activationUpdated", this.message.uuid);
     }
 
     async applyAttackTarget(targetActor) {
         foundry.utils.setProperty(this.data, "attack.targetActorUuid", targetActor.uuid);
-        await this.update();
+        await this._update();
     }
 
     async applyAttackRoll(roll) {
         foundry.utils.setProperty(this.data, "attack.roll", roll.toJSON());
-        await this.update();
+        await this._update();
     }
 
     async applyAttackResult(result) {
         foundry.utils.setProperty(this.data, "attack.result", result ? "hit" : "miss");
-        await this.update();
-        await this.step();
+        await this._update();
+        await this._step();
     }
 
     async clearAttack() {
         foundry.utils.setProperty(this.data, "attack.roll", null);
         foundry.utils.setProperty(this.data, "attack.result", null);
         foundry.utils.setProperty(this.data, "attack.targetActorUuid", null);
-        await this.update();
+        await this._update();
     }
 
     async applyDamageRollParts(damageParts) {
         foundry.utils.setProperty(this.data, "damage.parts", damageParts.toJSON());
-        await this.update();
+        await this._update();
     }
 
     async clearDamage() {
         foundry.utils.setProperty(this.data, "damage.parts", null);
-        await this.update();
+        await this._update();
     }
 
     async applySave(actor, roll) {
@@ -378,47 +406,57 @@ export class Activation {
             saves.push({ actorUuid: actor.uuid, roll: roll.toJSON(), isPC: actor.hasPlayerOwner });
             foundry.utils.setProperty(this.data, "saves", saves);
 
-            await this.update();
-            await this.updateCard();
+            await this._update();
+            await this._updateCard();
     
-            await this.step();
+            await this._step();
             wireSocket.executeForOthers("activationUpdated", this.message.uuid);
         }
     }
 
     async clearSaves() {
         foundry.utils.setProperty(this.data, "saves", []);
-        await this.update();
+        await this._update();
     }
 
-    async confirmTargets() {
+    async _confirmTargets() {
         await this.applyState("targets-confirmed");
-        await this.step();
+        await this._step();
     }
 
-    async activateAction() {
+    async _activateAction() {
         await this.applyState("action-trigger-activated");
-        await this.step();
+        await this._step();
     }
 
-    async rollDamage() {
+    async _rollDamage() {
         if (this.data.state === "waiting-for-attack-damage-roll") {
             await this.applyState("rolling-attack-damage");
         } else if (this.data.state === "waiting-for-save-damage-roll") {
             await this.applyState("rolling-save-damage");
         }
-        await this.step();
+        await this._step();
     }
 
-    async rollSave(actor, options = {}) {
+    async _rollSave(actor, options = {}) {
         const spellDC = this.item.data.data.save.dc;
-        if (options.success || options.failure) {
-            const formula = options.success ? `1d20min${spellDC}` : `1d20max${spellDC-1}`;
+        const usedSave = this.item.data.data.save.ability;
+        const usedCheck = this.abilityToCheckForSave;
+
+        const actorOptions = usedCheck ? getAbilityCheckOptions(actor, usedCheck) : getSaveOptions(actor, usedSave);
+        const rollOptions = foundry.utils.mergeObject(actorOptions, options);
+
+        if (rollOptions.success || rollOptions.failure) {
+            const formula = rollOptions.success ? `1d20min${spellDC}` : `1d20max${spellDC-1}`;
             const roll = await new CONFIG.Dice.D20Roll(formula, {}, { configured: true }).evaluate({ async: true });
-            await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.applySave(actor, roll);
         } else {
-            const roll = await actor.rollAbilitySave(this.item.data.data.save.ability, foundry.utils.mergeObject(options, { chatMessage: false, fastForward: true }));
+            let roll;
+            if (usedCheck) {
+                roll = await actor.rollAbilityTest(usedCheck, foundry.utils.mergeObject(rollOptions, { chatMessage: false, fastForward: true }));
+            } else {
+                roll = await actor.rollAbilitySave(usedSave, foundry.utils.mergeObject(rollOptions, { chatMessage: false, fastForward: true }));
+            }
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.applySave(actor, roll);
         }

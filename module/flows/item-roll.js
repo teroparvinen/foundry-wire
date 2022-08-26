@@ -28,55 +28,6 @@ export function itemRollFlow() {
         )
     )
     
-    const immediate = this.sequence(
-        this.hasDuration(
-            this.hasConcentration(
-                this.applyConcentration()
-            ),
-            this.hasAreaTarget(
-                this.applyDurationEffect()
-            )
-        ),
-        this.pick(
-            this.isTokenTargetable(
-                this.sequence(
-                    this.applySelectedTargets(),
-                    this.pick(
-                        this.isAttack(
-                            this.performAttackRoll(
-                                this.hasDamage(
-                                    this.performAttackDamageRoll(
-                                        this.applyDamage(
-                                            this.applyEffects(
-                                                this.attackCompleted()
-                                            )
-                                        )
-                                    )
-                                ),
-                                this.applyEffects(
-                                    this.attackCompleted()
-                                )
-                            )
-                        ),
-                        this.otherwise(
-                            nonAttack
-                        )
-                    )
-                )
-            ),
-            this.hasAreaTarget(
-                this.hasDamageOrEffects(
-                    this.confirmTargets(
-                        nonAttack
-                    )
-                )
-            ),
-            this.isSelfTarget(
-                friendlyTarget
-            )
-        )
-    )
-
     const secondary = this.pick(
         this.hasSaveableApplications(
             this.performSavingThrow(
@@ -102,6 +53,60 @@ export function itemRollFlow() {
             )
         ),
         this.applyEffects()
+    )
+
+    const immediate = this.pick(
+        this.isConditionTriggered(
+            secondary
+        ),
+        this.sequence(
+            this.hasDuration(
+                this.hasConcentration(
+                    this.applyConcentration()
+                ),
+                this.hasAreaTarget(
+                    this.applyDurationEffect()
+                )
+            ),
+            this.pick(
+                this.isTokenTargetable(
+                    this.sequence(
+                        this.applySelectedTargets(),
+                        this.pick(
+                            this.isAttack(
+                                this.performAttackRoll(
+                                    this.hasDamage(
+                                        this.performAttackDamageRoll(
+                                            this.applyDamage(
+                                                this.applyEffects(
+                                                    this.attackCompleted()
+                                                )
+                                            )
+                                        )
+                                    ),
+                                    this.applyEffects(
+                                        this.attackCompleted()
+                                    )
+                                )
+                            ),
+                            this.otherwise(
+                                nonAttack
+                            )
+                        )
+                    )
+                ),
+                this.hasAreaTarget(
+                    this.hasDamageOrEffects(
+                        this.confirmTargets(
+                            nonAttack
+                        )
+                    )
+                ),
+                this.isSelfTarget(
+                    friendlyTarget
+                )
+            )
+        )
     )
 
     return this.pick(

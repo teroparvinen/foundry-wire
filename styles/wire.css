@@ -487,6 +487,7 @@
     position: relative;
     top: -9px;
     font-weight: bold;
+    pointer-events: none;
 }
 
 .turn-change-card {
@@ -495,6 +496,7 @@
     margin-bottom: -10px;
     align-items: center;
     gap: 15px;
+    pointer-events: none;
 }
 
 .turn-change-card img {

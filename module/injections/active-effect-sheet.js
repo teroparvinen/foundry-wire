@@ -5,6 +5,7 @@ export function initActiveEffectSheetHooks() {
     Hooks.on("renderActiveEffectConfig", async (app, html, data) => {
         const effect = app.object;
         const applyOnSaveOrMiss = effect.getFlag("wire", "applyOnSaveOrMiss");
+        const blocksAreaConditions = effect.getFlag("wire", "blocksAreaConditions");
         const applicationType = effect.getFlag("wire", "applicationType");
         const checked = (value) => { return value ? "checked" : "" };
         const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
@@ -12,6 +13,11 @@ export function initActiveEffectSheetHooks() {
             <div class="form-group">
                 <label>${i18n("wire.active-effect.apply-on-save-or-miss")}</label>
                 <input type="checkbox" name="flags.wire.applyOnSaveOrMiss" ${checked(applyOnSaveOrMiss)}>
+            </div>
+            <div class="form-group">
+                <label>${i18n("wire.active-effect.blocks-area-conditions")}</label>
+                <input type="checkbox" name="flags.wire.blocksAreaConditions" ${checked(blocksAreaConditions)}>
+                <div class="hint">${i18n("wire.active-effect.blocks-area-conditions-hint")}</div>
             </div>
             <div class="form-group">
                 <label>${i18n("wire.active-effect.application-phase")}</label>

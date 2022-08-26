@@ -8,6 +8,7 @@
             "apply-damage": "Apply",
             "undo-damage": "Undo",
             "saving-throw-heading": "{ability} Saving Throw",
+            "ability-check-heading": "{ability} Check",
             "roll-all-saves": "Roll all",
             "roll-npc-saves": "Roll NPCs",
             "manual-saves": "Force success or failure",
@@ -86,6 +87,7 @@
             "condition-takes-damage": "Takes damage",
             "condition-saving-throw-completed": "Actor has made a saving throw",
             "condition-skill-check-completed": "Actor has made a skill check",
+            "update-apply-immediate": "Activate immediate damage and effects",
             "update-apply-delayed": "Activate delayed damage and effects",
             "update-apply-overtime": "Activate over time damage and effects",
             "update-apply-effects-immediate": "Apply immediate effects",
@@ -93,13 +95,13 @@
             "update-apply-effects-overtime": "Apply over time effects",
             "update-end": "End the effect",
             "update-end-on-save": "End the effect on a save",
-            "update-attack-target": "Make an attack against the target",
-            "update-target-and-attack": "Select a target and make an attack",
-            "move-template": "Move the template",
-            "splash-delayed": "Splash delayed effects in a radius"
+            "update-end-on-check": "End the effect on an ability check",
+            "update-splash-delayed": "Splash delayed effects in a radius"
         },
         "active-effect": {
             "apply-on-save-or-miss": "Apply the effect if the save succeeds or the attack misses",
+            "blocks-area-conditions": "Prevent area conditions from triggering",
+            "blocks-area-conditions-hint": "While this effect is active on an actor, area based conditions on the item itself will not trigger for this actor.",
             "application-phase": "Application phase",
             "application-phase-hint": "The conditions for the activation are determined in the effect application section below and on the main item sheet",
             "track-independent-duration": "Track duration independently from concentration or master effect",

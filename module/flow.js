@@ -2,11 +2,12 @@ import { itemRollFlow } from "./flows/item-roll.js";
 import { hasConcentration, hasDamageOfType, hasDuration, hasEffectsOfType, hasSaveableApplicationsOfType, isAttack, isSave, isSelfTarget, isTokenTargetable } from "./item-properties.js";
 
 export class Flow {
-    constructor(item, applicationType, evaluator, { allowMacro = true } = {}) {
+    constructor(item, applicationType, evaluator, { allowMacro = true, isConditionTriggered = false } = {}) {
         this.item = item;
         this.applicationType = applicationType;
         this.evaluator = evaluator;
         this.allowMacro = allowMacro;
+        this.isConditionTrigger = isConditionTriggered;
 
         const macroCommand = item?.data.flags.itemacro?.macro?.data.command?.trim();
         if (macroCommand) {
@@ -117,6 +118,12 @@ export class Flow {
 
     isAttack() {
         if (isAttack(this.item)) {
+            return this.pick(...arguments);
+        }
+    }
+
+    isConditionTriggered() {
+        if (this.isConditionTrigger) {
             return this.pick(...arguments);
         }
     }

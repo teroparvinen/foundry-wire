@@ -217,7 +217,7 @@ export class Resolver {
                 await this.step(n);
             } else {
                 if (this.activation.message.user === game.user && this.activation.pcTargets.length) {
-                    this.activation.createPlayerMessage();
+                    this.activation._createPlayerMessage();
                 }
                 await this.activation.applyState("waiting-for-saves");
             }
@@ -274,7 +274,7 @@ export class Resolver {
             await this.activation.applyState(next);
             await this.step(n);
         } else if (this.activation.state && !this.knownStates.includes(this.activation.state)) {
-            const handlers = this.activation.getCustomFlowStepHandlers();
+            const handlers = this.activation._getCustomFlowStepHandlers();
             const handler = handlers[this.activation.state];
             if (handler) {
                 if ((handler.runAsRoller && isOriginator) || (!handler.runAsRoller && isGM)) {
@@ -387,7 +387,7 @@ export class Resolver {
         if (effect) {
             await effect.setFlag("wire", "isConcentration", true);
             await effect.setFlag("wire", "conditions", this.activation.item.getFlag("wire", "conditions"));
-            await this.activation.assignMasterEffect(effect);
+            await this.activation._assignMasterEffect(effect);
         }
     }
 
@@ -415,7 +415,7 @@ export class Resolver {
 
         if (effect) {
             await effect.setFlag("wire", "conditions", this.activation.item.getFlag("wire", "conditions"));
-            await this.activation.assignMasterEffect(effect);
+            await this.activation._assignMasterEffect(effect);
         }
     }
 
@@ -477,13 +477,13 @@ export class Resolver {
 
             await triggerConditions(attackTarget, "target-is-hit.all", targetOptions);
             await triggerConditions(attackTarget, `target-is-hit.${attackType}`, targetOptions);
-        }
 
-        const item = this.activation.item;
-        const conditions = item.data.flags.wire?.conditions?.filter(c => c.condition === "this-attack-hits") ?? [];
-        for (let condition of conditions) {
-            const updater = makeUpdater(condition, null, item, attackTarget);
-            await updater?.process();
+            const item = this.activation.item;
+            const conditions = item.data.flags.wire?.conditions?.filter(c => c.condition === "this-attack-hits") ?? [];
+            for (let condition of conditions) {
+                const updater = makeUpdater(condition, null, item, attackTarget);
+                await updater?.process();
+            }
         }
     }
 

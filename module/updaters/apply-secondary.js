@@ -3,9 +3,15 @@ import { Updater } from "./base-updater.js";
 
 export class ApplySecondaryUpdater extends Updater {
     constructor(condition, effect, item, externalTargetActor, details) {
-        super(condition, effect, item, externalTargetActor, details)
+        super(condition, effect, item, externalTargetActor, details);
 
-        this.applicationType = condition.update === "apply-delayed" ? "delayed" : "overtime";
+        const applicationTypes = {
+            "apply-immediate": "immediate",
+            "apply-delayed": "delayed",
+            "apply-overtime": "overtime"
+        }
+
+        this.applicationType = applicationTypes[condition.update];
         this.allowFlowMacro = true;
     }
 

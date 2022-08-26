@@ -28,12 +28,6 @@ export function getWireFlags() {
             "flags.wire.advantage.deathSave",
             "flags.wire.disadvantage.deathSave"
         ],
-        ...[
-            "flags.wire.max.damage.all",
-            "flags.wire.min.damage.all",
-            "flags.wire.receive.max.damage.all",
-            "flags.wire.receive.min.damage.all"
-        ],
         ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
             `flags.wire.advantage.attack.${at}`,
             `flags.wire.disadvantage.attack.${at}`,
@@ -45,12 +39,6 @@ export function getWireFlags() {
             `flags.wire.min.damage.${at}`,
             `flags.wire.receive.max.damage.${at}`,
             `flags.wire.receive.min.damage.${at}`
-        ]),
-        ...[...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"].flatMap(dt => [
-            `flags.wire.max.damage.${dt}`,
-            `flags.wire.min.damage.${dt}`,
-            `flags.wire.receive.max.damage.${dt}`,
-            `flags.wire.receive.min.damage.${dt}`
         ]),
         ...Object.keys(CONFIG.DND5E.creatureTypes).flatMap(ct => [
             `flags.wire.advantage.attack.${ct}`,
@@ -69,6 +57,34 @@ export function getWireFlags() {
         ...Object.keys(CONFIG.DND5E.skills).flatMap(skill => [
             `flags.wire.advantage.skill.${skill}`,
             `flags.wire.disadvantage.skill.${skill}`
+        ]),
+
+        ...[
+            "flags.wire.fail.ability.all",
+            "flags.wire.fail.ability.check.all",
+            "flags.wire.fail.ability.save.all",
+            "flags.wire.succeed.ability.all",
+            "flags.wire.succeed.ability.check.all",
+            "flags.wire.succeed.ability.save.all",
+        ],
+        ...Object.keys(CONFIG.DND5E.abilities).flatMap(abl => [
+            `flags.wire.fail.ability.check.${abl}`,
+            `flags.wire.fail.ability.save.${abl}`,
+            `flags.wire.succeed.ability.check.${abl}`,
+            `flags.wire.succeed.ability.save.${abl}`
+        ]),
+        
+        ...[
+            "flags.wire.max.damage.all",
+            "flags.wire.min.damage.all",
+            "flags.wire.receive.max.damage.all",
+            "flags.wire.receive.min.damage.all"
+        ],
+        ...[...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"].flatMap(dt => [
+            `flags.wire.max.damage.${dt}`,
+            `flags.wire.min.damage.${dt}`,
+            `flags.wire.receive.max.damage.${dt}`,
+            `flags.wire.receive.min.damage.${dt}`
         ]),
 
         ...[
@@ -153,6 +169,32 @@ export function getDamageOptions(item, actor, damageType) {
     const minimize = hasMin && !hasMax;
 
     return { maximize, minimize };
+}
+
+export function getSaveOptions(actor, abilityId) {
+    const succeedFlags = getFlags(actor)?.succeed || {};
+    const failFlags = getFlags(actor)?.fail || {};
+
+    const isSuccess = succeedFlags.ability?.all || succeedFlags.ability?.save?.all || (succeedFlags.ability?.save && succeedFlags.ability.save[abilityId]);
+    const isFailure = failFlags.ability?.all || failFlags.ability?.save?.all || (failFlags.ability?.save && failFlags.ability.save[abilityId]);
+
+    const success = isSuccess && !isFailure;
+    const failure = isFailure && !isSuccess;
+
+    return { success, failure };
+}
+
+export function getAbilityCheckOptions(actor, abilityId) {
+    const succeedFlags = getFlags(actor)?.succeed || {};
+    const failFlags = getFlags(actor)?.fail || {};
+
+    const isSuccess = succeedFlags.ability?.all || succeedFlags.ability?.check?.all || (succeedFlags.ability?.check && succeedFlags.ability.check[abilityId]);
+    const isFailure = failFlags.ability?.all || failFlags.ability?.check?.all || (failFlags.ability?.check && failFlags.ability.check[abilityId]);
+
+    const success = isSuccess && !isFailure;
+    const failure = isFailure && !isSuccess;
+
+    return { success, failure };
 }
 
 export function applyConditionImmunity(actor, effectDataList) {
@@ -332,11 +374,18 @@ function onActiveEffectApply(wrapped, actor, change) {
 }
 
 function onActorRollSkill(wrapped, skillId, options) {
-    const advFlags = getFlags(this)?.advantage?.skill || {};
-    const disFlags = getFlags(this)?.disadvantage?.skill || {};
+    const skill = this.data.data.skills[skillId];
+    const abilityId = skill.ability;
 
-    const isAdvantage = advFlags.all || advFlags[skillId];
-    const isDisdvantage = disFlags.all || disFlags[skillId];
+    const advFlags = getFlags(this)?.advantage || {};
+    const disFlags = getFlags(this)?.disadvantage || {};
+    const skillAdv = advFlags.skill || {};
+    const skillDis = disFlags.skill || {};
+    const abilityAdv = advFlags.ability || {};
+    const abilityDis = disFlags.ability || {};
+
+    const isAdvantage   = advFlags.all || abilityAdv.all || abilityAdv.check?.all || (abilityAdv.check && abilityAdv.check[abilityId]) || skillAdv.all || skillAdv[skillId];
+    const isDisdvantage = disFlags.all || abilityDis.all || abilityDis.check?.all || (abilityDis.check && abilityDis.check[abilityId]) || skillDis.all || skillDis[skillId];
 
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);

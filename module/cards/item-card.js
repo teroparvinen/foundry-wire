@@ -8,7 +8,7 @@ export class ItemCard {
         if (item) {
             const actor = item.actor;
             const token = getActorToken(actor);
-            const activationData = await activation?.getChatTemplateData();
+            const activationData = await activation?._getChatTemplateData();
     
             const templateData = {
                 isGM: isPlayerView ? false : game.user.isGM,
@@ -83,7 +83,7 @@ export class ItemCard {
                 activation.applyAttackResult(false);
                 break;
             case "wire-damage":
-                activation.rollDamage();
+                activation._rollDamage();
                 break;
             case "wire-save":
             case "wire-save-success":
@@ -95,7 +95,7 @@ export class ItemCard {
                     const disadvantage = !advantage && (!!event.metaKey || !!event.ctrlKey);
                     const success = action === "wire-save-success";
                     const failure = action === "wire-save-failure";
-                    activation.rollSave(actor, { advantage, disadvantage, success, failure });
+                    activation._rollSave(actor, { advantage, disadvantage, success, failure });
                 }
                 break;
             case "roll-all-saves":
@@ -110,15 +110,15 @@ export class ItemCard {
                         .filter(a => action === "roll-all-saves" || !a.hasPlayerOwner);
 
                     for (let actor of actors) {
-                        activation.rollSave(actor);
+                        activation._rollSave(actor);
                     }
                 }
                 break;
             case "confirm-targets":
-                activation.confirmTargets();
+                activation._confirmTargets();
                 break;
             case "activate-action":
-                activation.activateAction();
+                activation._activateAction();
                 break;
             }
 

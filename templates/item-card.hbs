@@ -142,7 +142,11 @@
             <div class="phase-saving-throws">
                 <div class="flexrow">
                     <h3 class="phase-heading">
-                        {{localize "wire.ui.saving-throw-heading" ability=(lookup abilityNames item.data.save.ability)}}
+                        {{#unless activation.abilityToCheckForSave}}
+                            {{localize "wire.ui.saving-throw-heading" ability=(lookup abilityNames item.data.save.ability)}}
+                        {{else}}
+                            {{localize "wire.ui.ability-check-heading" ability=(lookup abilityNames activation.abilityToCheckForSave)}}
+                        {{/unless}}
                         {{#if (or isGM item.hasPlayerOwner)}}
                             ({{localize "wire.ui.dc" value=item.data.save.dc}})
                         {{/if}}

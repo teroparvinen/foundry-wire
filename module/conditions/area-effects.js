@@ -1,5 +1,5 @@
 import { makeUpdater } from "../updater-utility.js";
-import { areAllied, areEnemies, fromUuid, getTemplateTokenUuids, getTokenTemplateIds, isEffectEnabled, triggerConditions } from "../utils.js";
+import { areAllied, areAreaConditionsBlockedForActor, areEnemies, fromUuid, getTemplateTokenUuids, getTokenTemplateIds, isEffectEnabled, triggerConditions } from "../utils.js";
 
 export function initAreaConditionHooks() {
     Hooks.on("updateToken", async (tokenDoc, change, update, userId) => {
@@ -17,12 +17,11 @@ export function initAreaConditionHooks() {
                 if (!visitedSet.has(templateId)) {
                     const effectUuid = canvas.templates.get(templateId)?.data.flags.wire?.masterEffectUuid;
                     const effect = fromUuid(effectUuid);
+                    const item = fromUuid(effect.data.origin);
 
-                    if (effect && isEffectEnabled(effect)) {
+                    if (effect && isEffectEnabled(effect) && !areAreaConditionsBlockedForActor(item, actor)) {
                         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith("enters-area")) ?? [];
                         for (let condition of conditions) {
-                            const item = fromUuid(effect.data.origin);
-
                             let dispositionCheck = false;
                             if (condition.condition.startsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
                             else if (condition.condition.startsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
@@ -61,21 +60,22 @@ export function initAreaConditionHooks() {
                 .map(uuid => fromUuid(uuid))
                 .filter(e => e);
             for (let effect of areaEffects) {
-                const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith("moves-within-area")) ?? [];
-                for (let condition of conditions) {
-                    const item = fromUuid(effect.data.origin);
-
-                    let dispositionCheck = false;
-                    if (condition.condition.startsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
-                    else if (condition.condition.startsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
-                    else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
-
-                    if (dispositionCheck) {
-                        const updater = makeUpdater(condition, effect, item, actor);
-                        await updater?.process();
+                const item = fromUuid(effect.data.origin);
+                if (!areAreaConditionsBlockedForActor(item, actor)) {
+                    const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith("moves-within-area")) ?? [];
+                    for (let condition of conditions) {
+                        let dispositionCheck = false;
+                        if (condition.condition.startsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
+                        else if (condition.condition.startsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
+                        else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
+    
+                        if (dispositionCheck) {
+                            const updater = makeUpdater(condition, effect, item, actor);
+                            await updater?.process();
+                        }
                     }
                 }
-    }
+            }
 
             await tokenDoc.update({ "flags.wire.occupiedTemplateIds": currentTemplateIds }, { occupationUpdate: true });
         }
@@ -100,6 +100,8 @@ export function initAreaConditionHooks() {
 async function checkTemplateEnvelopment(templateDoc) {
     const effect = fromUuid(templateDoc.getFlag("wire", "masterEffectUuid"));
     if (effect && isEffectEnabled(effect)) {
+        const item = fromUuid(effect.data.origin);
+
         const previous = await templateDoc.getFlag("wire", "envelopedTokenUuids") || [];
         const current = getTemplateTokenUuids(templateDoc);
 
@@ -111,41 +113,42 @@ async function checkTemplateEnvelopment(templateDoc) {
 
         // Enter
         for (let actor of [...enteredSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a)) {
-            const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.startsWith("area-envelops")) ?? [];
-            for (let condition of conditions) {
-                const item = fromUuid(effect.data.origin);
-
-                let dispositionCheck = false;
-                if (condition.condition.endsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
-                else if (condition.condition.endsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
-                else if (condition.condition.endsWith("creature")) { dispositionCheck = true; }
-
-                if (dispositionCheck) {
-                    const updater = makeUpdater(condition, effect, item, actor);
-                    await updater?.process();
-                }
-            };
-        }
-
-        // Exit
-        for (let actor of [...exitedSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a)) {
-            const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.startsWith("area-reveals")) ?? [];
-            for (let condition of conditions) {
-                const item = fromUuid(effect.data.origin);
-                const effects = actor.effects.filter(e => {
-                    const itemEffectUuids = item.effects.map(e => e.uuid);
-                    return itemEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid);
-                })
-
-                for (let effect of effects) {
+            if (!areAreaConditionsBlockedForActor(item, actor)) {
+                const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.startsWith("area-envelops")) ?? [];
+                for (let condition of conditions) {
                     let dispositionCheck = false;
                     if (condition.condition.endsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
                     else if (condition.condition.endsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
                     else if (condition.condition.endsWith("creature")) { dispositionCheck = true; }
-
+    
                     if (dispositionCheck) {
                         const updater = makeUpdater(condition, effect, item, actor);
                         await updater?.process();
+                    }
+                };
+            }
+        }
+
+        // Exit
+        for (let actor of [...exitedSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a)) {
+            if (!areAreaConditionsBlockedForActor(item, actor)) {
+                const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.startsWith("area-reveals")) ?? [];
+                for (let condition of conditions) {
+                    const effects = actor.effects.filter(e => {
+                        const itemEffectUuids = item.effects.map(e => e.uuid);
+                        return itemEffectUuids.includes(e.data.flags.wire?.sourceEffectUuid);
+                    })
+    
+                    for (let effect of effects) {
+                        let dispositionCheck = false;
+                        if (condition.condition.endsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
+                        else if (condition.condition.endsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
+                        else if (condition.condition.endsWith("creature")) { dispositionCheck = true; }
+    
+                        if (dispositionCheck) {
+                            const updater = makeUpdater(condition, effect, item, actor);
+                            await updater?.process();
+                        }
                     }
                 }
             }

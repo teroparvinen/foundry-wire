@@ -21,13 +21,13 @@ async function activationUpdated(messageUuid) {
                 if (gmMessageUuid) {
                     const gmMessage = fromUuid(gmMessageUuid);
                     const activation = new Activation(gmMessage);
-                    await activation.step();
-                    await activation.updateCard();
+                    await activation._step();
+                    await activation._updateCard();
                 }
             } else if (message.isAuthor || originatorUserId === game.user.id) {
                 const activation = new Activation(message);
-                await activation.step();
-                await activation.updateCard();
+                await activation._step();
+                await activation._updateCard();
             }
         }
     }
@@ -39,8 +39,8 @@ async function updateMessage(messageUuid, data) {
         await message.setFlag("wire", "activation", data);
 
         const activation = new Activation(message);
-        await activation.step();
-        await activation.updateCard();
+        await activation._step();
+        await activation._updateCard();
     }
 }
 

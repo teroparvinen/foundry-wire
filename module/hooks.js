@@ -2,6 +2,7 @@ import { Activation } from "./activation.js";
 import { ConcentrationCard } from "./cards/concentration-card.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { ItemCard } from "./cards/item-card.js";
+import { updateCombatTurnConditions } from "./conditions/combat-turns.js";
 import { getWireFlags } from "./game/effect-flags.js";
 import { fromUuid, isActorEffect } from "./utils.js";
 
@@ -26,8 +27,8 @@ export function initHooks() {
             const gmMessage = await ChatMessage.create(gmMessageData);
 
             if (gmMessage) {
-                const activation = await Activation.initializeGmMessage(gmMessage, message);
-                await activation.updateCard();
+                const activation = await Activation._initializeGmMessage(gmMessage, message);
+                await activation._updateCard();
             }
         }
     });
@@ -104,16 +105,12 @@ export function initHooks() {
         }
     });
 
+    let lastKnownRound;
+    let lastKnownCombatantId;
+
     Hooks.on("updateCombat", async (combat, change, options, userId) => {
         if (game.user.isGM) {
-            const combatant = combat.combatants.get(combat.current.combatantId);
-
-            if (combatant?.isNPC && !combatant.isDefeated) {
-                combatant.token?.object?.control();
-                canvas.animatePan({ x: combatant.token?._object?.x, y: combatant.token?._object?.y })
-            }
-
-            if (change.round) {
+            if (change.round && change.round !== lastKnownRound) {
                 ChatMessage.create({
                     content: await renderTemplate("modules/wire/templates/round-change-card.hbs", { round: change.round }),
                     whisper: null,
@@ -121,14 +118,29 @@ export function initHooks() {
                     speaker: { alias: " " }
                 })
             }
-            if (change.turn !== undefined && !combatant.isDefeated) {
-                ChatMessage.create({
-                    content: await renderTemplate("modules/wire/templates/turn-change-card.hbs", { token: combatant.token }),
-                    whisper: combatant.isNPC ? [game.user.id] : null,
-                    emote: true,
-                    speaker: { alias: " " }
-                })              
+
+            if (combat.current.combatantId !== lastKnownCombatantId) {
+                const combatant = combat.combatants.get(combat.current.combatantId);
+
+                if (combatant?.isNPC && !combatant.isDefeated) {
+                    combatant.token?.object?.control();
+                    canvas.animatePan({ x: combatant.token?._object?.x, y: combatant.token?._object?.y })
+                }
+    
+                if (!combatant.isDefeated) {
+                    ChatMessage.create({
+                        content: await renderTemplate("modules/wire/templates/turn-change-card.hbs", { token: combatant.token }),
+                        whisper: combatant.isNPC ? [game.user.id] : null,
+                        emote: true,
+                        speaker: { alias: " " }
+                    })              
+                }
+    
+                updateCombatTurnConditions();
             }
+
+            lastKnownRound = combat.round;
+            lastKnownCombatantId = combat.current.combatantId;
         }
     });
 

@@ -38,7 +38,11 @@ export async function preRollConfig(item, options = {}, event) {
     if (requireSpellSlot) consumedSpellLevel = id.preparation.mode === "pact" ? "pact" : `spell${id.level}`;
 
     if (options.variantOptions) {
-        activationConfig.variant = await new game.wire.SelectVariantDialog(item, options.variantOptions).render(true);
+        const variant = await new game.wire.SelectVariantDialog(item, options.variantOptions).render(true);
+        if (!variant) {
+            return;
+        }
+        activationConfig.variant = variant;
     }
 
     const skipDefaultDialog = false;
@@ -108,10 +112,19 @@ export async function preRollConfig(item, options = {}, event) {
                 destination.y = destination.y + token.h / 2;
                 const preTemplate = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
                 await preTemplate.data.update(destination);
-                const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [preTemplate.data.toObject()]);
+                const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [
+                    foundry.utils.mergeObject(preTemplate.data.toObject(), { "flags.wire.attachedTokenId": token.id })
+                ]);
                 template = created[0];
                 await token.document.setFlag("wire", "attachedTemplateId", template.id);
-                await template.setFlag("wire", "attachedTokenId", token.id);
+
+                // Many modules assume MeasuredTemplate.refresh to only happen once it has already been drawn
+                // This hack delays updates which would trigger the refresh until the template has been drawn at least once
+                while (!template.object?.controlIcon?.renderable) {
+                    await new Promise(resolve => {
+                        setTimeout(() => { resolve(); }, 100);
+                    });
+                }
             }
         } else {
             const template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);

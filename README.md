@@ -6,18 +6,21 @@ As the name implies, the idea is to make item rolls easy and powerful, and to do
 
 https://i.imgur.com/cNdCbjN.mp4
 
-Item rolls in Foundry refer to the activation of items in an actor's inventory, special abilities, class features and spells. Item rolls may apply damage and effects to other actors. The effects can have trigger conditions attached to them that trigger more of the same thing as combat progresses, including making saves to end the effect, applying damage to creatures entering an area or the effect target making an attack.
+In Foundry, item rolls refer to the activation of items in an actor's inventory, special abilities, class features and spells. Item rolls may apply damage and effects to other actors. The effects can have trigger conditions attached to them that trigger more of the same thing as combat progresses, including making saves to end the effect, applying damage to creatures entering an area or the effect target making an attack.
 
 ## Module status
 
 **This is a pretty complicated module quite early in the development cycle. There will be bugs.** Do not use for your paid DM gig, but do try it out and report issues on GitHub or reach out to me on the Foundry discord server as _Whistler#3253_.
 
-## Where to go next?
+## Where to go for more information?
 
+The repository wiki is where all documentation will be kept.
+
+- Check out the feature list
+- Recipes with examples of spells and skills and how to set them up
 - Read up on how it works
 - A list of conditions and updaters.
 - A list of supported active effect changes/flags
-- Recipes with examples of spells and skills and how to set them up
 
 ## Compatible and incompatible modules
 
@@ -28,6 +31,10 @@ Dependencies required for operation. Nothing special here.
 ### Item Macro
 
 The more advanced customization of the item rolls is controlled using a script macro on the item provided by this module. You can get by without it if you only use the UI components or an item library that has everything already built, but I strongly recommend installing this mod.
+
+### DFreds Effects Panel
+
+Managing and viewing concentration and temporary active effects is quite important when using WIRE. This module makes it really easy to see the effects and to click them off when required. Highly recommended with WIRE.
 
 ### DAE
 

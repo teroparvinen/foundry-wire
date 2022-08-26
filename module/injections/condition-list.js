@@ -51,6 +51,7 @@ const conditionList = [
 ];
 
 const updateList = [
+    ["apply-immediate", ["all"]],
     ["apply-delayed", ["all"]],
     ["apply-overtime", ["all"]],
     ["apply-effects-immediate", ["all"]],
@@ -58,6 +59,7 @@ const updateList = [
     ["apply-effects-overtime", ["all"]],
     ["end", ["all"]],
     ["end-on-save", ["all"]],
+    ["end-on-check", ["all"]],
     ["splash-delayed", ["all"]]
 ]
 

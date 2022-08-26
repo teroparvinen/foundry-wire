@@ -2,24 +2,20 @@ import { Activation } from "../activation.js";
 import { Flow } from "../flow.js";
 import { takeAnActionFlow } from "../flows/take-an-action.js";
 import { makeUpdater } from "../updater-utility.js";
-import { areAllied, areEnemies, fromUuid, getTokenTemplateIds, isEffectEnabled, triggerConditions } from "../utils.js";
+import { areAllied, areAreaConditionsBlockedForActor, areEnemies, fromUuid, getTokenTemplateIds, isEffectEnabled, triggerConditions } from "../utils.js";
 
-export function initCombatTurnConditionHooks() {
-    Hooks.on("updateCombat", async (combat, change, options, userId) => {
-        if (game.user.isGM) {
-            const previousToken = canvas.tokens.get(game.combat.previous.tokenId);
-            const previousCombatant = game.combat.turns.find(t => t.id === game.combat.previous.combatantId);
-            const previousActor = previousCombatant?.actor;
-    
-            await handleTurn(previousActor, previousToken, false);
-    
-            const currentToken = canvas.tokens.get(game.combat.current.tokenId);
-            const currentCombatant = game.combat.turns.find(t => t.id === game.combat.current.combatantId);
-            const currentActor = currentCombatant.actor;
-    
-            await handleTurn(currentActor, currentToken, true);
-        }
-    });
+export async function updateCombatTurnConditions() {
+    const previousToken = canvas.tokens.get(game.combat.previous.tokenId);
+    const previousCombatant = game.combat.turns.find(t => t.id === game.combat.previous.combatantId);
+    const previousActor = previousCombatant?.actor;
+
+    await handleTurn(previousActor, previousToken, false);
+
+    const currentToken = canvas.tokens.get(game.combat.current.tokenId);
+    const currentCombatant = game.combat.turns.find(t => t.id === game.combat.current.combatantId);
+    const currentActor = currentCombatant.actor;
+
+    await handleTurn(currentActor, currentToken, true);
 }
 
 async function handleTurn(actor, token, isStart) {
@@ -49,12 +45,11 @@ async function handleTurn(actor, token, isStart) {
     for (let templateId of templateIds) {
         const effectUuid = canvas.templates.get(templateId)?.data.flags.wire?.masterEffectUuid;
         const effect = fromUuid(effectUuid);
+        const item = fromUuid(effect.data.origin);
     
-        if (effect && isEffectEnabled(effect)) {
+        if (effect && isEffectEnabled(effect) && !areAreaConditionsBlockedForActor(item, actor)) {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith(handledAreaCondition)) ?? [];
             for (let condition of conditions) {
-                const item = fromUuid(effect.data.origin);
-
                 let dispositionCheck = false;
                 if (condition.condition.startsWith("ally") && areAllied(actor, item.actor)) { dispositionCheck = true; }
                 else if (condition.condition.startsWith("enemy") && areEnemies(actor, item.actor)) { dispositionCheck = true; }
@@ -74,24 +69,24 @@ async function handleTurn(actor, token, isStart) {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === "take-an-action") ?? [];
             for (let condition of conditions) {
                 const item = fromUuid(effect.data.origin);
-                const flow = new Flow(item, "immediate", takeAnActionFlow, { allowMacro: false });
-                await Activation.createConditionMessage(condition, item, effect, flow, { 
+                const flow = new Flow(item, "immediate", takeAnActionFlow, { allowMacro: false, isConditionTriggered: true });
+                await Activation._createConditionMessage(condition, item, effect, flow, { 
                     revealToPlayers: effect.parent.hasPlayerOwner, 
                     suppressPlayerMessage: !effect.parent.hasPlayerOwner,
                     speakerIsEffectOwner: true
                 });
             }
         });
-        actor.effects.filter(e => isEffectEnabled(e)).forEach(async effect => {
-            const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === "take-a-reaction") ?? [];
-            for (let condition of conditions) {
-                const item = fromUuid(effect.data.origin);
-                const flow = new Flow(item, "immediate", takeAnActionFlow, { allowMacro: false });
-                await Activation.createConditionMessage(condition, item, effect, flow, {
-                    revealToPlayers: item.actor.hasPlayerOwner,
-                    suppressPlayerMessage: !item.actor.hasPlayerOwner
-                });
-            }
-        });
+        // actor.effects.filter(e => isEffectEnabled(e)).forEach(async effect => {
+        //     const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === "take-a-reaction") ?? [];
+        //     for (let condition of conditions) {
+        //         const item = fromUuid(effect.data.origin);
+        //         const flow = new Flow(item, "immediate", takeAnActionFlow, { allowMacro: false, isConditionTriggered: true });
+        //         await Activation._createConditionMessage(condition, item, effect, flow, {
+        //             revealToPlayers: item.actor.hasPlayerOwner,
+        //             suppressPlayerMessage: !item.actor.hasPlayerOwner
+        //         });
+        //     }
+        // });
     }
 }

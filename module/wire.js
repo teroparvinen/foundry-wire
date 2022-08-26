@@ -1,7 +1,6 @@
 import { setupActionQueue } from "./action-queue.js";
 import { SelectVariantDialog } from "./apps/select-variant.js";
 import { initAreaConditionHooks } from "./conditions/area-effects.js";
-import { initCombatTurnConditionHooks } from "./conditions/combat-turns.js";
 import { initRegularRollHooks } from "./conditions/regular-rolls.js";
 import { DamageParts } from "./game/damage-parts.js";
 import { initEffectFlagHooks, setupRollFlagWrappers } from "./game/effect-flags.js";
@@ -21,7 +20,6 @@ Hooks.once("init", () => {
     initItemSheetHooks();
     initActiveEffectSheetHooks();
 
-    initCombatTurnConditionHooks();
     initAreaConditionHooks();
     initRegularRollHooks();
 
