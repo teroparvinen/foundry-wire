@@ -16,6 +16,7 @@ export class Flow {
 
         this.preRollOptions = {};
         this.customSteps = {};
+        this.customUpdaters = {};
     }
 
     evaluate() {
@@ -47,7 +48,14 @@ export class Flow {
         this.customSteps[name] = {
             runAsRoller,
             fn
-        }
+        };
+    }
+
+    registerUpdater(name, runAsTarget, fn) {
+        this.customUpdaters[name] = {
+            runAsTarget,
+            fn
+        };
     }
 
     // Flow control
@@ -264,9 +272,5 @@ export class Flow {
 
     skipConfigurationDialog() {
         this.preRollOptions["skipConfigurationDialog"] = true;
-    }
-
-    setUpcastInterval(interval) {
-        foundry.utils.setProperty(this.preRollOptions, "config.upcastInterval", interval);
     }
 }

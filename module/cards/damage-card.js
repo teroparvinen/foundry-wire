@@ -1,4 +1,4 @@
-import { fromUuid, fudgeToActor, getSpeaker } from "../utils.js";
+import { fromUuid, fudgeToActor, getActorToken, getSpeaker } from "../utils.js";
 
 export class DamageCard {
 
@@ -47,6 +47,16 @@ export class DamageCard {
             }
 
         button.disabled = false;
+    }
+
+    static async makeForActor(causingActor, targetActor, damageAmount) {
+        const damage = {
+            actor: targetActor,
+            token: getActorToken(targetActor),
+            points: { damage: damageAmount }
+        };
+        const card = new DamageCard(targetActor.hasPlayerOwner, causingActor, [damage]);
+        await card.make();
     }
 
     constructor(isPlayer, actor, targetDamage) {

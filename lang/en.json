@@ -105,7 +105,13 @@
             "application-phase": "Application phase",
             "application-phase-hint": "The conditions for the activation are determined in the effect application section below and on the main item sheet",
             "track-independent-duration": "Track duration independently from concentration or master effect",
-            "track-independent-duration-hint": "With this enabled, this effect will stay running until the end of its duration even if the caster drops the effect."
+            "track-independent-duration-hint": "With this enabled, this effect will stay running until the end of its duration even if the caster drops the effect.",
+            "aura-targets": "Apply this effect as an aura",
+            "aura-targets-hint": "The radius of the aura is taken from the target row of the main item, which should be a radius in feet",
+            "aura-target-none": "Not an aura",
+            "aura-target-creature": "Creatures",
+            "aura-target-ally": "Allies",
+            "aura-target-enemy": "Enemies"
         },
         "select-variant": {
             "prompt": "Select a variant"

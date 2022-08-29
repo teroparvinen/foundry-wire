@@ -144,8 +144,9 @@ export function copyEffectChanges(effect) {
     })
 }
 
-export function substituteEffectConfig(config, changes) {
-    const rollData = { config };
+export function substituteEffectConfig(actor, config, changes) {
+    const rollData = actor.getRollData();
+    rollData.config = config;
     return changes.map(c => {
         return {
             key: c.key,
@@ -308,6 +309,14 @@ export function isItemEffect(effect) {
     return effect.parent && effect.parent instanceof CONFIG.Item.documentClass;
 }
 
+export function isAuraEffect(effect) {
+    return effect.data.flags.wire?.auraTargets;
+}
+
+export function isAuraTargetEffect(effect) {
+    return effect.data.flags.wire?.auraSourceUuid;
+}
+
 export function isEffectEnabled(effect) {
     return !effect.isSuppressed && !effect.data.disabled;
 }
@@ -351,4 +360,8 @@ export function deleteTokenFX(token, effect) {
 
 export function isActorDefeated(actor) {
     return actor.effects.some(e => e.getFlag("core", "statusId") === CONFIG.Combat.defeatedStatusId);
+}
+
+export function tokenSeparation(token1, token2) {
+    return canvas.grid.measureDistance(token1.center, token2.center, { gridSpaces: true });
 }

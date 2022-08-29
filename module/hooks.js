@@ -3,8 +3,9 @@ import { ConcentrationCard } from "./cards/concentration-card.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { updateCombatTurnConditions } from "./conditions/combat-turns.js";
+import { applySingleEffect, applyTargetEffects } from "./game/active-effects.js";
 import { getWireFlags } from "./game/effect-flags.js";
-import { fromUuid, isActorEffect } from "./utils.js";
+import { areAllied, areEnemies, fromUuid, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, tokenSeparation } from "./utils.js";
 
 export function initHooks() {
     Hooks.on("renderChatLog", (app, html, data) => {
@@ -81,6 +82,17 @@ export function initHooks() {
                 const effectUuids = caster?.data.flags.wire?.turnUpdatedEffectUuids?.filter(uuid => uuid !== effect.uuid);
                 caster.setFlag("wire", "turnUpdatedEffectUuids", effectUuids);
             }
+
+            // Aura deleted
+            if (isAuraEffect(effect)) {
+                updateAuras();
+            }
+        }
+    });
+
+    Hooks.on("updateActiveEffect", async(effect, changes, options, user) => {
+        if (game.user.isGM && changes.disabled !== undefined && isAuraEffect(effect)) {
+            updateAuras();
         }
     });
 
@@ -101,6 +113,10 @@ export function initHooks() {
             if (template && template.document.author === game.user) {
                 const update = tokenDoc.object.getCenter(tokenDoc.data.x, tokenDoc.data.y);
                 await template.document.update(update);
+            }
+
+            if (game.user.isGM) {
+                updateAuras(tokenDoc.object);
             }
         }
     });
@@ -226,4 +242,65 @@ async function processRemovalQueue() {
         }
     }
     removeQueue = [];
+}
+
+async function updateAuras() {
+    const tokens = canvas.tokens.objects.children;
+    const auraSources = tokens.flatMap(token => {
+        return token.actor.effects
+            .filter(effect => isEffectEnabled(effect) && isAuraEffect(effect))
+            .map(effect => {
+                return {
+                    token, effect
+                };
+            });
+    });
+    let auraEffects = tokens.flatMap(token => {
+        return token.actor.effects.filter(effect => isAuraTargetEffect(effect))
+    });
+
+    for (let source of auraSources) {
+        const item = fromUuid(source.effect.data.origin);
+        const range = item?.data.data.target?.value;
+        const auraToken = source.token;
+        const sourceUuid = source.effect.uuid;
+
+        auraEffects = auraEffects.filter(e => e.data.flags.wire?.auraSourceUuid !== sourceUuid)
+        
+        if (range) {
+            const disposition = source.effect.data.flags.wire.auraTargets;
+            let targets = [];
+
+            for (let token of tokens) {
+                const isInRange = tokenSeparation(auraToken, token) <= range;
+                const existingEffect = token.actor.effects.find(effect => effect.data.origin === source.effect.data.origin)
+
+                if (!isInRange && existingEffect) {
+                    await existingEffect.delete();
+                } else if (isInRange && !existingEffect) {
+                    let dispositionCheck = false;
+                    if (disposition === "ally" && areAllied(auraToken.actor, token.actor)) { dispositionCheck = true; }
+                    else if (disposition === "enemy" && areEnemies(auraToken.actor, token.actor)) { dispositionCheck = true; }
+                    else if (disposition === "creature") { dispositionCheck = true; }
+
+                    if (dispositionCheck) {
+                        targets.push(token.actor);
+                    }
+                }
+            }
+
+            if (targets.length) {
+                const masterEffectUuid = source.effect.data.flags.wire?.masterEffectUuid;
+                const masterEffect = masterEffectUuid ? fromUuid(masterEffectUuid) : null;
+                const createdEffects = await applySingleEffect(source.effect, targets, masterEffect, {});
+                for (let createdEffect of createdEffects) {
+                    await createdEffect.setFlag("wire", "auraSourceUuid", source.effect.uuid);
+                }
+            }
+        }
+    }
+
+    for (let effect of auraEffects) {
+        await effect.delete();
+    }
 }

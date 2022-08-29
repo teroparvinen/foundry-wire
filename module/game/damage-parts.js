@@ -3,7 +3,7 @@ import { getDamageMultiplier, getDamageOptions } from "./effect-flags.js";
 
 
 export class DamageParts {
-    static async roll(item, applicationType, onlyUnavoidable, { spellLevel, upcastInterval, isCritical, attackTarget, variant } = {}) {
+    static async roll(item, applicationType, onlyUnavoidable, { spellLevel, isCritical, attackTarget, variant } = {}) {
         if (!item.hasDamage) throw new Error("You may not make a Damage Roll with this Item.");
         const itemData = item.data.data;
         const actorData = item.actor.data.data;
@@ -15,6 +15,11 @@ export class DamageParts {
         if (!parts.length) {
             localizedWarning("wire.warn.damage-roll-has-no-parts");
             return new DamageParts([]);
+        }
+
+        // Check versatile
+        if (itemData.damage?.versatile && item.actor.data.flags.wire?.damage?.versatile) {
+            parts[0].formula = itemData.damage.versatile;
         }
     
         // Get roll data
@@ -54,6 +59,7 @@ export class DamageParts {
                 levelMultiplier = Math.max(spellLevel - itemData.level, 0);
             }
             if (levelMultiplier > 0) {
+                const upcastInterval = item.data.flags.wire?.upcastInterval || 1;
                 const scalingMultiplier = upcastInterval ? Math.floor(levelMultiplier / upcastInterval) : levelMultiplier;
                 const s = new Roll(itemData.scaling.formula, rollData).alter(scalingMultiplier);
                 primaryModifiers.push(s.formula);
@@ -241,9 +247,9 @@ export class DamageParts {
             const nmr = traits.dr.value.includes("physical") && !isAttackMagical;
             const nmv = traits.dv.value.includes("physical") && !isAttackMagical;
 
-            const di = traits.di.value.includes(type) || nmi ? 0 : 1;
-            const dr = traits.dr.value.includes(type) || nmr ? 0.5 : 1;
-            const dv = traits.dv.value.includes(type) || nmv ? 2 : 1;
+            const di = traits.di.all || traits.di.value.includes(type) || nmi ? 0 : 1;
+            const dr = traits.dr.all || traits.dr.value.includes(type) || nmr ? 0.5 : 1;
+            const dv = traits.dv.all || traits.dv.value.includes(type) || nmv ? 2 : 1;
 
             return {
                 damage: Math.floor(caused * di * dr * dv),

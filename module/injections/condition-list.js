@@ -1,4 +1,5 @@
-import { i18n } from "../utils.js";
+import { Flow } from "../flow.js";
+import { fromUuid, i18n, isItemEffect } from "../utils.js";
 
 const conditionList = [
     ["creature-enters-area", "all"],
@@ -66,6 +67,11 @@ const updateList = [
 export async function injectConditionList(object, html, containerSelector, conditionType) {
     const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
 
+    const item = object instanceof CONFIG.Item.documentClass ? object : (isItemEffect(object) ? object.parent : fromUuid(object.data.origin));
+    const flow = new Flow(item, "none");
+    flow.evaluate();
+    const customUpdaters = Object.keys(flow.customUpdaters);
+
     let conditions = object.getFlag("wire", "conditions") || [];
     if (!Array.isArray(conditions)) {
         conditions = [];
@@ -87,6 +93,8 @@ export async function injectConditionList(object, html, containerSelector, condi
         `);
         bits.push(updateList.map(u => `
                     <option value="${u[0]}" ${selected(condition.update, u[0])}>${i18n("wire.item.update-" + u[0])}</option>`).join(""));
+        bits.push(customUpdaters.map(u => `
+                    <option value="${u}" ${selected(condition.update, u)}>${u}</option>`).join(""));
         bits.push(`
                 </select>
                 <input type="text" />

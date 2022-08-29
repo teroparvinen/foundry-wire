@@ -48,6 +48,18 @@ export function initItemSheetHooks() {
             </div>
         `);
 
+        if (app.object.data.data.scaling?.mode === "level") {
+            const interval = app.object.data.flags.wire?.upcastInterval
+            const scalingIntervalFields = `
+                <div class="flexrow">
+                    <span>Every</span>&nbsp;
+                    <input type="text" name="flags.wire.upcastInterval" data-dtype="Number" placeholder="1" value="${interval}" />&nbsp;
+                    <span>level(s)</span>
+                </div>
+            `;
+            html.find('select[name="data.scaling.mode"]').parent().append(scalingIntervalFields);
+        }
+
         await injectConditionList(app.object, html, '.tab.details', "item");
     });
 

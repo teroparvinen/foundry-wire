@@ -8,6 +8,7 @@ export function setupSocket() {
     wireSocket.register("activationUpdated", activationUpdated);
     wireSocket.register("updateMessage", updateMessage);
     wireSocket.register("scrollBottom", scrollBottom);
+    wireSocket.register("runCustomUpdater", runCustomUpdater);
 }
 
 async function activationUpdated(messageUuid) {
@@ -46,4 +47,24 @@ async function updateMessage(messageUuid, data) {
 
 function scrollBottom() {
     ui.chat.scrollBottom();
+}
+
+async function runCustomUpdater(condition, effectUuid, details) {
+    const effect = fromUuid(effectUuid);
+    if (effect) {
+        const item = fromUuid(effect.data.origin);
+
+        if (item) {
+            const flow = new Flow(item, "none");
+            flow.evaluate();
+            const updater = flow.customUpdaters[condition.update]
+        
+            if (updater) {
+                const result = updater.fn(condition, effect, details);
+                if (result instanceof Promise) {
+                    await result;
+                }
+            }
+        }
+    }
 }

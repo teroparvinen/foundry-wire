@@ -36,7 +36,7 @@
                     <a data-action="undo-damage" title="{{localize "wire.ui.undo-damage"}}"><i class="fas fa-undo"></i></a>
                 </div>
             </div>
-            {{#if ../isGM}}
+            {{#if (or ../isGM actor.hasPlayerOwner)}}
                 <div class="damage-card-target-modifiers">
                     {{#if info.di}}{{localize "wire.ui.di"}} -{{info.di}}{{/if}}
                     {{#if info.dr}}{{localize "wire.ui.dr"}} -{{info.dr}}{{/if}}

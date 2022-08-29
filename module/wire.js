@@ -3,6 +3,7 @@ import { SelectVariantDialog } from "./apps/select-variant.js";
 import { initAreaConditionHooks } from "./conditions/area-effects.js";
 import { initRegularRollHooks } from "./conditions/regular-rolls.js";
 import { DamageParts } from "./game/damage-parts.js";
+import { DamageCard } from "./cards/damage-card.js";
 import { initEffectFlagHooks, setupRollFlagWrappers } from "./game/effect-flags.js";
 import { registerHandlebarsHelpers } from "./handlebars.js";
 import { initHooks } from "./hooks.js";
@@ -27,6 +28,7 @@ Hooks.once("init", () => {
 
     game.wire = {
         DamageParts,
+        DamageCard,
         SelectVariantDialog
     }
 });

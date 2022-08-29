@@ -1,7 +1,9 @@
+import { Flow } from "./flow.js";
 import { ApplyEffectsUpdater } from "./updaters/apply-effects.js";
 import { ApplySecondaryUpdater } from "./updaters/apply-secondary.js";
 import { EndOnSaveUpdater } from "./updaters/end-on-save.js";
 import { EndUpdater } from "./updaters/end.js";
+import { RunCustomUpdater } from "./updaters/run-custom.js";
 import { fromUuid, isCastersTurn } from "./utils.js";
 
 export function makeUpdater(condition, effect, item, externalTargetActor = null, details = null) {
@@ -20,7 +22,14 @@ export function makeUpdater(condition, effect, item, externalTargetActor = null,
     case "end-on-check":
         return new EndOnSaveUpdater(condition, effect, item, externalTargetActor, details);
     default:
-        console.warn("MISSING UPDATER", condition.update);
+        const flow = new Flow(item, "none");
+        flow.evaluate();
+        const updater = flow.customUpdaters[condition.update]
+        if (updater) {
+            return new RunCustomUpdater(condition, effect, item, externalTargetActor, details, updater);
+        } else {
+            console.warn("MISSING UPDATER", condition.update);
+        }
     }
 }
 

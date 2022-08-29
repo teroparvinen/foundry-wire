@@ -166,7 +166,7 @@ async function onActorPreUpdate(wrapped, change, options, user) {
             }
 
             // Damage taken condition
-            triggerConditions(actor, "takes-damage");
+            triggerConditions(actor, "takes-damage", { details: { damageAmount: damage } });
         }
     }
 }

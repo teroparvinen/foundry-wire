@@ -179,11 +179,10 @@ export class Resolver {
 
             const isCritical = getAttackRollResultType(this.activation.attackRoll) == "critical";
             const spellLevel = this.activation.config?.spellLevel;
-            const upcastInterval = this.activation.config?.upcastInterval;
             const variant = this.activation.config?.variant;
             const onlyUnavoidable = this.activation.effectiveTargets.length == 0;
             const attackTarget = this.activation.singleTarget?.actor;
-            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical, spellLevel, upcastInterval, attackTarget, variant });
+            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical, spellLevel, attackTarget, variant });
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
@@ -201,9 +200,8 @@ export class Resolver {
             await this.activation.applyState("waiting-for-save-damage");
 
             const spellLevel = this.activation.config?.spellLevel;
-            const upcastInterval = this.activation.config?.upcastInterval;
             const variant = this.activation.config?.variant;
-            const damageParts = await DamageParts.roll(item, applicationType, false, { spellLevel, upcastInterval, variant });
+            const damageParts = await DamageParts.roll(item, applicationType, false, { spellLevel, variant });
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);

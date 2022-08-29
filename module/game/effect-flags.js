@@ -34,6 +34,9 @@ export function getWireFlags() {
             `flags.wire.grants.advantage.attack.${at}`,
             `flags.wire.grants.disadvantage.attack.${at}`
         ]),
+        ...[
+            "flags.wire.damage.versatile"
+        ],
         ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
             `flags.wire.max.damage.${at}`,
             `flags.wire.min.damage.${at}`,

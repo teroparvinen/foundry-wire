@@ -20,6 +20,16 @@ export function initActiveEffectSheetHooks() {
                 <div class="hint">${i18n("wire.active-effect.blocks-area-conditions-hint")}</div>
             </div>
             <div class="form-group">
+                <label>${i18n("wire.active-effect.aura-targets")}</label>
+                <select name="flags.wire.auraTargets">
+                    <option value="">${i18n("wire.active-effect.aura-target-none")}</option>
+                    <option value="creature">${i18n("wire.active-effect.aura-target-creature")}</option>
+                    <option value="ally">${i18n("wire.active-effect.aura-target-ally")}</option>
+                    <option value="enemy">${i18n("wire.active-effect.aura-target-enemy")}</option>
+                </select>
+                <div class="hint">${i18n("wire.active-effect.aura-targets-hint")}</div>
+            </div>
+            <div class="form-group">
                 <label>${i18n("wire.active-effect.application-phase")}</label>
                 <select name="flags.wire.applicationType">
                     <option value="immediate">${i18n("wire.item.application-immediate")}</option>
