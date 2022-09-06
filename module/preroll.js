@@ -1,5 +1,5 @@
 import AbilityUseDialog from "../../../systems/dnd5e/module/apps/ability-use-dialog.js";
-import { hasSaveableApplicationsOfType, isAttack, isSelfRange, isSelfTarget, targetsSingleToken } from "./item-properties.js";
+import { hasApplicationsOfType, hasSaveableApplicationsOfType, isAttack, isSelfRange, isSelfTarget, targetsSingleToken } from "./item-properties.js";
 import { getActorToken, localizedWarning, runAndAwait, setTemplateTargeting } from "./utils.js";
 
 export function preRollCheck(item) {
@@ -102,35 +102,10 @@ export async function preRollConfig(item, options = {}, event) {
     if (resourceUpdates.length) await actor.updateEmbeddedDocuments("Item", resourceUpdates);
 
     // Initiate measured template creation
-    let template;
+    let templateData;
     if (doCreateMeasuredTemplate) {
-        if (isSelfRange(item) && item.hasAreaTarget && (item.data.data.target.type === "sphere" || item.data.data.target.type === "radius")) {
-            const token = getActorToken(actor);
-            if (token) {
-                const destination = canvas.grid.getSnappedPosition(token.data.x, token.data.y, 2);
-                destination.x = destination.x + token.w / 2;
-                destination.y = destination.y + token.h / 2;
-                const preTemplate = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
-                await preTemplate.data.update(destination);
-                const created = await canvas.scene.createEmbeddedDocuments("MeasuredTemplate", [
-                    foundry.utils.mergeObject(preTemplate.data.toObject(), { "flags.wire.attachedTokenId": token.id })
-                ]);
-                template = created[0];
-                await token.document.setFlag("wire", "attachedTemplateId", template.id);
-
-                // Many modules assume MeasuredTemplate.refresh to only happen once it has already been drawn
-                // This hack delays updates which would trigger the refresh until the template has been drawn at least once
-                while (!template.object?.controlIcon?.renderable) {
-                    await new Promise(resolve => {
-                        setTimeout(() => { resolve(); }, 100);
-                    });
-                }
-            }
-        } else {
-            const template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
-            if (template) template.drawPreview();
-            setTemplateTargeting(true);
-        }
+        templateData = await createTemplate(item, options.disableTemplateTargetSelection, activationConfig.variant);
+        if (!templateData) { return; }
     }
 
     // Create or return the Chat Message data
@@ -139,8 +114,118 @@ export async function preRollConfig(item, options = {}, event) {
     return {
         messageData: messageData,
         config: activationConfig,
-        template
+        templateData
     };
+}
+
+export async function createTemplate(item, disableTargetSelection, variant) {
+    if (isSelfRange(item) && item.hasAreaTarget && (item.data.data.target.type === "sphere" || item.data.data.target.type === "radius")) {
+        const token = getActorToken(item.actor);
+        if (token) {
+            const destination = canvas.grid.getSnappedPosition(token.data.x, token.data.y, 2);
+            destination.x = destination.x + token.w / 2;
+            destination.y = destination.y + token.h / 2;
+            const preTemplate = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
+            await preTemplate.data.update(destination);
+
+            return foundry.utils.mergeObject(preTemplate.data.toObject(), { "flags.wire.attachedTokenId": token.id });
+        }
+    } else {
+        const selectTargets = !disableTargetSelection && hasApplicationsOfType(item, "immediate", variant);
+        return await placeTemplate(item, { selectTargets });
+    }
+}
+
+export async function placeTemplate(item, { selectTargets = true } = {}) {
+    let template;
+    if (item instanceof CONFIG.Item.documentClass) {
+        template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
+    } else {
+        const cls = CONFIG.MeasuredTemplate.documentClass;
+        const templateObject = new cls(item, {parent: canvas.scene});
+        template = new game.dnd5e.canvas.AbilityTemplate(templateObject);
+    }
+
+    if (template) {
+        const initialLayer = canvas.activeLayer;
+
+        await setTemplateTargeting(false);
+
+        // Draw the template and switch to the template layer
+        await template.draw();
+        template.layer.activate();
+        template.layer.preview.addChild(template);
+    
+        // Hide the sheet that originated the preview
+        template.actorSheet?.minimize();
+
+        // Activate interactivity
+        return new Promise(async (resolve, reject) => {
+            const handlers = {};
+            let moveTime = 0;
+
+            const dismiss = async (event) => {
+                await setTemplateTargeting(false);
+                template.layer._onDragLeftCancel(event);
+                canvas.stage.off("mousemove", handlers.mm);
+                canvas.stage.off("mousedown", handlers.lc);
+                canvas.app.view.oncontextmenu = null;
+                canvas.app.view.onwheel = null;
+                initialLayer.activate();
+                template.actorSheet?.maximize();
+            }
+    
+            // Update placement (mouse-move)
+            handlers.mm = async event => {
+                event.stopPropagation();
+                await setTemplateTargeting(selectTargets);
+                let now = Date.now(); // Apply a 20ms throttle
+                if (now - moveTime <= 20) return;
+                const center = event.data.getLocalPosition(template.layer);
+                const snapped = canvas.grid.getSnappedPosition(center.x, center.y, 2);
+                if (game.release.generation < 10) template.data.update({ x: snapped.x, y: snapped.y });
+                else template.document.updateSource({ x: snapped.x, y: snapped.y });
+                template.refresh();
+                moveTime = now;
+            };
+    
+            // Cancel the workflow (right-click)
+            handlers.rc = async event => {
+                await dismiss(event);
+                resolve(null);
+            };
+    
+            // Confirm the workflow (left-click)
+            handlers.lc = async event => {
+                await dismiss(event);
+                const destination = canvas.grid.getSnappedPosition(template.data.x, template.data.y, 2);
+                if (game.release.generation < 10) await template.data.update(destination);
+                else await template.document.updateSource(destination);
+                await setTemplateTargeting(false);
+                resolve(template.data.toObject());
+            };
+    
+            // Rotate the template by 3 degree increments (mouse-wheel)
+            handlers.mw = event => {
+                if (event.ctrlKey) event.preventDefault(); // Avoid zooming the browser window
+                event.stopPropagation();
+                let delta = canvas.grid.type > CONST.GRID_TYPES.SQUARE ? 30 : 15;
+                let snap = event.shiftKey ? delta : (event.altKey ? 0.5 : 5);
+                const update = { direction: template.data.direction + (snap * Math.sign(event.deltaY)) };
+                if (game.release.generation < 10) template.data.update(update);
+                else template.document.updateSource(update);
+                template.refresh();
+            };
+    
+            // Activate listeners
+            canvas.stage.on("mousemove", handlers.mm);
+            canvas.stage.on("mousedown", handlers.lc);
+            canvas.app.view.oncontextmenu = handlers.rc;
+            canvas.app.view.onwheel = handlers.mw;
+
+            template.refresh();
+        });
+    }
 }
 
 function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedSpellLevel, consumedUsageCount, consumedItemQuantity }) {

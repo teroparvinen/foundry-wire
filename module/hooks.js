@@ -1,10 +1,12 @@
+import { runInQueue } from "./action-queue.js";
 import { Activation } from "./activation.js";
 import { ConcentrationCard } from "./cards/concentration-card.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { ItemCard } from "./cards/item-card.js";
-import { updateCombatTurnConditions } from "./conditions/combat-turns.js";
-import { applySingleEffect, applyTargetEffects } from "./game/active-effects.js";
+import { updateCombatTurnEndConditions, updateCombatTurnStartConditions } from "./conditions/combat-turns.js";
+import { applySingleEffect } from "./game/active-effects.js";
 import { getWireFlags } from "./game/effect-flags.js";
+import { createTemplate } from "./preroll.js";
 import { areAllied, areEnemies, fromUuid, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, tokenSeparation } from "./utils.js";
 
 export function initHooks() {
@@ -16,22 +18,24 @@ export function initHooks() {
     Hooks.on("renderChatPopout", (app, html, data) => ItemCard.activateListeners(html));
 
     Hooks.on("createChatMessage", async (message, options, user) => {
-        if (game.user.isGM && !message.isAuthor && message.getFlag("wire", "originatorUserId")) {
-            const gmMessageData = {
-                content: message.data.content,
-                flags: foundry.utils.mergeObject(message.data.flags, { "wire.isGmView": true }),
-                flavor: message.data.flavor,
-                speaker: message.data.speaker,
-                user: game.user.id,
-                whisper: [game.user.id]
-            };
-            const gmMessage = await ChatMessage.create(gmMessageData);
-
-            if (gmMessage) {
-                const activation = await Activation._initializeGmMessage(gmMessage, message);
-                await activation._updateCard();
+        await runInQueue(async () => {
+            if (game.user.isGM && !message.isAuthor && message.getFlag("wire", "originatorUserId")) {
+                const gmMessageData = {
+                    content: message.data.content,
+                    flags: foundry.utils.mergeObject(message.data.flags, { "wire.isGmView": true }),
+                    flavor: message.data.flavor,
+                    speaker: message.data.speaker,
+                    user: game.user.id,
+                    whisper: [game.user.id]
+                };
+                const gmMessage = await ChatMessage.create(gmMessageData);
+    
+                if (gmMessage) {
+                    const activation = await Activation._initializeGmMessage(gmMessage, message);
+                    await activation._updateCard();
+                }
             }
-        }
+        });
     });
 
     Hooks.on("deleteChatMessage", async (message, options, user) => {
@@ -125,7 +129,11 @@ export function initHooks() {
     let lastKnownCombatantId;
 
     Hooks.on("updateCombat", async (combat, change, options, userId) => {
-        if (game.user.isGM) {
+        if (game.user.isGM && combat.started) {
+            if (combat.current.combatantId !== lastKnownCombatantId) {
+                await updateCombatTurnEndConditions();
+            }
+
             if (change.round && change.round !== lastKnownRound) {
                 ChatMessage.create({
                     content: await renderTemplate("modules/wire/templates/round-change-card.hbs", { round: change.round }),
@@ -152,7 +160,7 @@ export function initHooks() {
                     })              
                 }
     
-                updateCombatTurnConditions();
+                await updateCombatTurnStartConditions();
             }
 
             lastKnownRound = combat.round;
@@ -192,6 +200,39 @@ export function initHooks() {
                     const message = game.messages.get(li.data("messageId"));
                     const actors = canvas.tokens.controlled;
                     declareDamage(message.roll, actors);
+                }
+            },
+
+            {
+                name: "wire.ui.recreate-template",
+                icon: '<i class="fas fa-ruler-combined"></i>',
+                condition: li => {
+                    const message = game.messages.get(li.data("messageId"));
+                    const masterEffectUuid = message?.data.flags.wire?.activation?.masterEffectUuid;
+                    const effect = fromUuid(masterEffectUuid);
+                    if (effect) {
+                        const item = fromUuid(effect.data.origin);
+                        const template = fromUuid(effect.data.flags.wire?.templateUuid);
+                        return item.hasAreaTarget && !template;
+                    }
+                },
+                callback: async li => {
+                    const message = game.messages.get(li.data("messageId"));
+                    const masterEffectUuid = message?.data.flags.wire?.activation?.masterEffectUuid;
+                    const effect = fromUuid(masterEffectUuid);
+                    if (effect) {
+                        const item = fromUuid(effect.data.origin);
+                        const template = fromUuid(effect.data.flags.wire?.templateUuid);
+                        if (item.hasAreaTarget && !template) {
+                            const templateData = await createTemplate(item, true);
+                            if (templateData) {
+                                const fullData = foundry.utils.mergeObject(templateData, { "flags.wire.masterEffectUuid": effect.uuid });
+                                const results = await game.scenes.current.createEmbeddedDocuments("MeasuredTemplate", [templateData]);
+                                const template = results[0];
+                                await effect.setFlag("wire", "templateUuid", template.uuid);
+                            }
+                        }
+                    }
                 }
             }
         );
@@ -292,10 +333,10 @@ async function updateAuras() {
             if (targets.length) {
                 const masterEffectUuid = source.effect.data.flags.wire?.masterEffectUuid;
                 const masterEffect = masterEffectUuid ? fromUuid(masterEffectUuid) : null;
-                const createdEffects = await applySingleEffect(source.effect, targets, masterEffect, {});
-                for (let createdEffect of createdEffects) {
-                    await createdEffect.setFlag("wire", "auraSourceUuid", source.effect.uuid);
+                const extraData = {
+                    "flags.wire.auraSourceUuid": source.effect.uuid
                 }
+                await applySingleEffect(source.effect, targets, masterEffect, {}, extraData);
             }
         }
     }

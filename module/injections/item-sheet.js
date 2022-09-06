@@ -49,7 +49,7 @@ export function initItemSheetHooks() {
         `);
 
         if (app.object.data.data.scaling?.mode === "level") {
-            const interval = app.object.data.flags.wire?.upcastInterval
+            const interval = app.object.data.flags.wire?.upcastInterval || "";
             const scalingIntervalFields = `
                 <div class="flexrow">
                     <span>Every</span>&nbsp;

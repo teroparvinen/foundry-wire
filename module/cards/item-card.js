@@ -29,12 +29,13 @@ export class ItemCard {
         }
     }
 
-    constructor(message) {
+    constructor(message, activation) {
         this.message = message;
+        this.activation = activation;
     }
 
     async updateContent(options) {
-        const activation = new Activation(this.message);
+        const activation = this.activation ?? new Activation(this.message);
         const html = await ItemCard.renderHtml(activation.item, activation, options);
         await this.message.update({ content: html });
 

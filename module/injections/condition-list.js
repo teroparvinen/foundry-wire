@@ -61,16 +61,20 @@ const updateList = [
     ["end", ["all"]],
     ["end-on-save", ["all"]],
     ["end-on-check", ["all"]],
-    ["splash-delayed", ["all"]]
 ]
 
 export async function injectConditionList(object, html, containerSelector, conditionType) {
     const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
 
-    const item = object instanceof CONFIG.Item.documentClass ? object : (isItemEffect(object) ? object.parent : fromUuid(object.data.origin));
-    const flow = new Flow(item, "none");
-    flow.evaluate();
-    const customUpdaters = Object.keys(flow.customUpdaters);
+    let customUpdaters = [];
+    try {
+        const item = object instanceof CONFIG.Item.documentClass ? object : (isItemEffect(object) ? object.parent : fromUuid(object.data.origin));
+        const flow = new Flow(item, "none");
+        flow.evaluate();
+        customUpdaters = Object.keys(flow.customUpdaters);
+    } catch(error) {
+        console.error(error);
+    }
 
     let conditions = object.getFlag("wire", "conditions") || [];
     if (!Array.isArray(conditions)) {
@@ -97,7 +101,6 @@ export async function injectConditionList(object, html, containerSelector, condi
                     <option value="${u}" ${selected(condition.update, u)}>${u}</option>`).join(""));
         bits.push(`
                 </select>
-                <input type="text" />
                 <a class="condition-control delete-condition"><i class="fas fa-minus"></i></a>
             </li>
         `);

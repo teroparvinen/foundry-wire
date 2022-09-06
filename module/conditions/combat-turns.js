@@ -4,13 +4,15 @@ import { takeAnActionFlow } from "../flows/take-an-action.js";
 import { makeUpdater } from "../updater-utility.js";
 import { areAllied, areAreaConditionsBlockedForActor, areEnemies, fromUuid, getTokenTemplateIds, isEffectEnabled, triggerConditions } from "../utils.js";
 
-export async function updateCombatTurnConditions() {
+export async function updateCombatTurnEndConditions() {
     const previousToken = canvas.tokens.get(game.combat.previous.tokenId);
     const previousCombatant = game.combat.turns.find(t => t.id === game.combat.previous.combatantId);
     const previousActor = previousCombatant?.actor;
 
     await handleTurn(previousActor, previousToken, false);
+}
 
+export async function updateCombatTurnStartConditions() {
     const currentToken = canvas.tokens.get(game.combat.current.tokenId);
     const currentCombatant = game.combat.turns.find(t => t.id === game.combat.current.combatantId);
     const currentActor = currentCombatant.actor;
@@ -22,7 +24,7 @@ async function handleTurn(actor, token, isStart) {
     // Target turn changes
     const handledTargetCondition = isStart ? "start-of-turn-target" : "end-of-turn-target";
 
-    triggerConditions(actor, handledTargetCondition);
+    await triggerConditions(actor, handledTargetCondition);
 
     // Caster turn changes
     const handledCasterCondition = isStart ? "start-of-turn-caster" : "end-of-turn-caster";
@@ -45,7 +47,7 @@ async function handleTurn(actor, token, isStart) {
     for (let templateId of templateIds) {
         const effectUuid = canvas.templates.get(templateId)?.data.flags.wire?.masterEffectUuid;
         const effect = fromUuid(effectUuid);
-        const item = fromUuid(effect.data.origin);
+        const item = fromUuid(effect?.data.origin);
     
         if (effect && isEffectEnabled(effect) && !areAreaConditionsBlockedForActor(item, actor)) {
             const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition.endsWith(handledAreaCondition)) ?? [];

@@ -1,4 +1,4 @@
-import { setupActionQueue } from "./action-queue.js";
+import { runInQueue, setupActionQueue } from "./action-queue.js";
 import { SelectVariantDialog } from "./apps/select-variant.js";
 import { initAreaConditionHooks } from "./conditions/area-effects.js";
 import { initRegularRollHooks } from "./conditions/regular-rolls.js";
@@ -13,6 +13,8 @@ import { initItemSheetHooks, setupItemSheetWrappers } from "./injections/item-sh
 import { setupKeybindings } from "./keybindings.js";
 import { setupSocket } from "./socket.js";
 import { setupWrappers } from "./wrappers.js";
+import { placeTemplate } from "./preroll.js";
+import { fromUuid } from "./utils.js";
 
 Hooks.once("init", () => {
     initHooks();
@@ -29,7 +31,10 @@ Hooks.once("init", () => {
     game.wire = {
         DamageParts,
         DamageCard,
-        SelectVariantDialog
+        SelectVariantDialog,
+        placeTemplate,
+        runInQueue,
+        fromUuid
     }
 });
 

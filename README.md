@@ -63,3 +63,7 @@ All rolls that are made will be rolled using 3D dice and will operate asynchrono
 ### Midi-QOL
 
 WIRE does many of the same things as Midi-QOL and some of them differently. It is not compatible and should not be used simultaneously. WIRE uses a similar flag naming scheme where possible to make adaptation easier both ways and will support Midi-QOL flags in effects.
+
+### Active Auras
+
+WIRE contains functionality for automatically attaching a template to the caster as well as auras for passive effects. Having Active Auras on should not be necessary and has not been tested.

@@ -273,4 +273,8 @@ export class Flow {
     skipConfigurationDialog() {
         this.preRollOptions["skipConfigurationDialog"] = true;
     }
+
+    setTemplateTargetSelection(state) {
+        this.preRollOptions["disableTemplateTargetSelection"] = !state;
+    }
 }

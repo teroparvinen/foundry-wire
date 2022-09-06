@@ -8,7 +8,6 @@ import { fromUuid, i18n, setTemplateTargeting, triggerConditions } from "./utils
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
-    libWrapper.register("wire", "game.dnd5e.canvas.AbilityTemplate.prototype.activatePreviewListeners", onTemplatePreviewListeners, "MIXED");
     libWrapper.register("wire", "ClientKeybindings._onDismiss", onEscape, "OVERRIDE");
     libWrapper.register("wire", "CONFIG.ui.chat.prototype.scrollBottom", onChatLogScrollBottom, "MIXED");
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype._preUpdate", onActorPreUpdate, "MIXED");
@@ -46,7 +45,7 @@ async function onItemRoll(wrapped, options, event) {
     const result = await preRollConfig(item, flow.preRollOptions, event);
 
     if (result) {
-        const { messageData, config, template } = result;
+        const { messageData, config, templateData } = result;
 
         if (event?.altKey) { config.advantage = true; }
         if (event?.metaKey || event?.ctrlKey) { config.disadvantage = true; }
@@ -59,55 +58,15 @@ async function onItemRoll(wrapped, options, event) {
             const activation = new Activation(message);
             await activation._initialize(item, flow);
     
-            if (item.hasAreaTarget && !template) {
-                templateInfo = { config, message };
-            } else {
-                await activation.assignConfig(config);
-                if (template) {
-                    await activation._assignTemplate(template);
-                }
-                await activation._activate();
+            await activation.assignConfig(config);
+            if (templateData) {
+                await activation._assignTemplateData(templateData);
             }
-    
+            await activation._activate();
         }
     
         return message;
     }
-}
-
-function onTemplatePreviewListeners(wrapped, initialLayer) {
-    wrapped.apply(this, [initialLayer]);
-
-    const mdHandler = function(event) {
-        Hooks.once("createMeasuredTemplate", async (templateDoc, data, user) => {
-            // Many modules assume MeasuredTemplate.refresh to only happen once it has already been drawn
-            // This hack delays updates which would trigger the refresh until the template has been drawn at least once
-            while (!templateDoc.object?.controlIcon?.renderable) {
-                await new Promise(resolve => {
-                    console.log("wait");
-                    setTimeout(() => { resolve(); }, 100);
-                });
-            }
-
-            const activation = new Activation(templateInfo.message);
-            await activation.assignConfig(templateInfo.config);
-            await activation._activate();
-            await activation._assignTemplate(templateDoc);
-            templateInfo = null;
-            canvas.stage.off("mousedown", mdHandler);
-            setTemplateTargeting(false);
-        });
-    };
-    canvas.stage.on("mousedown", mdHandler);
-
-    const cmListener = canvas.app.view.oncontextmenu;
-    canvas.app.view.oncontextmenu = function(event) {
-        templateInfo.message?.delete();
-        templateInfo = null;
-        canvas.stage.off("mousedown", mdHandler);
-        cmListener?.apply(this, arguments);
-        setTemplateTargeting(false);
-    };
 }
 
 async function onActorPreUpdate(wrapped, change, options, user) {

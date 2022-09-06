@@ -1,7 +1,7 @@
 import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, effectMatchesVariant, fromUuid, isEffectEnabled, isInCombat, substituteEffectConfig } from "../utils.js";
 import { applyConditionImmunity } from "./effect-flags.js";
 
-export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config) {
+export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config, extraData) {
     const actor = item.actor;
 
     const staticDuration = effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor));
@@ -14,27 +14,30 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
 
     const makeEffectData = (effect) => {
-        return {
-            changes: substituteEffectConfig(actor, config, copyEffectChanges(effect)),
-            origin: item.uuid,
-            disabled: false,
-            icon: effect.data.icon,
-            label: effect.data.label,
-            duration: checkEffectDurationOverride(appliedDuration, effect),
-            flags: {
-                wire: {
-                    castingActorUuid: actor.uuid,
-                    sourceEffectUuid: effect.uuid,
-                    conditions: copyConditions(effect),
-                    activationConfig: config,
-                    blocksAreaConditions: effect.data.flags.wire?.blocksAreaConditions,
-                    masterEffectUuid: (masterEffect && !effect.data.flags.wire?.independentDuration) ? masterEffect.uuid : null
-                },
-                core: {
-                    statusId: " "
+        return foundry.utils.mergeObject(
+            {
+                changes: substituteEffectConfig(actor, config, copyEffectChanges(effect)),
+                origin: item.uuid,
+                disabled: false,
+                icon: effect.data.icon,
+                label: effect.data.label,
+                duration: checkEffectDurationOverride(appliedDuration, effect),
+                flags: {
+                    wire: {
+                        castingActorUuid: actor.uuid,
+                        sourceEffectUuid: effect.uuid,
+                        conditions: copyConditions(effect),
+                        activationConfig: config,
+                        blocksAreaConditions: effect.data.flags.wire?.blocksAreaConditions,
+                        masterEffectUuid: (masterEffect && !effect.data.flags.wire?.independentDuration) ? masterEffect.uuid : null
+                    },
+                    core: {
+                        statusId: " "
+                    }
                 }
-            }
-        }
+            },
+            extraData || {}
+        )
     };
 
     const allTargetsEffectData = allTargetsEffects.map(effect => makeEffectData(effect));
@@ -64,7 +67,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     return createdEffects;
 }
 
-export async function applySingleEffect(effect, targets, masterEffect, config, { createStatus } = {}) {
+export async function applySingleEffect(effect, targets, masterEffect, config, extraData, { createStatus } = {}) {
     const item = fromUuid(effect.data.origin);
     const actor = item.actor;
 
@@ -72,27 +75,30 @@ export async function applySingleEffect(effect, targets, masterEffect, config, {
     const appliedDuration = masterEffect ? copyEffectDuration(masterEffect) : staticDuration;
 
     const makeEffectData = (effect) => {
-        return {
-            changes: substituteEffectConfig(actor, config, copyEffectChanges(effect)),
-            origin: item.uuid,
-            disabled: false,
-            icon: effect.data.icon,
-            label: effect.data.label,
-            duration: checkEffectDurationOverride(appliedDuration, effect),
-            flags: {
-                wire: {
-                    castingActorUuid: actor.uuid,
-                    sourceEffectUuid: effect.uuid,
-                    conditions: copyConditions(effect),
-                    activationConfig: config,
-                    blocksAreaConditions: effect.data.flags.wire?.blocksAreaConditions,
-                    masterEffectUuid: (masterEffect && !effect.data.flags.wire?.independentDuration) ? masterEffect.uuid : null
-                },
-                core: createStatus ? {
-                    statusId: " "
-                } : undefined
-            }
-        }
+        return foundry.utils.mergeObject(
+            {
+                changes: substituteEffectConfig(actor, config, copyEffectChanges(effect)),
+                origin: item.uuid,
+                disabled: false,
+                icon: effect.data.icon,
+                label: effect.data.label,
+                duration: checkEffectDurationOverride(appliedDuration, effect),
+                flags: {
+                    wire: {
+                        castingActorUuid: actor.uuid,
+                        sourceEffectUuid: effect.uuid,
+                        conditions: copyConditions(effect),
+                        activationConfig: config,
+                        blocksAreaConditions: effect.data.flags.wire?.blocksAreaConditions,
+                        masterEffectUuid: (masterEffect && !effect.data.flags.wire?.independentDuration) ? masterEffect.uuid : null
+                    },
+                    core: createStatus ? {
+                        statusId: " "
+                    } : undefined
+                }
+            },
+            extraData || {}
+        )
     };
 
     const effectData = makeEffectData(effect);

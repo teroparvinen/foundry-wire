@@ -26,6 +26,7 @@
             "temporary-hp": "Temporary HP",
             "declare-roll-as-damage-targeted": "Declare as damage to targeted tokens",
             "declare-roll-as-damage-selected": "Declare as damage to selected tokens",
+            "recreate-template": "Recreate the area template",
             "round": "Round {number}",
             "turn": "{name}'s turn",
             "ability-check": "Ability Check",
@@ -95,8 +96,7 @@
             "update-apply-effects-overtime": "Apply over time effects",
             "update-end": "End the effect",
             "update-end-on-save": "End the effect on a save",
-            "update-end-on-check": "End the effect on an ability check",
-            "update-splash-delayed": "Splash delayed effects in a radius"
+            "update-end-on-check": "End the effect on an ability check"
         },
         "active-effect": {
             "apply-on-save-or-miss": "Apply the effect if the save succeeds or the attack misses",
@@ -120,7 +120,8 @@
             "select-single-target-for-attack": "Select a target for the attack",
             "select-targets-for-effect": "Make a target selection",
             "damage-roll-has-no-parts": "There is no damage to roll!",
-            "could-not-parse-bonus-damage": "Could not parse bonus damage!"
+            "could-not-parse-bonus-damage": "Could not parse bonus damage!",
+            "resolve-performAttackRoll-noTarget": "Attack has no target!"
         },
         "keybindings": {
             "next-turn": "Next turn",

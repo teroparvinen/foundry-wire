@@ -239,14 +239,15 @@ export async function runAndAwait(fn, ...args) {
 }
 
 export async function triggerConditions(actor, condition, { externalTargetActor = null, ignoredEffects = [], details = null } = {}) {
-    actor.effects.filter(e => isEffectEnabled(e) && !ignoredEffects.includes(e)).forEach(async effect => {
+    const effects = actor.effects.filter(e => isEffectEnabled(e) && !ignoredEffects.includes(e))
+    for (let effect of effects) {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
         for (let condition of conditions) {
             const item = fromUuid(effect.data.origin);
             const updater = makeUpdater(condition, effect, item, externalTargetActor, details);
             await updater?.process();
         }
-    });
+    }
 }
 
 export function getDisposition(actor) {
@@ -282,9 +283,9 @@ export function isCastersTurn(item) {
     }
 }
 
-export function setTemplateTargeting(state) {
+export async function setTemplateTargeting(state) {
     if (game.modules.get("df-templates")?.active) {
-        game.settings.set("df-templates", "template-targeting-toggle", state);
+        await game.settings.set("df-templates", "template-targeting-toggle", state);
     }
 }
 

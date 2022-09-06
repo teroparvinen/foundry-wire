@@ -123,6 +123,9 @@ export class Resolver {
             await this.step(n);
 
         } else if (isOriginator && this.activation.state === "performAttackRoll") {
+            if (!this.activation.singleTarget) {
+                localizedWarning("wire.warn.resolve-performAttackRoll-noTarget");
+            }
             const options = getAttackOptions(this.activation);
             playAutoAnimation(getActorToken(item.actor), [this.activation.singleTarget.token], item);
             const roll = await item.rollAttack(foundry.utils.mergeObject({ chatMessage: false, fastForward: true }, options));
@@ -258,9 +261,11 @@ export class Resolver {
             await this.activation.applyState("waiting-for-action-trigger");
         } else if (isGM && this.activation.state === "action-trigger-activated") {
             const sourceEffect = this.activation.sourceEffect;
-            const condition = sourceEffect.data.flags.wire?.conditions?.find(c => c.condition === "take-an-action");
-            const updater = makeUpdater(condition, sourceEffect, item);
-            await updater?.process();
+            if (sourceEffect) {
+                const condition = sourceEffect.data.flags.wire?.conditions?.find(c => c.condition === "take-an-action");
+                const updater = makeUpdater(condition, sourceEffect, item);
+                await updater?.process();
+            }
 
             this.activation.message.setFlag("wire", "isHidden", true);
             await this.activation.applyState("idle");
@@ -271,14 +276,18 @@ export class Resolver {
             await this.activation.updateFlowSteps(flow);
             await this.activation.applyState(next);
             await this.step(n);
+        } else if (this.activation.state === "wait") {
+            // Allow custom scripts to unblock
         } else if (this.activation.state && !this.knownStates.includes(this.activation.state)) {
             const handlers = this.activation._getCustomFlowStepHandlers();
             const handler = handlers[this.activation.state];
             if (handler) {
                 if ((handler.runAsRoller && isOriginator) || (!handler.runAsRoller && isGM)) {
                     await runAndAwait(handler.fn, this.activation);
-                    await this.activation.applyState("idle");
-                    await this.step(n);
+                    if (this.activation.state !== "wait") {
+                        await this.activation.applyState("idle");
+                        await this.step(n);
+                    }
                 }
             } else {
                 console.log("UNKNOWN STATE", this.activation.state, ". Maybe run a macro?");
@@ -333,6 +342,7 @@ export class Resolver {
         const item = this.activation.item;
         const actor = item.actor;
         const activationConfig = this.activation.config;
+        const conditions = item.getFlag("wire", "conditions");
 
         let effect;
 
@@ -352,12 +362,12 @@ export class Resolver {
                 wire: {
                     isMasterEffect: true,
                     isConcentration: true,
-                    activationConfig
+                    activationConfig,
+                    conditions
                 }
             });
 
-            const effects = await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
-            effect = effects[0];
+            await this.activation._assignMasterEffectData(effectData);
         } else {
             const concentratingLabel = game.i18n.localize("wire.concentrating");
 
@@ -374,18 +384,13 @@ export class Resolver {
                     wire: {
                         isMasterEffect: true,
                         isConcentration: true,
-                        activationConfig
+                        activationConfig,
+                        conditions
                     }
                 }
             };
-            const effects = await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
-            effect = effects[0];
-        }
 
-        if (effect) {
-            await effect.setFlag("wire", "isConcentration", true);
-            await effect.setFlag("wire", "conditions", this.activation.item.getFlag("wire", "conditions"));
-            await this.activation._assignMasterEffect(effect);
+            await this.activation._assignMasterEffectData(effectData);
         }
     }
 
@@ -393,6 +398,7 @@ export class Resolver {
         const item = this.activation.item;
         const actor = item.actor;
         const activationConfig = this.activation.config;
+        const conditions = item.getFlag("wire", "conditions");
 
         const effectData = {
             changes: [],
@@ -404,34 +410,30 @@ export class Resolver {
             flags: {
                 wire: {
                     isMasterEffect: true,
-                    activationConfig
+                    activationConfig,
+                    conditions
                 }
             }
         };
-        const effects = await actor.createEmbeddedDocuments("ActiveEffect", [effectData]);
-        const effect = effects[0];
 
-        if (effect) {
-            await effect.setFlag("wire", "conditions", this.activation.item.getFlag("wire", "conditions"));
-            await this.activation._assignMasterEffect(effect);
-        }
+        await this.activation._assignMasterEffectData(effectData);
     }
 
     async _applyTargetEffects(applicationType) {
+        const originatorUserId = this.activation.message.data.flags.wire?.originatorUserId;
+        if (!originatorUserId) { console.warn("Activation message does not have originatorUserId set", this.activation.message); }
+
         const createdEffects = await applyTargetEffects(
             this.activation.item,
             applicationType,
             this.activation.allTargets.map(t => t.actor),
             this.activation.effectiveTargets.map(t => t.actor),
             this.activation.masterEffect,
-            this.activation.config
+            this.activation.config,
+            {
+                "flags.wire.originatorUserId": originatorUserId
+            }
         );
-
-        for (let effect of createdEffects) {
-            const originatorUserId = this.activation.message.data.flags.wire?.originatorUserId;
-            if (!originatorUserId) { console.warn("Activation message does not have originatorUserId set", this.activation.message); }
-            await effect.setFlag("wire", "originatorUserId", originatorUserId);
-        }
 
         const actor = this.activation.item.actor;
         const casterDependentEffectUuids = createdEffects.filter(e => isCasterDependentEffect(e)).map(e => e.uuid);

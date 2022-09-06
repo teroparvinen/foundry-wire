@@ -1,5 +1,6 @@
 import { runInQueue } from "./action-queue.js";
 import { ItemCard } from "./cards/item-card.js";
+import { DocumentProxy } from "./document-proxy.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
 import { DamageParts } from "./game/damage-parts.js";
@@ -57,7 +58,7 @@ export class Activation {
         }
     }
 
-    constructor(message) {
+    constructor(message, data) {
         const masterMessageUuid = message.getFlag("wire", "masterMessageUuid");
         let sourceMessage = message;
         if (masterMessageUuid) {
@@ -66,7 +67,7 @@ export class Activation {
         }
 
         this.message = sourceMessage;
-        this.data = sourceMessage.getFlag("wire", "activation") || {};
+        this.data = data || sourceMessage.getFlag("wire", "activation") || {};
     }
 
     get itemUuid() { return this.data.itemUuid; }
@@ -99,8 +100,14 @@ export class Activation {
 
     get item() {return this.itemUuid ? fromUuid(this.itemUuid) : null; }
     get actor() { return this.item?.actor; }
-    get template() { return this.templateUuid ? fromUuid(this.templateUuid) : null; }
-    get masterEffect() { return this.masterEffectUuid ? fromUuid(this.masterEffectUuid) : null; }
+    get template() {
+        if (this.templateProxy) { return this.templateProxy; }
+        return this.templateUuid ? fromUuid(this.templateUuid) : null;
+    }
+    get masterEffect() {
+        if (this.masterEffectProxy) { return this.masterEffectProxy; }
+        return this.masterEffectUuid ? fromUuid(this.masterEffectUuid) : null;
+    }
     get sourceEffect() { return this.data.sourceEffectUuid ? fromUuid(this.data.sourceEffectUuid) : null; }
     get createdEffects() { return this.data.createdEffectUuids?.map(uuid => fromUuid(uuid)) ?? []; }
 
@@ -213,9 +220,30 @@ export class Activation {
 
     async _update() {
         if (game.user.isGM || this.message.isAuthor) {
-            await this.message.setFlag("wire", "activation", this.data);
+            this._updatePending = true;
         } else {
             await wireSocket.executeAsGM("updateMessage", this.message.uuid, this.data);
+        }
+    }
+
+    async _finalizeUpdate() {
+        if (this._updatePending) {
+            const template = await this.templateProxy?.commit();
+            await this.masterEffectProxy?.commit();
+            await this.message.setFlag("wire", "activation", this.data);
+
+            await wireSocket.executeForOthers("activationUpdated", this.message.uuid);
+
+            // Wait for the template to be rendered at least once - avoids a host of problems
+            while (template && !template?.object?.controlIcon?.renderable) {
+                await new Promise(resolve => {
+                    setTimeout(() => { resolve(); }, 100);
+                });
+            }
+
+            this._updatePending = false;
+            this.templateProxy = null;
+            this.masterEffectProxy = null;
         }
     }
 
@@ -233,14 +261,14 @@ export class Activation {
         if (game.user.isGM && gmMessageUuid) {
             targetMessage = fromUuid(gmMessageUuid);
         }
-        const card = new ItemCard(targetMessage);
+        const card = new ItemCard(targetMessage, this);
         await card.updateContent({ isSecondary });
 
         // If this is called on a GM card, also update the player view if it is present
         const playerMessageUuid = this.message.getFlag("wire", "playerMessageUuid");
         if (game.user.isGM && playerMessageUuid) {
             const playerMessage = fromUuid(playerMessageUuid);
-            const playerCard = new ItemCard(playerMessage);
+            const playerCard = new ItemCard(playerMessage, this);
             const isPlayerView = true;
             await playerCard.updateContent({ isSecondary, isPlayerView });
 
@@ -269,12 +297,18 @@ export class Activation {
 
     async _activate() {
         const resolver = new Resolver(this);
-        runInQueue(async () => { await resolver.start(); });
+        runInQueue(async () => {
+            await resolver.start();
+            await this._finalizeUpdate();
+        });
     }
 
     async _step() {
         const resolver = new Resolver(this);
-        await runInQueue(async () => { await resolver.step(); });
+        await runInQueue(async () => {
+            await resolver.step();
+            await this._finalizeUpdate();
+        });
     }
 
     async updateFlowSteps(flowSteps) {
@@ -282,28 +316,28 @@ export class Activation {
         await this._update();
     }
 
-    async _assignTemplate(template) {
-        await template.setFlag("wire", "activationMessageId", this.message.id);
-        foundry.utils.setProperty(this.data, "templateUuid", template.uuid);
-        await this._update();
+    async _assignTemplateData(templateData) {
+        this.templateProxy = new DocumentProxy(game.scenes.current, "MeasuredTemplate", templateData);
 
-        if (this.masterEffect) {
-            await this.masterEffect.setFlag("wire", "templateUuid", template.uuid);
-            await template.setFlag("wire", "masterEffectUuid", this.masterEffectUuid);
-        }
+        this.templateProxy.setFlag("wire", "activationMessageId", this.message.id);
+
+        foundry.utils.setProperty(this.data, "templateUuid", this.templateProxy.uuid);
+        await this._update();
     }
 
-    async _assignMasterEffect(effect) {
-        foundry.utils.setProperty(this.data, "masterEffectUuid", effect.uuid);
+    async _assignMasterEffectData(effectData) {
+        this.masterEffectProxy = new DocumentProxy(this.actor, "ActiveEffect", effectData);
+
+        foundry.utils.setProperty(this.data, "masterEffectUuid", this.masterEffectProxy.uuid);
         await this._update();
 
-        if (this.template) {
-            await effect.setFlag("wire", "templateUuid", this.templateUuid);
-            await this.template.setFlag("wire", "masterEffectUuid", effect.uuid);
+        if (this.templateProxy) {
+            await this.masterEffectProxy.setFlag("wire", "templateUuid", this.templateUuid);
+            await this.templateProxy.setFlag("wire", "masterEffectUuid", this.masterEffectUuid);
         }
 
-        await effect.setFlag("wire", "originatorUserId", this.message.data.flags.wire?.originatorUserId);
-        await this.registerCreatedEffects([effect]);
+        await this.masterEffectProxy.setFlag("wire", "originatorUserId", this.message.data.flags.wire?.originatorUserId);
+        await this.registerCreatedEffects([this.masterEffectProxy]);
     }
 
     async registerCreatedEffects(effects) {
@@ -344,6 +378,10 @@ export class Activation {
     }
 
     async assignConfig(config) {
+        if (this.sourceEffect) {
+            await this.sourceEffect.setFlag("wire", "activationConfig", config);
+        }
+
         foundry.utils.setProperty(this.data, "config", config);
         await this._update();
     }
@@ -364,7 +402,16 @@ export class Activation {
         foundry.utils.setProperty(this.data, "state", state);
         await this._update();
         await this._updateCard();
-        await wireSocket.executeForOthers("activationUpdated", this.message.uuid);
+        await wireSocket.executeForOthers("refreshActivation", this.message.uuid, this.data);
+    }
+
+    async wait() {
+        await this.applyState("wait");
+    }
+
+    async continue() {
+        await this.applyState("idle");
+        await this._step();
     }
 
     async applyAttackTarget(targetActor) {
@@ -410,7 +457,7 @@ export class Activation {
             await this._updateCard();
     
             await this._step();
-            wireSocket.executeForOthers("activationUpdated", this.message.uuid);
+            wireSocket.executeForOthers("refreshActivation", this.message.uuid, this.data);
         }
     }
 

@@ -1,3 +1,4 @@
+import { wireSocket } from "../socket.js";
 import { fromUuid, fudgeToActor, getActorToken, getSpeaker } from "../utils.js";
 
 export class DamageCard {
@@ -66,6 +67,17 @@ export class DamageCard {
     }
 
     async make() {
+        if (!this.isPlayer && !game.user.isGM) {
+            await wireSocket.executeAsGM("createDamageCard", this.isPlayer, this.actor?.uuid, this.targetDamage.map(td => {
+                return {
+                    actorUuid: td.actor.uuid,
+                    tokenUuid: td.token.document.uuid,
+                    points: td.points
+                }
+            }));
+            return;
+        }
+
         const flagData = await this._getFlagData();
         const content = await this._renderContent();
         const speaker = getSpeaker(this.actor)
