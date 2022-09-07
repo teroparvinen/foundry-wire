@@ -116,6 +116,11 @@
         "select-variant": {
             "prompt": "Select a variant"
         },
+        "configure-damage": {
+            "title": "Configure Damage",
+            "roll": "Roll",
+            "custom-placeholder": "e.g. 2 / 1d4 / 1d6[fire]"
+        },
         "warn": {
             "select-single-target-for-attack": "Select a target for the attack",
             "select-targets-for-effect": "Make a target selection",

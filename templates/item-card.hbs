@@ -196,14 +196,19 @@
     <div class="card-buttons">
         {{#unless isGMActorPlayerView}}
             {{#if (or (eq activation.state "waiting-for-attack-damage-roll") (eq activation.state "waiting-for-save-damage-roll"))}}
-                <button data-action="wire-damage">
-                    {{#if activation.damage.isTempHps}}
-                        {{localize "wire.ui.temporary-hp"}}
-                    {{else}}
-                        {{#if activation.damage.isHealing}}{{ localize "DND5E.Healing" }}
-                        {{else}}{{localize "DND5E.Damage" }}{{/if}}
-                    {{/if}}
-                </button>
+                <div class="flexrow small-gap">
+                    <button class="flex1" data-action="wire-damage">
+                        {{#if activation.damage.isTempHps}}
+                            {{localize "wire.ui.temporary-hp"}}
+                        {{else}}
+                            {{#if activation.damage.isHealing}}{{ localize "DND5E.Healing" }}
+                            {{else}}{{localize "DND5E.Damage" }}{{/if}}
+                        {{/if}}
+                    </button>
+                    <button class="flex0" data-action="wire-damage-configure">
+                        <i class="fas fa-ellipsis-h"></i>
+                    </button>
+                </div>
             {{/if}}
             {{#if (eq activation.state "waiting-for-target-confirmation")}}
                 <button data-action="confirm-targets">

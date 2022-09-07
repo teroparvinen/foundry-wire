@@ -1,9 +1,19 @@
-import { compositeDamageParts, localizedWarning, stringMatchesVariant } from "../utils.js";
+import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant } from "../utils.js";
 import { getDamageMultiplier, getDamageOptions } from "./effect-flags.js";
 
 
 export class DamageParts {
-    static async roll(item, applicationType, onlyUnavoidable, { spellLevel, isCritical, attackTarget, variant } = {}) {
+    static async roll(activation, isAttack) {
+        const item = activation.item;
+        const applicationType = activation.applicationType;
+        const spellLevel = activation.config?.spellLevel;
+        const variant = activation.config?.variant;
+        const onlyUnavoidable = activation.effectiveTargets.length == 0;
+        const additionalDamage = activation.additionalDamage;
+
+        const isCritical = isAttack ? getAttackRollResultType(activation.attackRoll) == "critical" : undefined;
+        const attackTarget = isAttack ? activation.singleTarget?.actor : undefined;
+
         if (!item.hasDamage) throw new Error("You may not make a Damage Roll with this Item.");
         const itemData = item.data.data;
         const actorData = item.actor.data.data;
@@ -48,6 +58,7 @@ export class DamageParts {
         // Scale damage from up-casting spells
         if ((item.data.type === "spell")) {
             let levelMultiplier = 0;
+            let scalingFormula = itemData.scaling.formula;
             if ((itemData.scaling.mode === "cantrip")) {
                 let level;
                 if ( item.actor.type === "character" ) level = actorData.details.level;
@@ -55,41 +66,59 @@ export class DamageParts {
                 else level = actorData.details.spellLevel;
 
                 levelMultiplier = Math.floor((level + 1) / 6);
+                scalingFormula = scalingFormula || parts[0].formula;
             } else if (spellLevel && (itemData.scaling.mode === "level") && itemData.scaling.formula) {
                 levelMultiplier = Math.max(spellLevel - itemData.level, 0);
             }
             if (levelMultiplier > 0) {
                 const upcastInterval = item.data.flags.wire?.upcastInterval || 1;
                 const scalingMultiplier = upcastInterval ? Math.floor(levelMultiplier / upcastInterval) : levelMultiplier;
-                const s = new Roll(itemData.scaling.formula, rollData).alter(scalingMultiplier);
-                primaryModifiers.push(s.formula);
+                const s = new Roll(scalingFormula, rollData).alter(scalingMultiplier);
+                if (s.formula) {
+                    primaryModifiers.push(s.formula);
+                }
+            }
+        }
+
+        function handleDamageString(damageString) {
+            if (damageString && (parseInt(damageString) !== 0)) {
+                const { isValid, terms } = simplifyDamageFormula(damageString, rollData);
+
+                let termsWithMults = [];
+                let mult = 1;
+                for (let term of terms) {
+                    if (term instanceof OperatorTerm) {
+                        mult = term.operator == "-" ? -1 : +1;
+                    } else {
+                        termsWithMults.push({ term, mult });
+                    }
+                }
+                const nonOperatorTermsWithMults = termsWithMults.filter(tm => !(tm.term instanceof OperatorTerm));
+                const allTypesValid = nonOperatorTermsWithMults.every(tm => !tm.term.flavor || CONFIG.DND5E.damageTypes[tm.term.flavor]);
+                if (isValid && allTypesValid) {
+                    const recognizedTermsWithMults = nonOperatorTermsWithMults.filter(tm => !tm.term.flavor || CONFIG.DND5E.damageTypes[tm.term.flavor]);
+                    for (let tm of recognizedTermsWithMults) {
+                        parts.push({
+                            formula: tm.term.formula,
+                            type: tm.term.flavor || parts[0].type,
+                            halving: parts[0].halving,
+                            applicationType: parts[0].applicationType,
+                            multiplier: tm.mult
+                        });
+                    }
+                } else {
+                    localizedWarning("wire.warn.could-not-parse-bonus-damage");
+                }
             }
         }
     
         // Add damage bonus formula
         const actorBonus = getProperty(actorData, `bonuses.${itemData.actionType}`) || {};
-        if (actorBonus.damage && (parseInt(actorBonus.damage) !== 0)) {
-            const { isValid, terms } = simplifyDamageFormula(actorBonus.damage, rollData);
-            const termsWithMults = terms.map((term, i) => {
-                const op = i > 0 ? (terms[i-1].operator || "+") : "+";
-                return { term, mult: op === "-" ? -1 : 1 }
-            });
-            const nonOperatorTermsWithMults = termsWithMults.filter(tm => !(tm.term instanceof OperatorTerm));
-            const allTypesValid = nonOperatorTermsWithMults.every(tm => CONFIG.DND5E.damageTypes[tm.term.flavor]);
-            if (isValid && allTypesValid) {
-                const recognizedTermsWithMults = nonOperatorTermsWithMults.filter(tm => CONFIG.DND5E.damageTypes[tm.term.flavor]);
-                for (let tm of recognizedTermsWithMults) {
-                    parts.push({
-                        formula: tm.term.formula,
-                        type: tm.term.flavor || parts[0].type,
-                        halving: parts[0].halving,
-                        applicationType: parts[0].applicationType,
-                        multiplier: tm.mult
-                    });
-                }
-            } else {
-                localizedWarning("wire.warn.could-not-parse-bonus-damage");
-            }
+        handleDamageString(actorBonus.damage);
+
+        // Add additional custom damage
+        if (additionalDamage) {
+            handleDamageString(additionalDamage);
         }
     
         // Handle ammunition damage
@@ -115,7 +144,7 @@ export class DamageParts {
             if (n === 0) {
                 const formula = [part.formula, ...primaryModifiers].join(" + ");
                 return {
-                    part: part,
+                    part: { ...part, formula },
                     roll: new CONFIG.Dice.DamageRoll(formula, rollData, {
                         critical: isCritical,
                         criticalBonusDice,
@@ -224,7 +253,9 @@ export class DamageParts {
             return 1;
         }
 
-        const components = await Promise.all(this.result.map(async pr => {
+        let damageByType = {};
+
+        await Promise.all(this.result.map(async pr => {
             const { maximize, minimize } = getDamageOptions(item, actor, pr.part.type);
 
             let roll = pr.roll;
@@ -238,9 +269,13 @@ export class DamageParts {
 
             const caused = Math.floor(halvingFactor(halving, isEffective) * points);
 
+            damageByType[type] = Math.max((damageByType[type] || 0) + caused, 0);
+        }));
+
+        const components = Object.entries(damageByType).map(([type, caused]) => {
             if (type === "healing") { return { healing: caused } };
             if (type === "temphp") { return { temphp: caused } };
-            
+
             const traits = actor.data.data.traits;
             const isAttackMagical = (item.type === "weapon" && item.data.data.properties.mgc) || item.type === "spell";
             const nmi = traits.di.value.includes("physical") && !isAttackMagical;
@@ -257,7 +292,8 @@ export class DamageParts {
                 dr: caused - Math.floor(dr * caused),
                 dv: caused * dv - caused
             };
-        }));
+        });
+
         return components.reduce((prev, c) => {
             return {
                 damage: prev.damage + c.damage || 0,
@@ -279,7 +315,7 @@ export class DamageParts {
     async combinedRoll() {
         const partsWithRolls = this.result;
 
-        let terms = partsWithRolls.map(pr => new NumericTerm({ number: pr.roll.total, options: { flavor: pr.part.type } }));
+        let terms = partsWithRolls.map(pr => new NumericTerm({ number: (pr.part.multiplier || 1) * pr.roll.total, options: { flavor: pr.part.type } }));
         const dice = partsWithRolls.flatMap(pr => pr.roll.dice);
     
         for (let i = terms.length - 2; i >= 0; i--) {

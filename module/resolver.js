@@ -180,12 +180,7 @@ export class Resolver {
         } else if (isOriginator && this.activation.state === "rolling-attack-damage") {
             await this.activation.applyState("waiting-for-attack-damage");
 
-            const isCritical = getAttackRollResultType(this.activation.attackRoll) == "critical";
-            const spellLevel = this.activation.config?.spellLevel;
-            const variant = this.activation.config?.variant;
-            const onlyUnavoidable = this.activation.effectiveTargets.length == 0;
-            const attackTarget = this.activation.singleTarget?.actor;
-            const damageParts = await DamageParts.roll(item, applicationType, onlyUnavoidable, { isCritical, spellLevel, attackTarget, variant });
+            const damageParts = await DamageParts.roll(this.activation, true);
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
@@ -202,9 +197,7 @@ export class Resolver {
         } else if (isOriginator && this.activation.state === "rolling-save-damage") {
             await this.activation.applyState("waiting-for-save-damage");
 
-            const spellLevel = this.activation.config?.spellLevel;
-            const variant = this.activation.config?.variant;
-            const damageParts = await DamageParts.roll(item, applicationType, false, { spellLevel, variant });
+            const damageParts = await DamageParts.roll(this.activation, false);
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);

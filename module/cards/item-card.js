@@ -1,4 +1,5 @@
 import { Activation } from "../activation.js";
+import { ConfigureDamage } from "../apps/configure-damage.js";
 import { fromUuid, fudgeToActor, getActorToken } from "../utils.js";
 
 export class ItemCard {
@@ -85,6 +86,17 @@ export class ItemCard {
                 break;
             case "wire-damage":
                 activation._rollDamage();
+                break;
+            case "wire-damage-configure":
+                const options = {
+                    top: event ? event.clientY - 80 : null,
+                    left: window.innerWidth - 610
+                }
+                const configuration = new ConfigureDamage(activation, options);
+                const additionalDamage = await configuration.render(true);
+                if (additionalDamage !== undefined) {
+                    activation._rollDamage(additionalDamage);
+                }
                 break;
             case "wire-save":
             case "wire-save-success":

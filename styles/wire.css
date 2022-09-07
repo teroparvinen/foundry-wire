@@ -509,3 +509,33 @@
 .turn-change-card div {
     font-size: 16px;
 }
+
+
+.flexrow.small-gap {
+    gap: 2px;
+}
+
+.configure-damage__damage-row {
+    margin-bottom: 5px;
+}
+
+.configure-damage__type {
+    text-align: left;
+    color: #4b4a44;
+}
+
+.configure-damage__formula {
+    text-align: center;
+    background: var(--faint-color);
+    border-radius: 5px;
+    padding: 2px;
+}
+
+.configure-damage .configure-damage__custom-damage {
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.configure-damage .configure-damage__custom-damage::placeholder {
+    opacity: 0.5;
+}
