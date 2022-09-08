@@ -116,9 +116,8 @@ function getFlags(actor) {
     );
 }
 
-export function getAttackOptions(activation) {
-    const attacker = activation.item.actor;
-    const defender = activation.singleTarget.actor;
+export function getAttackOptions(item, defender, config) {
+    const attacker = item.actor;
 
     const attAdv = getFlags(attacker)?.advantage || {};
     const attDis = getFlags(attacker)?.disadvantage || {};
@@ -128,12 +127,12 @@ export function getAttackOptions(activation) {
     const advFlags = foundry.utils.mergeObject(attAdv, gntAdv);
     const disFlags = foundry.utils.mergeObject(attDis, gntDis);
 
-    const usedAbility = activation.item.abilityMod;
-    const actionType = activation.item.data.data.actionType;
-    const checkProperties = ["attack.all", `attack.${actionType}`, `attack.${usedAbility}`];
+    const usedAbility = item.abilityMod;
+    const actionType = item.data.data.actionType;
+    const checkProperties = ["all", "attack.all", `attack.${actionType}`, `attack.${usedAbility}`];
 
     const attackerType = attacker.data.data.details?.type?.value || "humanoid";
-    const defenderType = defender.data.data.details?.type?.value || "humanoid";
+    const defenderType = defender?.data.data.details?.type?.value || "humanoid";
     const attackerTypeProperty = `attack.${attackerType}`;
     const defenderTypeProperty = `attack.${defenderType}`;
     const isTypeAdv = foundry.utils.getProperty(attAdv, defenderTypeProperty) || foundry.utils.getProperty(gntAdv, attackerTypeProperty);
@@ -142,12 +141,17 @@ export function getAttackOptions(activation) {
     const isAdvantage = checkProperties.some(p => foundry.utils.getProperty(advFlags, p)) || isTypeAdv;
     const isDisdvantage = checkProperties.some(p => foundry.utils.getProperty(disFlags, p)) || isTypeDis;
 
-    const config = activation.config;
+    const advantage = (config?.advantage || (isAdvantage && !isDisdvantage)) && !config?.disadvantage;
+    const disadvantage = (config?.disadvantage || (isDisdvantage && !isAdvantage)) && !config?.advantage;
 
-    const advantage = config.advantage || (isAdvantage && !isDisdvantage);
-    const disadvantage = config.disadvantage || (isDisdvantage && !isAdvantage);
+    const { parts, rollData } = item.getAttackToHit() || {};
 
-    return { advantage, disadvantage };
+    if (config?.attackBonus) {
+        parts.push("@bonus");
+        rollData.bonus = config.attackBonus;
+    }
+
+    return { advantage, disadvantage, parts, data: rollData };
 }
 
 export function getDamageMultiplier(item, actor, target) {

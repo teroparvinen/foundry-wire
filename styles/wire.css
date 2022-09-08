@@ -515,16 +515,16 @@
     gap: 2px;
 }
 
-.configure-damage__damage-row {
+.configure-damage__damage-row, .configure-attack__part-row {
     margin-bottom: 5px;
 }
 
-.configure-damage__type {
+.configure-damage__type, .configure-attack__part {
     text-align: left;
     color: #4b4a44;
 }
 
-.configure-damage__formula {
+.configure-damage__formula, .configure-attack__bonus {
     text-align: center;
     background: var(--faint-color);
     border-radius: 5px;
@@ -536,6 +536,78 @@
     margin-bottom: 10px;
 }
 
-.configure-damage .configure-damage__custom-damage::placeholder {
+.configure-attack .configure-attack__values {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    gap: 5px;
+}
+
+.configure-damage .configure-damage__custom-damage::placeholder, .configure-attack .configure-attack__custom-bonus::placeholder {
     opacity: 0.5;
+}
+
+.configure-attack__hint {
+    font-size: var(--font-size-12);
+    line-height: var(--line-height-16);
+    color: var(--color-text-dark-secondary);
+    text-align: center;
+    margin-top: 5px;
+    margin-bottom: -5px;
+}
+
+#chat-form {
+    position: relative;
+}
+
+#item-attack-bonuses {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    color: black;
+    background: url(/ui/parchment.jpg) repeat;
+    border: 1px solid var(--color-border-dark);
+    border-radius: 3px;
+}
+
+#item-attack-bonuses .attack-bonus-components {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+#item-attack-bonuses .attack-bonus-mode {
+    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+#item-attack-bonuses .attack-bonus-mode.advantage {
+    color: green;
+}
+
+#item-attack-bonuses .attack-bonus-mode.disadvantage {
+    color: red;
+}
+
+#item-attack-bonuses .attack-bonus-component, #item-attack-bonuses .attack-bonus-mode {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#item-attack-bonuses .attack-bonus-value {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+#item-attack-bonuses .attack-bonus-label {
+    font-size: 12px;
 }

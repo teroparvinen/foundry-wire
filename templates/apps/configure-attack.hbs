@@ -1,0 +1,24 @@
+<form>
+    <div class="dialog-content">
+        {{#each components}}
+            <div class="configure-attack__part-row flexrow">
+                <div class="configure-attack__part flex1">{{localize i18nKey}}</div>
+                <div class="configure-attack__bonus flex2">{{value}}</div>
+            </div>
+        {{/each}}
+        <div class="configure-attack__values flexrow">
+            <input class="configure-attack__custom-bonus flex2" placeholder="{{localize "wire.configure-attack.custom-placeholder"}}" type="text" />
+            <select class="configure-attack__mode-select flex1" name="mode">
+                {{selectOptions modeOptions selected=defaultMode localize=true}}
+            </select>
+        </div>
+    </div>
+    <div class="dialog-buttons">
+        <button type="submit" class="dialog-button" data-button="roll">
+            {{localize "wire.configure-attack.roll"}}
+        </button>
+    </div>
+    <div class="configure-attack__hint">
+        {{localize "wire.configure-attack.fast-forward-hint"}}
+    </div>
+</form>

@@ -116,10 +116,31 @@
         "select-variant": {
             "prompt": "Select a variant"
         },
+        "configure-attack": {
+            "title": "Configure Attack",
+            "custom-placeholder": "e.g. 2 / 1d4",
+            "roll": "Roll Attack",
+            "fast-forward-hint": "Shift-click or right-click the item to skip this dialog"
+        },
         "configure-damage": {
             "title": "Configure Damage",
-            "roll": "Roll",
+            "roll": "Roll Damage",
             "custom-placeholder": "e.g. 2 / 1d4 / 1d6[fire]"
+        },
+        "roll-component": {
+            "item": "Item",
+            "ability": "Ability",
+            "prof": "Proficiency",
+            "bonus": "Bonus",
+            "ammo": "Ammo Bonus",
+            "item-short": "Item",
+            "ability-short": "Ability",
+            "prof-short": "Prof.",
+            "bonus-short": "Bonus",
+            "ammo-short": "Ammo",
+            "normal": "Normal",
+            "advantage": "Advantage",
+            "disadvantage": "Disadvantage"
         },
         "warn": {
             "select-single-target-for-attack": "Select a target for the attack",

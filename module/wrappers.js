@@ -1,4 +1,5 @@
 import { Activation } from "./activation.js";
+import { ConfigureAttack } from "./apps/configure-attack.js";
 import { ConcentrationCard } from "./cards/concentration-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
@@ -16,9 +17,9 @@ export function setupWrappers() {
 let templateInfo = null;
 
 async function onItemRoll(wrapped, options, event) {
-    if (event?.shiftKey) {
-        console.log("SKIPPED WIRE", this, options);
-        return wrapped(options);
+    let configure = true;
+    if (event?.shiftKey || event?.which === 3) {
+        configure = false;
     }
 
     const item = this;
@@ -47,8 +48,30 @@ async function onItemRoll(wrapped, options, event) {
     if (result) {
         const { messageData, config, templateData } = result;
 
-        if (event?.altKey) { config.advantage = true; }
-        if (event?.metaKey || event?.ctrlKey) { config.disadvantage = true; }
+        if (event?.altKey) { 
+            config.advantage = true;
+            configure = false;
+        }
+        if (event?.metaKey || event?.ctrlKey) {
+            config.disadvantage = true;
+            configure = false;
+        }
+
+        if (configure) {
+            if (flow.evaluatedSteps.includes("performAttackRoll")) {
+                const app = new ConfigureAttack(item, config);
+                const result = await app.render(true);
+
+                if (result === undefined) { return; }
+                const { bonus, advantage, disadvantage } = result;
+
+                if (bonus) {
+                    config.attackBonus = bonus;
+                }
+                config.advantage = advantage;
+                config.disadvantage = disadvantage;
+            }
+        }
 
         messageData.content = await ItemCard.renderHtml(item);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);

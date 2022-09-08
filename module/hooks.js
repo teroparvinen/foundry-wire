@@ -5,9 +5,10 @@ import { DamageCard } from "./cards/damage-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { updateCombatTurnEndConditions, updateCombatTurnStartConditions } from "./conditions/combat-turns.js";
 import { applySingleEffect } from "./game/active-effects.js";
-import { getWireFlags } from "./game/effect-flags.js";
+import { getDisplayableAttackComponents } from "./game/attack-components.js";
+import { getAttackOptions, getWireFlags } from "./game/effect-flags.js";
 import { createTemplate } from "./preroll.js";
-import { areAllied, areEnemies, fromUuid, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, tokenSeparation } from "./utils.js";
+import { areAllied, areEnemies, fromUuid, i18n, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, tokenSeparation } from "./utils.js";
 
 export function initHooks() {
     Hooks.on("renderChatLog", (app, html, data) => {
@@ -236,6 +237,45 @@ export function initHooks() {
                 }
             }
         );
+    });
+
+    Hooks.on("actorItemHoverIn", (item, html) => {
+        const components = getDisplayableAttackComponents(item, true);
+        const target = game.user.targets.first()?.actor;
+        const options = getAttackOptions(item, target);
+        const mode = options.advantage ? "advantage" : (options.disadvantage ? "disadvantage" : "");
+
+        if (components) {
+            const chatForm = $('#chat-form');
+            const modeHtml = mode ? `
+                <div class="attack-bonus-mode ${mode}">
+                    ${i18n(`wire.roll-component.${mode}`)}
+                </div>
+            ` : "";
+            const componentHtml = Object.values(components).map(c => {
+                return `
+                    <div class="attack-bonus-component">
+                        <div class="attack-bonus-value">${c.value}</div>
+                        <div class="attack-bonus-label">${i18n(c.i18nKey)}</div>
+                    </div>
+                `;
+            })
+            const html = `
+                <div id="item-attack-bonuses">
+                    ${modeHtml}
+                    <div class="attack-bonus-components">
+                        ${componentHtml.join("")}
+                    </div>
+                </div>
+            `;
+
+            $('#item-attack-bonuses').remove();
+            chatForm.append(html);
+        }
+    });
+
+    Hooks.on("actorItemHoverOut", (item, html) => {
+        $('#item-attack-bonuses').remove();
     });
 }
 
