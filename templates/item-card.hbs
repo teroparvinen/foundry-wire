@@ -202,7 +202,13 @@
                             {{localize "wire.ui.temporary-hp"}}
                         {{else}}
                             {{#if activation.damage.isHealing}}{{ localize "DND5E.Healing" }}
-                            {{else}}{{localize "DND5E.Damage" }}{{/if}}
+                            {{else}}
+                                {{#if activation.damage.isCritical}}
+                                    {{localize "DND5E.Critical" }}
+                                {{else}}
+                                    {{localize "DND5E.Damage" }}
+                                {{/if}}
+                            {{/if}}
                         {{/if}}
                     </button>
                     <button class="flex0" data-action="wire-damage-configure">

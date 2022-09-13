@@ -24,6 +24,7 @@ const conditionList = [
     ["end-of-turn-caster", "all"],
     ["start-of-turn-target", "effect"],
     ["end-of-turn-target", "effect"],
+    ["change-of-turn", "effect"],
     ["take-an-action", "all"],
     ["this-attack-hits", "item"],
     ["target-attacks.all", "effect"],
@@ -48,7 +49,11 @@ const conditionList = [
     ["target-is-hit.rsak", "effect"],
     ["takes-damage", "effect"],
     ["saving-throw-completed", "effect"],
-    ["skill-check-completed", "effect"]
+    ["skill-check-completed", "effect"],
+    ["prepare-skill-check", "effect"],
+    ["prepare-ability-check", "effect"],
+    ["prepare-ability-save", "effect"],
+    ["prepare-attack-roll", "effect"]
 ];
 
 const updateList = [

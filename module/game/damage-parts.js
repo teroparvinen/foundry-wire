@@ -1,23 +1,47 @@
 import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant } from "../utils.js";
-import { getDamageMultiplier, getDamageOptions } from "./effect-flags.js";
+import { getDamageInflictingOptions, getDamageMultiplier, getDamageReceivingOptions, getEffectFlags } from "./effect-flags.js";
 
 
 export class DamageParts {
-    static async roll(activation, isAttack) {
+    static isCritical(activation) {
+        const item = activation.item;
+        const attackTarget = activation.singleTarget?.actor;
+
+        let isCritical = getAttackRollResultType(activation.attackRoll) == "critical";
+    
+        // Flags
+        const actionType = item.data.data.actionType;
+
+        if (attackTarget) {
+            const grantFlags = getEffectFlags(attackTarget)?.grants?.critical || {};
+            if (grantFlags.all || grantFlags[actionType]) {
+                isCritical = true;
+            }
+        }
+
+        const criticalFlags = getEffectFlags(item.actor)?.critical || {};
+        if (criticalFlags.all || criticalFlags[actionType]) {
+            isCritical = true;
+        }
+
+        return isCritical;
+    }
+
+    static async roll(activation, isAttack, { evaluateCritical = true } = {}) {
         const item = activation.item;
         const applicationType = activation.applicationType;
         const spellLevel = activation.config?.spellLevel;
         const variant = activation.config?.variant;
         const onlyUnavoidable = activation.effectiveTargets.length == 0;
-        const additionalDamage = activation.additionalDamage;
+        const additionalDamage = activation.config.damageBonus;
 
-        const isCritical = isAttack ? getAttackRollResultType(activation.attackRoll) == "critical" : undefined;
+        let isCritical = (isAttack && evaluateCritical) ? DamageParts.isCritical(activation) : undefined;
         const attackTarget = isAttack ? activation.singleTarget?.actor : undefined;
 
         if (!item.hasDamage) throw new Error("You may not make a Damage Roll with this Item.");
         const itemData = item.data.data;
         const actorData = item.actor.data.data;
-    
+
         // Get damage components
         let parts = this._itemDamageParts(item, applicationType, onlyUnavoidable, variant);
         const primaryModifiers = [];
@@ -167,7 +191,8 @@ export class DamageParts {
     
         // Evaluate the configured roll
         for (let pr of partsWithRolls) {
-            await pr.roll.evaluate({ async: true });
+            const { maximize, minimize } = getDamageInflictingOptions(item, item.actor, pr.part.type)
+            await pr.roll.evaluate({ maximize, minimize, async: true });
         }
 
         let criticalThreshold = 20;
@@ -256,7 +281,7 @@ export class DamageParts {
         let damageByType = {};
 
         await Promise.all(this.result.map(async pr => {
-            const { maximize, minimize } = getDamageOptions(item, actor, pr.part.type);
+            const { maximize, minimize } = getDamageReceivingOptions(item, actor, pr.part.type);
 
             let roll = pr.roll;
             if (maximize) { roll = await pr.roll.reroll({ maximize, async: true }); }

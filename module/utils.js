@@ -239,15 +239,17 @@ export async function runAndAwait(fn, ...args) {
 }
 
 export async function triggerConditions(actor, condition, { externalTargetActor = null, ignoredEffects = [], details = null } = {}) {
+    let result;
     const effects = actor.effects.filter(e => isEffectEnabled(e) && !ignoredEffects.includes(e))
     for (let effect of effects) {
         const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
         for (let condition of conditions) {
             const item = fromUuid(effect.data.origin);
             const updater = makeUpdater(condition, effect, item, externalTargetActor, details);
-            await updater?.process();
+            result = await updater?.process();
         }
     }
+    return result;
 }
 
 export function getDisposition(actor) {

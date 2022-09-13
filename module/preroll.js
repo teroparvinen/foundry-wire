@@ -104,7 +104,7 @@ export async function preRollConfig(item, options = {}, event) {
     // Initiate measured template creation
     let templateData;
     if (doCreateMeasuredTemplate) {
-        templateData = await createTemplate(item, options.disableTemplateTargetSelection, activationConfig.variant);
+        templateData = await createTemplate(item, options.disableTemplateTargetSelection, activationConfig);
         if (!templateData) { return; }
     }
 
@@ -118,7 +118,15 @@ export async function preRollConfig(item, options = {}, event) {
     };
 }
 
-export async function createTemplate(item, disableTargetSelection, variant) {
+async function evaluateTemplateFormulas(item, templateData, config) {
+    const rollData = foundry.utils.mergeObject(item.getRollData(), config);
+
+    const targetValue = getProperty(item.data, "flags.wire.override.target.value") || getProperty(item.data, "data.target.value") || "";
+    const targetFormula = Roll.replaceFormulaData(targetValue, rollData);
+    await templateData.update({ distance: Roll.safeEval(targetFormula) });
+}
+
+export async function createTemplate(item, disableTargetSelection, config) {
     if (isSelfRange(item) && item.hasAreaTarget && (item.data.data.target.type === "sphere" || item.data.data.target.type === "radius")) {
         const token = getActorToken(item.actor);
         if (token) {
@@ -126,20 +134,22 @@ export async function createTemplate(item, disableTargetSelection, variant) {
             destination.x = destination.x + token.w / 2;
             destination.y = destination.y + token.h / 2;
             const preTemplate = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
+            evaluateTemplateFormulas(preTemplate.data);
             await preTemplate.data.update(destination);
 
             return foundry.utils.mergeObject(preTemplate.data.toObject(), { "flags.wire.attachedTokenId": token.id });
         }
     } else {
-        const selectTargets = !disableTargetSelection && hasApplicationsOfType(item, "immediate", variant);
-        return await placeTemplate(item, { selectTargets });
+        const selectTargets = !disableTargetSelection && hasApplicationsOfType(item, "immediate", config.variant);
+        return await placeTemplate(item, config, { selectTargets });
     }
 }
 
-export async function placeTemplate(item, { selectTargets = true } = {}) {
+export async function placeTemplate(item, config, { selectTargets = true } = {}) {
     let template;
     if (item instanceof CONFIG.Item.documentClass) {
         template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
+        await evaluateTemplateFormulas(item, template.data, config);
     } else {
         const cls = CONFIG.MeasuredTemplate.documentClass;
         const templateObject = new cls(item, {parent: canvas.scene});

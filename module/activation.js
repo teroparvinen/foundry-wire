@@ -85,7 +85,6 @@ export class Activation {
     get attackRoll() { return this.data.attack?.roll ? CONFIG.Dice.D20Roll.fromData(this.data.attack.roll) : null; }
     get attackResult() { return this.data.attack?.result; }
     get attackOptions() { return this.data.attack?.options; }
-    get additionalDamage() { return this.data.damage?.additional; }
     get damageParts() { return this.data.damage?.parts ? DamageParts.fromData(this.data.damage.parts) : null; }
     get saveResults() { return this.data.saves?.map(e => {
         return {
@@ -161,6 +160,7 @@ export class Activation {
             damage: {
                 roll: damageRoll,
                 tooltip: damageRollTooltip,
+                isCritical: DamageParts.isCritical(this),
                 isHealing,
                 isTempHps
             },
@@ -478,7 +478,7 @@ export class Activation {
     }
 
     async _rollDamage(additionalDamage) {
-        foundry.utils.setProperty(this.data, 'damage.additional', additionalDamage);
+        foundry.utils.setProperty(this.data, 'config.damageBonus', additionalDamage);
         await this._update();
 
         if (this.data.state === "waiting-for-attack-damage-roll") {

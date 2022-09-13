@@ -611,3 +611,14 @@
 #item-attack-bonuses .attack-bonus-label {
     font-size: 12px;
 }
+
+.dialog-bonus {
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: var(--faintest-color);
+    border: 1px solid var(--faint-color);
+    border-radius: 5px;
+}

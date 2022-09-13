@@ -87,8 +87,9 @@ async function runCustomUpdater(condition, effectUuid, details) {
             if (updater) {
                 const result = updater.fn(condition, effect, details);
                 if (result instanceof Promise) {
-                    await result;
+                    return await result;
                 }
+                return result;
             }
         }
     }

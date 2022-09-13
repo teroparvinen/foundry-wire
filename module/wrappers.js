@@ -1,11 +1,10 @@
 import { Activation } from "./activation.js";
-import { ConfigureAttack } from "./apps/configure-attack.js";
 import { ConcentrationCard } from "./cards/concentration-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
 import { preRollCheck, preRollConfig } from "./preroll.js";
-import { fromUuid, i18n, setTemplateTargeting, triggerConditions } from "./utils.js";
+import { fromUuid, i18n, triggerConditions } from "./utils.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
@@ -57,21 +56,7 @@ async function onItemRoll(wrapped, options, event) {
             configure = false;
         }
 
-        if (configure) {
-            if (flow.evaluatedSteps.includes("performAttackRoll")) {
-                const app = new ConfigureAttack(item, config);
-                const result = await app.render(true);
-
-                if (result === undefined) { return; }
-                const { bonus, advantage, disadvantage } = result;
-
-                if (bonus) {
-                    config.attackBonus = bonus;
-                }
-                config.advantage = advantage;
-                config.disadvantage = disadvantage;
-            }
-        }
+        config.fastForward = !configure;
 
         messageData.content = await ItemCard.renderHtml(item);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);

@@ -1,5 +1,5 @@
 import { getDisplayableAttackComponents } from "../game/attack-components.js";
-import { getAttackOptions } from "../game/effect-flags.js";
+import { getStaticAttackOptions } from "../game/effect-flags.js";
 
 export class ConfigureAttack extends Application {
     constructor(item, config, options) {
@@ -27,7 +27,7 @@ export class ConfigureAttack extends Application {
             disadvantage: "wire.roll-component.disadvantage",
         };
         const target = game.user.targets.first()?.actor;
-        const options = getAttackOptions(item, target, this.config);
+        const options = getStaticAttackOptions(item, target, this.config);
         const defaultMode = options.advantage ? "advantage" : (options.disadvantage ? "disadvantage" : "normal");
 
         return {

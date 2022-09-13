@@ -7,6 +7,15 @@ export function initItemSheetHooks() {
 
         const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
 
+        // Allow formula for target
+        const stockTargetValue = foundry.utils.getProperty(app.object.data, "data.target.value");
+        const targetValue = foundry.utils.getProperty(app.object.data, "flags.wire.override.target.value") || stockTargetValue;
+        html.find('input[name="data.target.value"]')
+            .removeAttr("data-dtype")
+            .attr("name", "flags.wire.override.target.value")
+            .val(targetValue);
+
+        // Damage parts
         const parts = app.object.data.data.damage?.parts || [];
         const wireParts = app.object.data.flags.wire?.damageParts || [];
         
@@ -29,10 +38,12 @@ export function initItemSheetHooks() {
             $(this).find('.delete-damage').before(fields);
         });
 
+        // Shorten temp healing title
         html.find('.damage-parts option[value="temphp"]').each(function() {
             if ($(this).text() === "Healing (Temporary)") $(this).text("Healing (Temp)");
         });
 
+        // Checked ability
         const checkedAbility = app.object.data.flags.wire?.checkedAbility;
         const abilityOptions = Object.entries(CONFIG.DND5E.abilities).map(a => `<option value="${a[0]}" ${selected(checkedAbility, a[0])}>${a[1]}</option>`)
         html.find('.damage-parts').nextAll('.input-select').first().after(`
@@ -48,6 +59,7 @@ export function initItemSheetHooks() {
             </div>
         `);
 
+        // Spell scaling interval
         if (app.object.data.data.scaling?.mode === "level") {
             const interval = app.object.data.flags.wire?.upcastInterval || "";
             const scalingIntervalFields = `
@@ -60,6 +72,7 @@ export function initItemSheetHooks() {
             html.find('select[name="data.scaling.mode"]').parent().append(scalingIntervalFields);
         }
 
+        // Conditions
         await injectConditionList(app.object, html, '.tab.details', "item");
     });
 

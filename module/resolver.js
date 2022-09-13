@@ -126,7 +126,7 @@ export class Resolver {
             if (!this.activation.singleTarget) {
                 localizedWarning("wire.warn.resolve-performAttackRoll-noTarget");
             }
-            const options = getAttackOptions(this.activation.item, this.activation.singleTarget.actor, this.activation.config);
+            const options = await getAttackOptions(this.activation.item, this.activation.singleTarget.actor, this.activation.config);
             playAutoAnimation(getActorToken(item.actor), [this.activation.singleTarget.token], item);
             const roll = await item.rollAttack(foundry.utils.mergeObject({ chatMessage: false, fastForward: true }, options));
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);

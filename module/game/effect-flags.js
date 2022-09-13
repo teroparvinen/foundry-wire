@@ -1,5 +1,6 @@
 import { runInQueue } from "../action-queue.js";
-import { addTokenFX, deleteTokenFX, fromUuid, getActorToken, isActorEffect, isEffectEnabled } from "../utils.js";
+import { ConfigureAttack } from "../apps/configure-attack.js";
+import { addTokenFX, deleteTokenFX, fromUuid, getActorToken, isActorEffect, isEffectEnabled, triggerConditions } from "../utils.js";
 
 export function getWireFlags() {
     return [
@@ -37,12 +38,6 @@ export function getWireFlags() {
         ...[
             "flags.wire.damage.versatile"
         ],
-        ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
-            `flags.wire.max.damage.${at}`,
-            `flags.wire.min.damage.${at}`,
-            `flags.wire.receive.max.damage.${at}`,
-            `flags.wire.receive.min.damage.${at}`
-        ]),
         ...Object.keys(CONFIG.DND5E.creatureTypes).flatMap(ct => [
             `flags.wire.advantage.attack.${ct}`,
             `flags.wire.disadvantage.attack.${ct}`,
@@ -83,11 +78,26 @@ export function getWireFlags() {
             "flags.wire.receive.max.damage.all",
             "flags.wire.receive.min.damage.all"
         ],
+        ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
+            `flags.wire.max.damage.${at}`,
+            `flags.wire.min.damage.${at}`,
+            `flags.wire.receive.max.damage.${at}`,
+            `flags.wire.receive.min.damage.${at}`
+        ]),
         ...[...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"].flatMap(dt => [
             `flags.wire.max.damage.${dt}`,
             `flags.wire.min.damage.${dt}`,
             `flags.wire.receive.max.damage.${dt}`,
             `flags.wire.receive.min.damage.${dt}`
+        ]),
+
+        ...[
+            "flags.wire.critical.all",
+            "flags.wire.grants.critical.all",
+        ],
+        ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
+            `flags.wire.critical.${at}`,
+            `flags.wire.grants.critical.${at}`,
         ]),
 
         ...[
@@ -109,20 +119,20 @@ const flagInitialValues = {
     "flags.wire.damage.multiplier.*": 1
 }
 
-function getFlags(actor) {
+export function getEffectFlags(actor) {
     return foundry.utils.mergeObject(
         actor?.data.flags["midi-qol"] || {},
         actor?.data.flags.wire || {}
     );
 }
 
-export function getAttackOptions(item, defender, config) {
+export function getStaticAttackOptions(item, defender, config) {
     const attacker = item.actor;
 
-    const attAdv = getFlags(attacker)?.advantage || {};
-    const attDis = getFlags(attacker)?.disadvantage || {};
-    const gntAdv = getFlags(defender)?.grants?.advantage || {};
-    const gntDis = getFlags(defender)?.grants?.disadvantage || {};
+    const attAdv = getEffectFlags(attacker)?.advantage || {};
+    const attDis = getEffectFlags(attacker)?.disadvantage || {};
+    const gntAdv = getEffectFlags(defender)?.grants?.advantage || {};
+    const gntDis = getEffectFlags(defender)?.grants?.disadvantage || {};
 
     const advFlags = foundry.utils.mergeObject(attAdv, gntAdv);
     const disFlags = foundry.utils.mergeObject(attDis, gntDis);
@@ -141,21 +151,57 @@ export function getAttackOptions(item, defender, config) {
     const isAdvantage = checkProperties.some(p => foundry.utils.getProperty(advFlags, p)) || isTypeAdv;
     const isDisdvantage = checkProperties.some(p => foundry.utils.getProperty(disFlags, p)) || isTypeDis;
 
-    const advantage = (config?.advantage || (isAdvantage && !isDisdvantage)) && !config?.disadvantage;
-    const disadvantage = (config?.disadvantage || (isDisdvantage && !isAdvantage)) && !config?.advantage;
+    let advantage = (config?.advantage || (isAdvantage && !isDisdvantage)) && !config?.disadvantage;
+    let disadvantage = (config?.disadvantage || (isDisdvantage && !isAdvantage)) && !config?.advantage;
 
+    return { advantage, disadvantage };
+}
+
+export async function getAttackOptions(item, defender, config) {
+    let { advantage, disadvantage } = getStaticAttackOptions(item, defender, config);
     const { parts, rollData } = item.getAttackToHit() || {};
 
-    if (config?.attackBonus) {
-        parts.push("@bonus");
-        rollData.bonus = config.attackBonus;
+    const preparationResult = await triggerConditions(item, "prepare-attack-roll");
+
+    if (preparationResult) {
+        if (typeof preparationResult === "string" || typeof preparationResult === "number") {
+            parts.push(preparationResult);
+        } else if (typeof preparationResult === "object") {
+            if (preparationResult.bonus) {
+                parts.push(preparationBonus);
+            }
+            if (preparationResult.advantage !== undefined) {
+                advantage = preparationResult.advantage;
+            }
+            if (preparationResult.disadvantage !== undefined) {
+                disadvantage = preparationResult.disadvantage;
+            }
+        }
+    }
+
+    let configurationBonus;
+    if (!config.fastForward) {
+        const app = new ConfigureAttack(item, foundry.utils.mergeObject(config, { advantage, disadvantage }));
+        const result = await app.render(true);
+
+        if (result !== undefined) {
+            if (result.bonus) {
+                configurationBonus = result.bonus;
+            }
+            advantage = result.advantage;
+            disadvantage = result.disadvantage;
+        }
+    }
+
+    if (configurationBonus) {
+        parts.push(configurationBonus);
     }
 
     return { advantage, disadvantage, parts, data: rollData };
 }
 
 export function getDamageMultiplier(item, actor, target) {
-    const multiplierFlags = getFlags(actor)?.damage?.multiplier || {};
+    const multiplierFlags = getEffectFlags(actor)?.damage?.multiplier || {};
 
     const globalMultiplier = multiplierFlags.all || 1;
     const actionTypeMultiplier = multiplierFlags.action ? multiplierFlags.action[item.data.data.actionType] || 1 : 1;
@@ -165,9 +211,22 @@ export function getDamageMultiplier(item, actor, target) {
     return globalMultiplier * actionTypeMultiplier * creatureTypeMultiplier * abilityMultiplier;
 }
 
-export function getDamageOptions(item, actor, damageType) {
-    const maxFlags = getFlags(actor)?.receive?.max?.damage || {};
-    const minFlags = getFlags(actor)?.receive?.min?.damage || {};
+export function getDamageInflictingOptions(item, actor, damageType) {
+    const maxFlags = getEffectFlags(actor)?.max?.damage || {};
+    const minFlags = getEffectFlags(actor)?.min?.damage || {};
+
+    const hasMax = maxFlags.all || maxFlags[item.data.data.actionType] || maxFlags[damageType];
+    const hasMin = minFlags.all || minFlags[item.data.data.actionType] || minFlags[damageType];
+
+    const maximize = hasMax && !hasMin;
+    const minimize = hasMin && !hasMax;
+
+    return { maximize, minimize };
+}
+
+export function getDamageReceivingOptions(item, actor, damageType) {
+    const maxFlags = getEffectFlags(actor)?.receive?.max?.damage || {};
+    const minFlags = getEffectFlags(actor)?.receive?.min?.damage || {};
 
     const hasMax = maxFlags.all || maxFlags[item.data.data.actionType] || maxFlags[damageType];
     const hasMin = minFlags.all || minFlags[item.data.data.actionType] || minFlags[damageType];
@@ -179,8 +238,8 @@ export function getDamageOptions(item, actor, damageType) {
 }
 
 export function getSaveOptions(actor, abilityId) {
-    const succeedFlags = getFlags(actor)?.succeed || {};
-    const failFlags = getFlags(actor)?.fail || {};
+    const succeedFlags = getEffectFlags(actor)?.succeed || {};
+    const failFlags = getEffectFlags(actor)?.fail || {};
 
     const isSuccess = succeedFlags.ability?.all || succeedFlags.ability?.save?.all || (succeedFlags.ability?.save && succeedFlags.ability.save[abilityId]);
     const isFailure = failFlags.ability?.all || failFlags.ability?.save?.all || (failFlags.ability?.save && failFlags.ability.save[abilityId]);
@@ -192,8 +251,8 @@ export function getSaveOptions(actor, abilityId) {
 }
 
 export function getAbilityCheckOptions(actor, abilityId) {
-    const succeedFlags = getFlags(actor)?.succeed || {};
-    const failFlags = getFlags(actor)?.fail || {};
+    const succeedFlags = getEffectFlags(actor)?.succeed || {};
+    const failFlags = getEffectFlags(actor)?.fail || {};
 
     const isSuccess = succeedFlags.ability?.all || succeedFlags.ability?.check?.all || (succeedFlags.ability?.check && succeedFlags.ability.check[abilityId]);
     const isFailure = failFlags.ability?.all || failFlags.ability?.check?.all || (failFlags.ability?.check && failFlags.ability.check[abilityId]);
@@ -380,12 +439,14 @@ function onActiveEffectApply(wrapped, actor, change) {
     wrapped.apply(this, [actor, change]);
 }
 
-function onActorRollSkill(wrapped, skillId, options) {
+async function onActorRollSkill(wrapped, skillId, options) {
+    const bonus = await triggerConditions(this, "prepare-skill-check");
+
     const skill = this.data.data.skills[skillId];
     const abilityId = skill.ability;
 
-    const advFlags = getFlags(this)?.advantage || {};
-    const disFlags = getFlags(this)?.disadvantage || {};
+    const advFlags = getEffectFlags(this)?.advantage || {};
+    const disFlags = getEffectFlags(this)?.disadvantage || {};
     const skillAdv = advFlags.skill || {};
     const skillDis = disFlags.skill || {};
     const abilityAdv = advFlags.ability || {};
@@ -397,12 +458,15 @@ function onActorRollSkill(wrapped, skillId, options) {
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
 
-    return wrapped.apply(this, [skillId, foundry.utils.mergeObject(options, { advantage, disadvantage })]);
+    const parts = bonus ? [bonus] : undefined;
+    return wrapped.apply(this, [skillId, foundry.utils.mergeObject(options, { advantage, disadvantage, parts })]);
 }
 
-function onActorRollAbilityTest(wrapped, abilityId, options) {
-    const advFlags = getFlags(this)?.advantage?.ability || {};
-    const disFlags = getFlags(this)?.disadvantage?.ability || {};
+async function onActorRollAbilityTest(wrapped, abilityId, options) {
+    const bonus = await triggerConditions(this, "prepare-ability-check");
+
+    const advFlags = getEffectFlags(this)?.advantage?.ability || {};
+    const disFlags = getEffectFlags(this)?.disadvantage?.ability || {};
 
     const isAdvantage = advFlags.all || advFlags.check?.all || (advFlags.check && advFlags.check[abilityId]);
     const isDisdvantage = disFlags.all || disFlags.check?.all || (disFlags.check && disFlags.check[abilityId]);
@@ -410,12 +474,15 @@ function onActorRollAbilityTest(wrapped, abilityId, options) {
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
 
-    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage })]);
+    const parts = bonus ? [bonus] : undefined;
+    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage, parts })]);
 }
 
-function onActorRollAbilitySave(wrapped, abilityId, options) {
-    const advFlags = getFlags(this)?.advantage?.ability || {};
-    const disFlags = getFlags(this)?.disadvantage?.ability || {};
+async function onActorRollAbilitySave(wrapped, abilityId, options) {
+    const bonus = await triggerConditions(this, "prepare-ability-save");
+
+    const advFlags = getEffectFlags(this)?.advantage?.ability || {};
+    const disFlags = getEffectFlags(this)?.disadvantage?.ability || {};
 
     const isAdvantage = advFlags.all || advFlags.save?.all || (advFlags.save && advFlags.save[abilityId]);
     const isDisdvantage = disFlags.all || disFlags.save?.all || (disFlags.save && disFlags.save[abilityId]);
@@ -423,12 +490,13 @@ function onActorRollAbilitySave(wrapped, abilityId, options) {
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
 
-    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage })]);
+    const parts = bonus ? [bonus] : undefined;
+    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage, parts })]);
 }
 
 function onActorRollDeathSave(wrapped, options) {
-    const advFlags = getFlags(this)?.advantage || {};
-    const disFlags = getFlags(this)?.disadvantage || {};
+    const advFlags = getEffectFlags(this)?.advantage || {};
+    const disFlags = getEffectFlags(this)?.disadvantage || {};
 
     const isAdvantage = advFlags.deathSave;
     const isDisdvantage = disFlags.deathSave;

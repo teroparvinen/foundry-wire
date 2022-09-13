@@ -46,7 +46,7 @@ export class ConfigureDamage extends Application {
 
     render(force=false, options={}) {
         return new Promise(async (resolve, reject) => {
-            this.damageParts = await DamageParts.roll(this.activation, !!this.activation.attackResult);
+            this.damageParts = await DamageParts.roll(this.activation, !!this.activation.attackResult, { evaluateCritical: false });
             this.resolve = resolve;
             super.render(force, options);
         });

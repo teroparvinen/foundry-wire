@@ -6,7 +6,7 @@ import { ItemCard } from "./cards/item-card.js";
 import { updateCombatTurnEndConditions, updateCombatTurnStartConditions } from "./conditions/combat-turns.js";
 import { applySingleEffect } from "./game/active-effects.js";
 import { getDisplayableAttackComponents } from "./game/attack-components.js";
-import { getAttackOptions, getWireFlags } from "./game/effect-flags.js";
+import { getStaticAttackOptions, getWireFlags } from "./game/effect-flags.js";
 import { createTemplate } from "./preroll.js";
 import { areAllied, areEnemies, fromUuid, i18n, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, tokenSeparation } from "./utils.js";
 
@@ -239,10 +239,10 @@ export function initHooks() {
         );
     });
 
-    Hooks.on("actorItemHoverIn", (item, html) => {
+    Hooks.on("actorItemHoverIn", async (item, html) => {
         const components = getDisplayableAttackComponents(item, true);
         const target = game.user.targets.first()?.actor;
-        const options = getAttackOptions(item, target);
+        const options = getStaticAttackOptions(item, target);
         const mode = options.advantage ? "advantage" : (options.disadvantage ? "disadvantage" : "");
 
         if (components) {

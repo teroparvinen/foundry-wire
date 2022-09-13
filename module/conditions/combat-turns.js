@@ -40,6 +40,14 @@ async function handleTurn(actor, token, isStart) {
         }
     });
 
+    // Any turn changes
+    if (isStart) {
+        const combatActors = game.combat?.turns.map(c => c.actor);
+        for (let actor of combatActors) {
+            await triggerConditions(actor, "change-of-turn");
+        }
+    }
+
     // Area lingers
     const handledAreaCondition = isStart ? "starts-turn-inside-area" : "ends-turn-inside-area";
     const templateIds = getTokenTemplateIds(token);
