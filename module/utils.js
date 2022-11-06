@@ -119,7 +119,7 @@ export function fudgeToActor(candidate) {
 export function getAttackRollResultType(roll) {
     if (roll) {
         const die = roll.dice[0];
-        if (die.faces == 20 && die.number == 1) {
+        if (die.faces == 20) {
             const value = die.total;
             if (die.total >= die.options.critical) return "critical";
             if (die.total <= die.options.fumble) return "fumble";
@@ -367,4 +367,11 @@ export function isActorDefeated(actor) {
 
 export function tokenSeparation(token1, token2) {
     return canvas.grid.measureDistance(token1.center, token2.center, { gridSpaces: true });
+}
+
+export function makeModifier(value) {
+    if (value && !isNaN(+value) && value > 0) {
+        return `+${value}`;
+    }
+    return value;
 }

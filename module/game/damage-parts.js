@@ -164,7 +164,7 @@ export class DamageParts {
         const criticalBonusDamage = itemData.critical?.damage;
 
         // Construct the DamageRoll instances for each part
-        const partsWithRolls = [...parts, ...ammoParts].map((part, n) => {
+        const partsWithRolls = [...parts, ...ammoParts].filter(p => p.formula).map((part, n) => {
             if (n === 0) {
                 const formula = [part.formula, ...primaryModifiers].join(" + ");
                 return {
@@ -202,7 +202,7 @@ export class DamageParts {
         // Apply flavor to dice
         partsWithRolls.forEach(pr => pr.roll.dice.forEach(die => {
             die.options.flavor = pr.part.type;
-            die.options.critical = criticalThreshold
+            die.options.critical = criticalThreshold;
         }));
     
         return new DamageParts(partsWithRolls);
@@ -302,7 +302,8 @@ export class DamageParts {
             if (type === "temphp") { return { temphp: caused } };
 
             const traits = actor.data.data.traits;
-            const isAttackMagical = (item.type === "weapon" && item.data.data.properties.mgc) || item.type === "spell";
+            const isActorAttackMagical = item.actor.getFlag("wire", "damage.magical");
+            const isAttackMagical = (item.type === "weapon" && item.data.data.properties.mgc) || item.type === "spell" || isActorAttackMagical;
             const nmi = traits.di.value.includes("physical") && !isAttackMagical;
             const nmr = traits.dr.value.includes("physical") && !isAttackMagical;
             const nmv = traits.dv.value.includes("physical") && !isAttackMagical;

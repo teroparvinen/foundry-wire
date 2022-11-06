@@ -2,6 +2,8 @@ import { fromUuid, fudgeToActor } from "./utils.js";
 import { Activation } from "./activation.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { runInQueue } from "./action-queue.js";
+import { Flow } from "./flow.js";
+import { createChildEffects, removeChildEffects } from "./game/active-effects.js";
 
 export let wireSocket = undefined;
 
@@ -13,6 +15,8 @@ export function setupSocket() {
     wireSocket.register("scrollBottom", scrollBottom);
     wireSocket.register("runCustomUpdater", runCustomUpdater);
     wireSocket.register("createDamageCard", createDamageCard);
+    wireSocket.register("requestRemoveChildEffects", requestRemoveChildEffects);
+    wireSocket.register("requestCreateChildEffects", requestCreateChildEffects);
 }
 
 async function activationUpdated(messageUuid) {
@@ -107,4 +111,20 @@ async function createDamageCard(isPlayer, actorUuid, targetDamageData) {
 
     const card = new DamageCard(isPlayer, actor, targetDamage);
     await card.make();
+}
+
+async function requestRemoveChildEffects(effectUuid) {
+    const effect = fromUuid(effectUuid);
+    if (effect) {
+        await removeChildEffects(effect);
+    }
+}
+
+async function requestCreateChildEffects(masterEffectUuid, applicationType, targetUuid) {
+    const masterEffect = fromUuid(masterEffectUuid);
+    const target = fromUuid(targetUuid);
+
+    if (masterEffect && target) {
+        await createChildEffects(masterEffect, applicationType, fudgeToActor(target));
+    }
 }

@@ -1,10 +1,4 @@
-
-function makeModifier(value) {
-    if (value && !isNaN(+value) && value > 0) {
-        return `+${value}`;
-    }
-    return value;
-}
+import { makeModifier } from "../utils.js";
 
 export function getDisplayableAttackComponents(item, short = false) {
     const components = getAttackComponents(item);

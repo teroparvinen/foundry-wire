@@ -50,10 +50,12 @@ const conditionList = [
     ["takes-damage", "effect"],
     ["saving-throw-completed", "effect"],
     ["skill-check-completed", "effect"],
-    ["prepare-skill-check", "effect"],
-    ["prepare-ability-check", "effect"],
-    ["prepare-ability-save", "effect"],
-    ["prepare-attack-roll", "effect"]
+    ["ability-check-completed", "effect"],
+    ["prepare-skill-check", "all"],
+    ["prepare-ability-check", "all"],
+    ["prepare-ability-save", "all"],
+    ["prepare-attack-roll", "all"],
+    ["prepare-damage-roll", "all"]
 ];
 
 const updateList = [

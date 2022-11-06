@@ -15,6 +15,7 @@ import { setupSocket } from "./socket.js";
 import { setupWrappers } from "./wrappers.js";
 import { placeTemplate } from "./preroll.js";
 import { fromUuid } from "./utils.js";
+import { createChildEffects, removeChildEffects } from "./game/active-effects.js";
 
 Hooks.once("init", () => {
     initHooks();
@@ -34,7 +35,9 @@ Hooks.once("init", () => {
         SelectVariantDialog,
         placeTemplate,
         runInQueue,
-        fromUuid
+        fromUuid,
+        removeChildEffects,
+        createChildEffects
     }
 });
 

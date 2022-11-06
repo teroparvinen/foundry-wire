@@ -1,5 +1,4 @@
 import { runInQueue } from "../action-queue.js";
-import { ConfigureAttack } from "../apps/configure-attack.js";
 import { addTokenFX, deleteTokenFX, fromUuid, getActorToken, isActorEffect, isEffectEnabled, triggerConditions } from "../utils.js";
 
 export function getWireFlags() {
@@ -36,7 +35,8 @@ export function getWireFlags() {
             `flags.wire.grants.disadvantage.attack.${at}`
         ]),
         ...[
-            "flags.wire.damage.versatile"
+            "flags.wire.damage.versatile",
+            "flags.wire.damage.magical"
         ],
         ...Object.keys(CONFIG.DND5E.creatureTypes).flatMap(ct => [
             `flags.wire.advantage.attack.${ct}`,
@@ -126,7 +126,7 @@ export function getEffectFlags(actor) {
     );
 }
 
-export function getStaticAttackOptions(item, defender, config) {
+export function getStaticAttackOptions(item, defender, attackConfig) {
     const attacker = item.actor;
 
     const attAdv = getEffectFlags(attacker)?.advantage || {};
@@ -151,51 +151,22 @@ export function getStaticAttackOptions(item, defender, config) {
     const isAdvantage = checkProperties.some(p => foundry.utils.getProperty(advFlags, p)) || isTypeAdv;
     const isDisdvantage = checkProperties.some(p => foundry.utils.getProperty(disFlags, p)) || isTypeDis;
 
-    let advantage = (config?.advantage || (isAdvantage && !isDisdvantage)) && !config?.disadvantage;
-    let disadvantage = (config?.disadvantage || (isDisdvantage && !isAdvantage)) && !config?.advantage;
+    let advantage = (attackConfig?.advantage || (isAdvantage && !isDisdvantage)) && !attackConfig?.disadvantage;
+    let disadvantage = (attackConfig?.disadvantage || (isDisdvantage && !isAdvantage)) && !attackConfig?.advantage;
 
     return { advantage, disadvantage };
 }
 
 export async function getAttackOptions(item, defender, config) {
-    let { advantage, disadvantage } = getStaticAttackOptions(item, defender, config);
+    let { advantage, disadvantage } = getStaticAttackOptions(item, defender, config.attack);
     const { parts, rollData } = item.getAttackToHit() || {};
 
-    const preparationResult = await triggerConditions(item, "prepare-attack-roll");
-
-    if (preparationResult) {
-        if (typeof preparationResult === "string" || typeof preparationResult === "number") {
-            parts.push(preparationResult);
-        } else if (typeof preparationResult === "object") {
-            if (preparationResult.bonus) {
-                parts.push(preparationBonus);
-            }
-            if (preparationResult.advantage !== undefined) {
-                advantage = preparationResult.advantage;
-            }
-            if (preparationResult.disadvantage !== undefined) {
-                disadvantage = preparationResult.disadvantage;
-            }
-        }
+    if (config.attack?.bonus) {
+        parts.push(config.attack.bonus);
     }
 
-    let configurationBonus;
-    if (!config.fastForward) {
-        const app = new ConfigureAttack(item, foundry.utils.mergeObject(config, { advantage, disadvantage }));
-        const result = await app.render(true);
-
-        if (result !== undefined) {
-            if (result.bonus) {
-                configurationBonus = result.bonus;
-            }
-            advantage = result.advantage;
-            disadvantage = result.disadvantage;
-        }
-    }
-
-    if (configurationBonus) {
-        parts.push(configurationBonus);
-    }
+    advantage = !config.attack?.disadvantage && (advantage || config.attack?.advantage);
+    disadvantage = !config.attack?.advantage && (disadvantage || config.attack?.disadvantage);
 
     return { advantage, disadvantage, parts, data: rollData };
 }

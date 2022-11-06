@@ -1,5 +1,6 @@
 import { getDisplayableAttackComponents } from "../game/attack-components.js";
 import { getStaticAttackOptions } from "../game/effect-flags.js";
+import { makeModifier } from "../utils.js";
 
 export class ConfigureAttack extends Application {
     constructor(item, config, options) {
@@ -17,18 +18,27 @@ export class ConfigureAttack extends Application {
             width: 300
         });
     }
-
+    
     getData(opts) {
+        const situationalComponents = this.config.attack?.bonus ? [{
+            i18nKey: "wire.roll-component.situational",
+            value: makeModifier(this.config.attack.bonus)
+        }] : [];
+
         const item = this.item;
-        const components = getDisplayableAttackComponents(item);
+        const components = [ ...getDisplayableAttackComponents(item), ...situationalComponents ];
         const modeOptions = {
             advantage: "wire.roll-component.advantage",
             normal: "wire.roll-component.normal",
             disadvantage: "wire.roll-component.disadvantage",
         };
         const target = game.user.targets.first()?.actor;
-        const options = getStaticAttackOptions(item, target, this.config);
-        const defaultMode = options.advantage ? "advantage" : (options.disadvantage ? "disadvantage" : "normal");
+        const options = getStaticAttackOptions(item, target, this.config.attack);
+
+        const advantage = !this.config.attack?.disadvantage && (options.advantage || this.config.attack?.advantage);
+        const disadvantage = !this.config.attack?.advantage && (options.disadvantage || this.config.attack?.disadvantage);
+
+        const defaultMode = advantage ? "advantage" : (disadvantage ? "disadvantage" : "normal");
 
         return {
             item,
@@ -45,11 +55,16 @@ export class ConfigureAttack extends Application {
 
     _onSubmit(event) {
         event.preventDefault();
-        const bonus = $(this.element).find('.configure-attack__custom-bonus').val();
+        const bonusInput = $(this.element).find('.configure-attack__custom-bonus').val();
         const mode = $(this.element).find('.configure-attack__mode-select').val();
+
         const advantage = mode === "advantage";
         const disadvantage = mode === "disadvantage";
-        this.resolve({ advantage, disadvantage, bonus });
+        const bonus = [bonusInput, this.config.attack?.bonus].filter(b => b).join(" + ");
+
+        const attack = { advantage, disadvantage, bonus };
+
+        this.resolve(foundry.utils.mergeObject(this.config, { attack }));
         this.close();
         return false;
     }

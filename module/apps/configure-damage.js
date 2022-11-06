@@ -1,10 +1,12 @@
 import { DamageParts } from "../game/damage-parts.js";
+import { i18n, makeModifier } from "../utils.js";
 
 export class ConfigureDamage extends Application {
-    constructor(activation, options) {
+    constructor(activation, options, situationalBonus) {
         super(options);
 
         this.activation = activation;
+        this.situationalBonus = situationalBonus;
     }
 
     static get defaultOptions() {
@@ -24,6 +26,11 @@ export class ConfigureDamage extends Application {
         });
         const damageLabels = { ...CONFIG.DND5E.damageTypes, ...CONFIG.DND5E.healingTypes };
 
+        if (this.situationalBonus) {
+            damageParts.push({ formula: makeModifier(this.situationalBonus), type: "situational" });
+            damageLabels["situational"] = i18n("wire.roll-component.situational");
+        }
+
         return {
             damageParts,
             damageLabels
@@ -39,7 +46,7 @@ export class ConfigureDamage extends Application {
     _onSubmit(event) {
         event.preventDefault();
         const value = $(this.element).find('.configure-damage__custom-damage').val();
-        this.resolve(value);
+        this.resolve([this.situationalBonus, value].filter(v => v).join(" + "));
         this.close();
         return false;
     }

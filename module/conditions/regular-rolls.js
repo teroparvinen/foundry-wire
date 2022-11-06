@@ -23,6 +23,8 @@ function handleRegularMessageRoll(message) {
                 triggerConditions(actor, "saving-throw-completed");
             } else if (rollType === "skill") {
                 triggerConditions(actor, "skill-check-completed");
+            } else if (rollType === "ability") {
+                triggerConditions(actor, "ability-check-completed");
             }
         }
     }

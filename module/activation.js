@@ -1,4 +1,5 @@
 import { runInQueue } from "./action-queue.js";
+import { ConfigureDamage } from "./apps/configure-damage.js";
 import { ItemCard } from "./cards/item-card.js";
 import { DocumentProxy } from "./document-proxy.js";
 import { Flow } from "./flow.js";
@@ -477,7 +478,18 @@ export class Activation {
         await this._step();
     }
 
-    async _rollDamage(additionalDamage) {
+    async _rollDamage(doDialog, dialogOptions) {
+        let additionalDamage;
+
+        const situationalBonus = await triggerConditions(this.item.actor, "prepare-damage-roll");
+
+        if (doDialog) {
+            const configuration = new ConfigureDamage(this, dialogOptions, situationalBonus);
+            additionalDamage = await configuration.render(true);
+        } else {
+            additionalDamage = situationalBonus;
+        }
+
         foundry.utils.setProperty(this.data, 'config.damageBonus', additionalDamage);
         await this._update();
 

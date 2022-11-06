@@ -106,7 +106,7 @@ export function initHooks() {
             const attachedTokenId = template.getFlag("wire", "attachedTokenId");
             if (attachedTokenId) {
                 const token = canvas.tokens.get(attachedTokenId);
-                token.document.unsetFlag("wire", "attachedTemplateId");
+                token?.document.unsetFlag("wire", "attachedTemplateId");
             }
         }
     });

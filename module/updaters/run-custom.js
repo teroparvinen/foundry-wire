@@ -17,7 +17,7 @@ export class RunCustomUpdater extends Updater {
             }
             return result
         } else {
-            return await wireSocket.executeAsGM("runCustomUpdater", condition, effect.uuid, details);
+            return await wireSocket.executeAsGM("runCustomUpdater", this.condition, this.effect.uuid, this.details);
         }
     }
 }

@@ -123,7 +123,11 @@ async function evaluateTemplateFormulas(item, templateData, config) {
 
     const targetValue = getProperty(item.data, "flags.wire.override.target.value") || getProperty(item.data, "data.target.value") || "";
     const targetFormula = Roll.replaceFormulaData(targetValue, rollData);
-    await templateData.update({ distance: Roll.safeEval(targetFormula) });
+    let distance = Roll.safeEval(targetFormula);
+    if (templateData.t == "rect") {
+        distance = Math.hypot(distance, distance);
+    }
+    await templateData.update({ distance });
 }
 
 export async function createTemplate(item, disableTargetSelection, config) {

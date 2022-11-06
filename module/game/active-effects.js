@@ -1,3 +1,4 @@
+import { wireSocket } from "../socket.js";
 import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, effectMatchesVariant, fromUuid, isEffectEnabled, isInCombat, substituteEffectConfig } from "../utils.js";
 import { applyConditionImmunity } from "./effect-flags.js";
 
@@ -68,7 +69,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
 }
 
 export async function applySingleEffect(effect, targets, masterEffect, config, extraData, { createStatus } = {}) {
-    const item = fromUuid(effect.data.origin);
+    const item = fromUuid(masterEffect.data.origin);
     const actor = item.actor;
 
     const staticDuration = effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor));
@@ -124,4 +125,31 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
     await masterEffect?.setFlag("wire", "childEffectUuids", [...(masterEffect?.data.flags.wire?.childEffectUuids || []), ...trackedEffectUuids]);
 
     return createdEffects;
+}
+
+export async function removeChildEffects(effect) {
+    if (game.user.isGM) {
+        const childEffectUuids = effect?.data.flags.wire?.childEffectUuids;
+        await effect.setFlag("wire", "childEffectUuids", []);
+        for (let effectUuid of childEffectUuids) {
+            await fromUuid(effectUuid)?.delete();
+        }
+    } else {
+        await wireSocket.executeAsGM("requestRemoveChildEffects", effect.uuid);
+    }
+}
+
+export async function createChildEffects(masterEffect, applicationType, target) {
+    if (game.user.isGM) {
+        const item = fromUuid(masterEffect.data.origin);
+        if (item && target) {
+            const effects = item.effects
+                .filter(e => isEffectEnabled(e) && !e.data.transfer && (e.getFlag("wire", "applicationType") || "immediate") === applicationType)
+            for (let effect of effects) {
+                await applySingleEffect(effect, [target], masterEffect, masterEffect.data.flags.wire?.activationConfig);
+            }
+        }
+    } else {
+        await wireSocket.executeAsGM("requestCreateChildEffects", masterEffect.uuid, applicationType, target.uuid);
+    }
 }

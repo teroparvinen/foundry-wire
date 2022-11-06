@@ -1,3 +1,4 @@
+import { ConfigureAttack } from "./apps/configure-attack.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { applyTargetEffects } from "./game/active-effects.js";
 import { DamageParts } from "./game/damage-parts.js";
@@ -45,6 +46,7 @@ export class Resolver {
 
     knownStates = [
         "action-trigger-activated",
+        "attack-configured",
         "applyConcentration", 
         "applyDamage", 
         "applyDefaultTargets",
@@ -53,6 +55,7 @@ export class Resolver {
         "applyEffects",
         "attackCompleted",
         "confirmTargets",
+        "configure-attack",
         "idle", 
         "performAttackDamageRoll",
         "performAttackRoll", 
@@ -123,6 +126,45 @@ export class Resolver {
             await this.step(n);
 
         } else if (isOriginator && this.activation.state === "performAttackRoll") {
+            const preparationResult = await triggerConditions(item.actor, "prepare-attack-roll");
+            const config = duplicate(this.activation.config);
+
+            if (preparationResult) {
+                if (typeof preparationResult === "string" || typeof preparationResult === "number") {
+                    setProperty(config, "attack.bonus", preparationResult);
+                } else if (typeof preparationResult === "object") {
+                    if (preparationResult.bonus) {
+                        setProperty(config, "attack.bonus", preparationResult.bonus);
+                    }
+                    if (preparationResult.advantage !== undefined) {
+                        setProperty(config, "attack.advantage", preparationResult.advantage);
+                    }
+                    if (preparationResult.disadvantage !== undefined) {
+                        setProperty(config, "attack.disadvantage", preparationResult.disadvantage);
+                    }
+                }
+
+                await this.activation.assignConfig(config);
+            }
+
+            if (this.activation.config.attack?.useDialog) {
+                await this.activation.applyState("configure-attack");
+                await this.step(n);
+            } else {
+                await this.activation.applyState("attack-configured");
+                await this.step(n);
+            }
+        } else if (isOriginator && this.activation.state === "configure-attack") {
+            const config = this.activation.config;
+            const app = new ConfigureAttack(item, config);
+            const result = await app.render(true);
+
+            if (result != undefined) {
+                await this.activation.assignConfig(result);
+                await this.activation.applyState("attack-configured");
+                await this.step(n);
+            }
+        } else if (isOriginator && this.activation.state === "attack-configured") {
             if (!this.activation.singleTarget) {
                 localizedWarning("wire.warn.resolve-performAttackRoll-noTarget");
             }

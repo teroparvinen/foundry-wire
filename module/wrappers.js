@@ -17,7 +17,7 @@ let templateInfo = null;
 
 async function onItemRoll(wrapped, options, event) {
     let configure = true;
-    if (event?.shiftKey || event?.which === 3) {
+    if (event?.shiftKey || event?.altKey || event?.metaKey || event?.ctrlKey || event?.which === 3) {
         configure = false;
     }
 
@@ -47,17 +47,17 @@ async function onItemRoll(wrapped, options, event) {
     if (result) {
         const { messageData, config, templateData } = result;
 
-        if (event?.altKey) { 
-            config.advantage = true;
-            configure = false;
-        }
-        if (event?.metaKey || event?.ctrlKey) {
-            config.disadvantage = true;
-            configure = false;
-        }
+        if (item.hasAttack) {
+            if (event?.altKey) {
+                setProperty(config, "attack.advantage", true);
+            }
+            if (event?.metaKey || event?.ctrlKey) {
+                setProperty(config, "attack.disadvantage", true);
+            }
 
-        config.fastForward = !configure;
-
+            setProperty(config, "attack.useDialog", configure);
+        }
+    
         messageData.content = await ItemCard.renderHtml(item);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
         const message = await ChatMessage.create(messageData);
