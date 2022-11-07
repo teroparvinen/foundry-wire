@@ -5,7 +5,10 @@
     {{#each targets}}
         <div class="damage-card-target" data-actor-uuid="{{actor.uuid}}">
             <div class="damage-card-target-details flexrow">
-                <img class="flex0 target-image" src="{{token.data.img}}" title="{{token.name}}" />
+                <div class="flex0 target-image-container">
+                    <img class="target-image" src="{{token.data.img}}" title="{{token.name}}" />
+                    <i class="fas fa-ellipsis-h fa-xs"></i>
+                </div>
                 <div class="flex1 target-damage-info flexrow">
                     <div class="flexcol damage-state">
                         <div>
@@ -13,7 +16,6 @@
                             <span class="hp">{{info.hp}}</span>{{#if (gt info.tempHp 0)}}+<span class="temphp">{{info.tempHp}}</span>{{/if}}
                         </div>
                         <div>
-                            {{log info}}
                             {{#if (or (gt info.hpDmg 0) (gt info.tempHpDmg 0))}}
                                 <span class="icon"><i class="fas fa-tint"></i></span>
                                 <span class="damage">{{info.hpDmg}}</span>{{#if (gt info.tempHpDmg 0)}}+<span class="temphp">{{info.tempHpDmg}}</span>{{/if}}
@@ -32,8 +34,18 @@
                     </div>
                 </div>
                 <div class="target-buttons flexrow">
-                    <a data-action="apply-damage" title="{{localize "wire.ui.apply-damage"}}"><i class="fas fa-check"></i></a>
-                    <a data-action="undo-damage" title="{{localize "wire.ui.undo-damage"}}"><i class="fas fa-undo"></i></a>
+                    {{#if isConflicted}}
+                        <span title="{{localize "wire.ui.damage-conflicted"}}"><i class="fas fa-exclamation-triangle"></i></span>
+                        <a data-action="recalculate-damage" title="{{localize "wire.ui.recalculate-damage"}}"><i class="fas fa-sync"></i></a>
+                    {{else}}
+                        {{#unless isApplied}}
+                            <a data-action="apply-damage" title="{{localize "wire.ui.apply-damage"}}"><i class="fas fa-check"></i></a>
+                            <span title="{{localize "wire.ui.undo-damage"}}"><i class="fas fa-undo"></i></span>
+                        {{else}}
+                            <span title="{{localize "wire.ui.apply-damage"}}"><i class="fas fa-check"></i></span>
+                            <a data-action="undo-damage" title="{{localize "wire.ui.undo-damage"}}"><i class="fas fa-undo"></i></a>
+                        {{/unless}}
+                    {{/if}}
                 </div>
             </div>
             {{#if (or ../isGM actor.hasPlayerOwner)}}
@@ -43,6 +55,10 @@
                     {{#if info.dv}}{{localize "wire.ui.dv"}} +{{info.dv}}{{/if}}
                 </div>
             {{/if}}
+            <div class="damage-card-options">
+                <a data-action="option-halve-damage" class="{{#if options.isHalved}}is-active{{/if}}">{{localize "wire.ui.halve-damage"}}</a>
+                <a data-action="option-double-damage" class="{{#if options.isDoubled}}is-active{{/if}}">{{localize "wire.ui.double-damage"}}</a>
+            </div>
         </div>
     {{/each}}
 </div>

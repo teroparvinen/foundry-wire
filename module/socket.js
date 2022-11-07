@@ -15,6 +15,8 @@ export function setupSocket() {
     wireSocket.register("scrollBottom", scrollBottom);
     wireSocket.register("runCustomUpdater", runCustomUpdater);
     wireSocket.register("createDamageCard", createDamageCard);
+    wireSocket.register("refreshDamageCard", refreshDamageCard);
+    wireSocket.register("updateDamageCardEntry", updateDamageCardEntry);
     wireSocket.register("requestRemoveChildEffects", requestRemoveChildEffects);
     wireSocket.register("requestCreateChildEffects", requestCreateChildEffects);
 }
@@ -99,7 +101,7 @@ async function runCustomUpdater(condition, effectUuid, details) {
     }
 }
 
-async function createDamageCard(isPlayer, actorUuid, targetDamageData) {
+async function createDamageCard(actorUuid, targetDamageData) {
     const actor = fromUuid(actorUuid);
     const targetDamage = targetDamageData.map(tdd => {
         return {
@@ -109,8 +111,25 @@ async function createDamageCard(isPlayer, actorUuid, targetDamageData) {
         }
     });
 
-    const card = new DamageCard(isPlayer, actor, targetDamage);
-    await card.make();
+    const card = await DamageCard.make(actor, targetDamage);
+    return card.message.uuid;
+}
+
+async function refreshDamageCard(messageUuid) {
+    const message = fromUuid(messageUuid);
+    if (message) {
+        const card = new DamageCard(message);
+        await card.refreshCard();
+    }
+}
+
+async function updateDamageCardEntry(messageUuid, actorUuid, update) {
+    const message = fromUuid(messageUuid);
+    const actor = fromUuid(actorUuid);
+    if (message && actor) {
+        const card = new DamageCard(message);
+        await card.updateActorEntry(actor, update);
+    }
 }
 
 async function requestRemoveChildEffects(effectUuid) {

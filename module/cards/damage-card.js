@@ -7,6 +7,14 @@ export class DamageCard {
 
     static activateListeners(html) {
         html.on("click", ".damage-card a", this._onDamageCardAction.bind(this));
+        html.on("click", ".damage-card .target-image", this._onExpandEntry.bind(this));
+    }
+
+    static async _onExpandEntry(event) {
+        const img = event.currentTarget;
+        const targetElem = img.closest(".damage-card-target");
+
+        targetElem.classList.toggle('is-expanded');
     }
 
     static async _onDamageCardAction(event) {
@@ -18,36 +26,181 @@ export class DamageCard {
         const card = button.closest(".chat-card");
         const messageId = card.closest(".message").dataset.messageId;
         const message = game.messages.get(messageId);
+        const damageCard = new DamageCard(message);
         const action = button.dataset.action;
-        const targets = message.getFlag("wire", "targets");
         const targetUuid = button.closest('.damage-card-target').dataset.actorUuid;
-        const damage = targets.find(t => t.actorUuid === targetUuid);
-        const actor = fudgeToActor(fromUuid(damage.actorUuid));
+        const target = fudgeToActor(fromUuid(targetUuid));
 
         switch (action) {
             case "apply-damage":
-                if (game.user.isGM || actor.isOwner) {
-                    await actor.update({
-                        'data.attributes.hp.value': damage.info.newHp,
-                        'data.attributes.hp.temp': damage.info.newTempHp
-                    }, { 
-                        dhp: (damage.info.hpDmg + damage.info.tempHpDmg > 0) ? -(damage.info.hpDmg + damage.info.tempHpDmg) : damage.info.hpHeal + damage.info.tempHpRaise
-                    });
+                if (game.user.isGM || target.isOwner) {
+                    await damageCard.applyDamage(target);
                 }
                 break;
             case "undo-damage":
-                if (game.user.isGM || actor.isOwner) {
-                    await actor.update({
-                        'data.attributes.hp.value': damage.info.hp,
-                        'data.attributes.hp.temp': damage.info.tempHp
-                    }, {
-                        dhp: (damage.info.hpDmg + damage.info.tempHpDmg > 0) ? (damage.info.hpDmg + damage.info.tempHpDmg) : -(damage.info.hpHeal + damage.info.tempHpRaise)
-                    });
+                if (game.user.isGM || target.isOwner) {
+                    await damageCard.undoDamage(target);
+                }
+                break;
+            case "recalculate-damage":
+                if (game.user.isGM || target.isOwner) {
+                    await damageCard.recalculate(target);
+                }
+                break;
+            case "option-halve-damage":
+                if (game.user.isGM || target.isOwner) {
+                    const current = damageCard.getOptions(target).isHalved;
+                    if (current) {
+                        await damageCard.setOptions(target, {
+                            isHalved: false,
+                            isDoubled: false
+                        });
+                    } else {
+                        await damageCard.setOptions(target, {
+                            isHalved: !current,
+                            isDoubled: !!current
+                        });
+                    }
+                }
+                break;
+            case "option-double-damage":
+                if (game.user.isGM || target.isOwner) {
+                    const current = damageCard.getOptions(target).isDoubled;
+                    if (current) {
+                        await damageCard.setOptions(target, {
+                            isDoubled: false,
+                            isHalved: false
+                        });
+                    } else {
+                        await damageCard.setOptions(target, {
+                            isDoubled: !current,
+                            isHalved: !!current
+                        });
+                    }
                 }
                 break;
             }
 
         button.disabled = false;
+    }
+
+    constructor(message) {
+        const data = message.data.flags.wire;
+
+        const actor = fromUuid(data.actorUuid);
+        const targetEntries = data.targets.map(t => {
+            return {
+                actor: fudgeToActor(fromUuid(t.actorUuid)),
+                token: fromUuid(t.tokenUuid),
+                info: t.info,
+                damage: t.damage,
+                options: t.options,
+                isApplied: t.isApplied,
+                isConflicted: t.isConflicted
+            }
+        });
+
+        this.message = message;
+        this.isPlayer = targetEntries.every(t => t.actor.hasPlayerOwner);
+        this.actor = actor;
+        this.targetEntries = targetEntries;
+    }
+
+    async applyDamage(actor) {
+        const entry = this.targetEntries.find(t => t.actor == actor);
+        if (entry) {
+            const attrs = actor.data.data.attributes;
+            const isCurrent = attrs.hp.value == entry.info.hp && (attrs.hp.temp || 0) == entry.info.tempHp;
+
+            if (isCurrent) {
+                await actor.update({
+                    'data.attributes.hp.value': entry.info.newHp,
+                    'data.attributes.hp.temp': entry.info.newTempHp
+                }, { 
+                    dhp: (entry.info.hpDmg + entry.info.tempHpDmg > 0) ? -(entry.info.hpDmg + entry.info.tempHpDmg) : entry.info.hpHeal + entry.info.tempHpRaise
+                });
+
+                await this.updateActorEntry(actor, { isApplied: true });
+            } else {
+                await this.updateActorEntry(actor, { isConflicted: true });
+            }
+
+            await this.refreshCard();
+        }
+    }
+
+    async undoDamage(actor) {
+        const entry = this.targetEntries.find(t => t.actor == actor);
+        if (entry) {
+            const attrs = actor.data.data.attributes;
+            const isCurrent = attrs.hp.value == entry.info.newHp && (attrs.hp.temp || 0) == entry.info.newTempHp;
+
+            if (isCurrent) {
+                await actor.update({
+                    'data.attributes.hp.value': entry.info.hp,
+                    'data.attributes.hp.temp': entry.info.tempHp
+                }, {
+                    dhp: (entry.info.hpDmg + entry.info.tempHpDmg > 0) ? (entry.info.hpDmg + entry.info.tempHpDmg) : -(entry.info.hpHeal + entry.info.tempHpRaise)
+                });
+
+                await this.updateActorEntry(actor, { isApplied: false });
+            } else {
+                await this.updateActorEntry(actor, { isConflicted: true });
+            }
+
+            await this.refreshCard();
+        }
+    }
+
+    async recalculate(actor) {
+        const entry = this.targetEntries.find(t => t.actor == actor);
+        if (entry) {
+            const info = DamageCard._getActorInfo(actor, entry.damage, entry.options);
+            await this.updateActorEntry(actor, {
+                info,
+                isApplied: false,
+                isConflicted: false
+            });
+
+            await this.refreshCard();
+        }
+    }
+
+    getOptions(actor) {
+        const entry = this.targetEntries.find(t => t.actor == actor) || {};
+        return entry.options || {};
+    }
+
+    async setOptions(actor, changes) {
+        const options = this.getOptions(actor);
+        await this.updateActorEntry(actor, { options: foundry.utils.mergeObject(options, changes) });
+
+        await this.recalculate(actor);
+    }
+
+    async updateActorEntry(actor, damage) {
+        if (game.user.isGM) {
+            const current = this.targetEntries.find(t => t.actor == actor) || {};
+            const updated = foundry.utils.mergeObject(current, damage);
+    
+            this.targetEntries = this.targetEntries.map(td => {
+                return td.actor == actor ? updated : td;
+            });
+    
+            const data = await DamageCard._getFlagData(this.actor, this.targetEntries);
+            await this.message.update({ "flags.wire": data });
+        } else {
+            await wireSocket.executeAsGM("updateDamageCardEntry", this.message.uuid, actor.uuid, damage);
+        }
+    }
+
+    async refreshCard() {
+        if (game.user.isGM) {
+            const content = await DamageCard._renderContent(this.isPlayer, this.targetEntries);
+            await this.message.update({ content });
+        } else {
+            await wireSocket.executeAsGM("refreshDamageCard", this.message.uuid);
+        }
     }
 
     static async makeForActor(causingActor, targetActor, damageAmount) {
@@ -56,31 +209,36 @@ export class DamageCard {
             token: getActorToken(targetActor),
             points: { damage: damageAmount }
         };
-        const card = new DamageCard(targetActor.hasPlayerOwner, causingActor, [damage]);
-        await card.make();
+        await DamageCard.make(causingActor, [damage]);
     }
 
-    constructor(isPlayer, actor, targetDamage) {
-        this.isPlayer = isPlayer;
-        this.actor = actor;
-        this.targetDamage = targetDamage;
-    }
+    static async make(actor, targetDamage) {
+        const pcDamage = targetDamage.filter(t => t.actor.hasPlayerOwner);
+        const npcDamage = targetDamage.filter(t => !t.actor.hasPlayerOwner);
 
-    async make() {
-        if (!this.isPlayer && !game.user.isGM) {
-            await wireSocket.executeAsGM("createDamageCard", this.isPlayer, this.actor?.uuid, this.targetDamage.map(td => {
-                return {
-                    actorUuid: td.actor.uuid,
-                    tokenUuid: td.token.document.uuid,
-                    points: td.points
-                }
-            }));
+        if (pcDamage.length && npcDamage.length) {
+            console.error("Cannot create damage card for both PCs and NPCs!");
             return;
         }
 
-        const flagData = await this._getFlagData();
-        const content = await this._renderContent();
-        const speaker = getSpeaker(this.actor)
+        const isPlayer = !!pcDamage.length;
+
+        if (!isPlayer && !game.user.isGM) {
+            const messageUuid = await wireSocket.executeAsGM("createDamageCard", actor?.uuid, targetDamage.map(td => {
+                return {
+                    actorUuid: td.actor.uuid,
+                    tokenUuid: td.token.uuid || td.token.document.uuid,
+                    points: td.points
+                }
+            }));
+            const message = fromUuid(messageUuid);
+            return new DamageCard(message);
+        }
+
+        const targetEntries = await DamageCard._buildTargetEntries(targetDamage);
+        const flagData = await DamageCard._getFlagData(actor, targetEntries);
+        const content = await DamageCard._renderContent(isPlayer, targetEntries);
+        const speaker = getSpeaker(actor)
 
         const messageData = foundry.utils.mergeObject(
             {
@@ -88,47 +246,66 @@ export class DamageCard {
                 speaker,
                 'flags.wire': flagData
             },
-            this.isPlayer ? {} : {
+            isPlayer ? {} : {
                 user: game.user.id,
                 whisper: [game.user.id]
             }
         );
         const message = await ChatMessage.create(messageData);
+        return new DamageCard(message);
     }
 
-    async _getFlagData() {
+    static async _buildTargetEntries(targetDamage) {
+        return targetDamage.map(t => {
+            const actor = t.actor;
+            const token = t.token;
+            const info = DamageCard._getActorInfo(t.actor, t.points);
+            const damage = t.points;
+            return { actor, token, info, damage };
+        });
+    }
+
+    static async _getFlagData(actor, targetEntries) {
         return {
-            targets: this.targetDamage.map(t => {
-                return {
-                    actorUuid: t.actor.uuid,
-                    tokenUuid: t.token.uuid,
-                    info: this._getActorInfo(t.actor, t.points)
-                }
-            })
+            actorUuid: actor.uuid,
+            targets: targetEntries.map(t => ({
+                actorUuid: t.actor.uuid,
+                tokenUuid: t.token.uuid || t.token.document.uuid,
+                info: t.info,
+                damage: t.damage,
+                options: t.options,
+                isApplied: t.isApplied,
+                isConflicted: t.isConflicted
+            }))
         };
     }
 
-    async _renderContent() {
+    static async _renderContent(isPlayer, targetEntries) {
         const templateData = {
-            isGM: !this.isPlayer,
-            targets: this.targetDamage.map(t => {
-                return {
-                    actor: t.actor,
-                    token: t.token,
-                    info: this._getActorInfo(t.actor, t.points)
-                }
-            })
+            isGM: !isPlayer,
+            targets: targetEntries
         };
         return await renderTemplate(DamageCard.templateName, templateData);
     }
 
-    _getActorInfo(actor, points) {
-        const dmg = points.damage || 0;
-        const healing = points.healing || 0;
-        const tempHpReceived = points.temphp || 0;
+    static _getActorInfo(actor, points, options = {}) {
+        let dmg = points.damage || 0;
+        let healing = points.healing || 0;
+        let tempHpReceived = points.temphp || 0;
         const di = points.di || 0;
         const dr = points.dr || 0;
         const dv = points.dv || 0;
+
+        if (options.isHalved) {
+            dmg = Math.floor(dmg * 0.5);
+            healing = Math.floor(healing * 0.5);
+            tempHpReceived = Math.floor(tempHpReceived * 0.5);
+        }
+        if (options.isDoubled) {
+            dmg *= 2;
+            healing *= 2;
+            tempHpReceived *= 2;
+        }
 
         const hp = actor.data.data.attributes.hp.value;
         const effectiveMaxHp = actor.data.data.attributes.hp.max + actor.data.data.attributes.hp.tempmax;

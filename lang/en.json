@@ -7,6 +7,10 @@
         "ui": {
             "apply-damage": "Apply",
             "undo-damage": "Undo",
+            "recalculate-damage": "Recalculate",
+            "halve-damage": "Half",
+            "double-damage": "Double",
+            "damage-conflicted": "Needs recalculation",
             "saving-throw-heading": "{ability} Saving Throw",
             "ability-check-heading": "{ability} Check",
             "roll-all-saves": "Roll all",

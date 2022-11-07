@@ -359,16 +359,13 @@ export class Resolver {
             const npcDamage = actualDamage.filter(t => !t.actor.hasPlayerOwner);
         
             if (pcDamage.length) {
-                const pcDamageCard = new DamageCard(true, speaker, pcDamage);
-                await pcDamageCard.make();
+                await DamageCard.make(speaker, pcDamage);
             }
             if (npcDamage.length) {
-                const npcDamageCard = new DamageCard(false, speaker, npcDamage);
-                await npcDamageCard.make();
+                await DamageCard.make(speaker, npcDamage);
             }
             if (!pcDamage.length && !npcDamage.length) {
-                const noDamageCard = new DamageCard(false, speaker, []);
-                await noDamageCard.make();
+                await DamageCard.make(speaker, []);
             }
         }
     }
