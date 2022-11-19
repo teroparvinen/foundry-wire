@@ -1,4 +1,6 @@
 import { Activation } from "../activation.js";
+import { ConfigureCheck } from "../apps/configure-check.js";
+import { ConfigureSave } from "../apps/configure-save.js";
 import { fromUuid, fudgeToActor, getActorToken } from "../utils.js";
 
 export class ItemCard {
@@ -105,6 +107,25 @@ export class ItemCard {
                     const failure = action === "wire-save-failure";
                     activation._rollSave(actor, { advantage, disadvantage, success, failure });
                 }
+                break;
+            case "wire-save-config":
+                await (async () => {
+                    const dialogOptions = {
+                        top: event ? event.clientY - 80 : null,
+                        left: window.innerWidth - 610
+                    }
+                    const actorUuid = event.target.closest('.saving-throw-target').dataset.actorId;
+                    const actor = fudgeToActor(fromUuid(actorUuid));
+                    const usedSave = activation.item.data.data.save.ability;
+                    const usedCheck = activation.abilityToCheckForSave;
+                    const config = activation.config;
+                    const app = usedCheck ? new ConfigureCheck(actor, usedCheck, config, dialogOptions) : new ConfigureSave(actor, usedSave, config, dialogOptions);
+                    const result = await app.render(true);
+        
+                    if (result != undefined) {
+                        activation._rollSave(actor, result);
+                    }
+                })();
                 break;
             case "roll-all-saves":
             case "roll-npc-saves":

@@ -1,0 +1,26 @@
+<form>
+    <div class="dialog-content">
+        {{#each components}}
+            <div class="configure-check__part-row flexrow">
+                <div class="configure-check__part flex1">{{localize i18nKey}}</div>
+                <div class="configure-check__bonus flex2">{{value}}</div>
+            </div>
+        {{/each}}
+        <div class="configure-check__values flexrow">
+            <input class="configure-check__custom-bonus flex2" placeholder="{{localize "wire.configure-check.custom-placeholder"}}" type="text" />
+            <select class="configure-check__mode-select flex1" name="mode">
+                {{selectOptions modeOptions selected=defaultMode localize=true}}
+            </select>
+        </div>
+    </div>
+    <div class="dialog-buttons">
+        <button type="submit" class="dialog-button" data-button="roll">
+            {{localize "wire.configure-check.roll"}}
+        </button>
+    </div>
+    {{#if showHint}}
+        <div class="configure-check__hint">
+            {{localize "wire.configure-check.fast-forward-hint"}}
+        </div>
+    {{/if}}
+</form>

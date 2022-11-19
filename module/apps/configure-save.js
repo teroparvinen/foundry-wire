@@ -1,52 +1,42 @@
-import { getDisplayableAttackComponents } from "../game/attack-components.js";
-import { getStaticAttackOptions } from "../game/effect-flags.js";
-import { makeModifier } from "../utils.js";
+import { getSaveOptions } from "../game/effect-flags.js";
+import { getDisplayableSaveComponents } from "../game/check-and-save-components.js";
 
-export class ConfigureAttack extends Application {
-    constructor(item, config, options) {
+export class ConfigureSave extends Application {
+    constructor(actor, ability, config, options) {
         super(options);
 
-        this.item = item;
+        this.actor = actor;
+        this.ability = ability;
         this.config = config;
     }
 
     static get defaultOptions() {
         return foundry.utils.mergeObject(super.defaultOptions, {
-            title: "wire.configure-check.attack-title",
+            title: "wire.configure-check.save-title",
             template: "modules/wire/templates/apps/configure-check.hbs",
-            classes: ["dialog", "configure-check", "configure-attack"],
+            classes: ["dialog", "configure-check", "configure-save"],
             width: 300
         });
     }
     
     getData(opts) {
-        const situationalComponents = this.config.attack?.bonus ? [{
-            i18nKey: "wire.roll-component.situational",
-            value: makeModifier(this.config.attack.bonus)
-        }] : [];
-
-        const item = this.item;
-        const components = [ ...getDisplayableAttackComponents(item), ...situationalComponents ];
+        const components = [ ...getDisplayableSaveComponents(this.actor, this.ability) ];
         const modeOptions = {
             advantage: "wire.roll-component.advantage",
             normal: "wire.roll-component.normal",
             disadvantage: "wire.roll-component.disadvantage",
         };
-        const target = game.user.targets.first()?.actor;
-        const options = getStaticAttackOptions(item, target, this.config.attack);
+        const options = getSaveOptions(this.actor, this.ability);
 
-        const advantage = !this.config.attack?.disadvantage && (options.advantage || this.config.attack?.advantage);
-        const disadvantage = !this.config.attack?.advantage && (options.disadvantage || this.config.attack?.disadvantage);
+        const advantage = !this.config.save?.disadvantage && (options.advantage || this.config.save?.advantage);
+        const disadvantage = !this.config.save?.advantage && (options.disadvantage || this.config.save?.disadvantage);
 
         const defaultMode = advantage ? "advantage" : (disadvantage ? "disadvantage" : "normal");
-
-        const showHint = true;
 
         return {
             components,
             modeOptions,
-            defaultMode,
-            showHint
+            defaultMode
         };
     }
 
@@ -63,11 +53,11 @@ export class ConfigureAttack extends Application {
         const advantage = mode === "advantage";
         const disadvantage = mode === "disadvantage";
         const normal = mode === "normal";
-        const bonus = [bonusInput, this.config.attack?.bonus].filter(b => b).join(" + ");
+        const bonus = [bonusInput, this.config.save?.bonus].filter(b => b).join(" + ");
 
-        const attack = { advantage, disadvantage, normal, bonus };
+        const save = { advantage, disadvantage, normal, parts: [bonus] };
 
-        this.resolve(foundry.utils.mergeObject(this.config, { attack }));
+        this.resolve(foundry.utils.mergeObject(this.config, save));
         this.close();
         return false;
     }

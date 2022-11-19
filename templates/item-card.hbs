@@ -128,6 +128,9 @@
                     {{else}}
                         {{#if (or ../isGM (and actor.hasPlayerOwner actor.isOwner))}}
                             <a data-action="wire-save" class="flex0 target-save"></a>
+                            <a data-action="wire-save-config" class="flex0">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </a>
                             {{#if ../isGM}}
                                 <div class="target-save-popup save-popup-toggle">
                                     <a data-action="wire-save-success"><i class="fas fa-check fa-2x"></i></a>

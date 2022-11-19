@@ -165,8 +165,8 @@ export async function getAttackOptions(item, defender, config) {
         parts.push(config.attack.bonus);
     }
 
-    advantage = !config.attack?.disadvantage && (advantage || config.attack?.advantage);
-    disadvantage = !config.attack?.advantage && (disadvantage || config.attack?.disadvantage);
+    advantage = !config.attack?.disadvantage && !config.attack.normal && (advantage || config.attack?.advantage);
+    disadvantage = !config.attack?.advantage && !config.attack.normal && (disadvantage || config.attack?.disadvantage);
 
     return { advantage, disadvantage, parts, data: rollData };
 }
@@ -218,7 +218,16 @@ export function getSaveOptions(actor, abilityId) {
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
 
-    return { success, failure };
+    const advFlags = getEffectFlags(actor)?.advantage?.ability || {};
+    const disFlags = getEffectFlags(actor)?.disadvantage?.ability || {};
+
+    const isAdvantage = advFlags.all || advFlags.save?.all || (advFlags.save && advFlags.save[abilityId]);
+    const isDisdvantage = disFlags.all || disFlags.save?.all || (disFlags.save && disFlags.save[abilityId]);
+
+    const advantage = isAdvantage && !isDisdvantage;
+    const disadvantage = isDisdvantage && !isAdvantage;
+
+    return { success, failure, advantage, disadvantage };
 }
 
 export function getAbilityCheckOptions(actor, abilityId) {
@@ -231,7 +240,16 @@ export function getAbilityCheckOptions(actor, abilityId) {
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
 
-    return { success, failure };
+    const advFlags = getEffectFlags(this)?.advantage?.ability || {};
+    const disFlags = getEffectFlags(this)?.disadvantage?.ability || {};
+
+    const isAdvantage = advFlags.all || advFlags.check?.all || (advFlags.check && advFlags.check[abilityId]);
+    const isDisdvantage = disFlags.all || disFlags.check?.all || (disFlags.check && disFlags.check[abilityId]);
+
+    const advantage = isAdvantage && !isDisdvantage;
+    const disadvantage = isDisdvantage && !isAdvantage;
+
+    return { success, failure, advantage, disadvantage };
 }
 
 export function applyConditionImmunity(actor, effectDataList) {
@@ -436,32 +454,26 @@ async function onActorRollSkill(wrapped, skillId, options) {
 async function onActorRollAbilityTest(wrapped, abilityId, options) {
     const bonus = await triggerConditions(this, "prepare-ability-check");
 
-    const advFlags = getEffectFlags(this)?.advantage?.ability || {};
-    const disFlags = getEffectFlags(this)?.disadvantage?.ability || {};
+    const checkOptions = getAbilityCheckOptions(this, abilityId);
+    const advantage = options.advantage || (checkOptions.advantage && !options.disadvantage && !options.normal);
+    const disadvantage = options.disadvantage || (checkOptions.disadvantage && !options.advantage && !options.normal);
 
-    const isAdvantage = advFlags.all || advFlags.check?.all || (advFlags.check && advFlags.check[abilityId]);
-    const isDisdvantage = disFlags.all || disFlags.check?.all || (disFlags.check && disFlags.check[abilityId]);
-
-    const advantage = options.advantage || (isAdvantage && !isDisdvantage);
-    const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
-
-    const parts = bonus ? [bonus] : undefined;
+    const bonusParts = bonus ? [bonus] : [];
+    const optionParts = options.parts || [];
+    const parts = [...optionParts, ...bonusParts];
     return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage, parts })]);
 }
 
 async function onActorRollAbilitySave(wrapped, abilityId, options) {
     const bonus = await triggerConditions(this, "prepare-ability-save");
 
-    const advFlags = getEffectFlags(this)?.advantage?.ability || {};
-    const disFlags = getEffectFlags(this)?.disadvantage?.ability || {};
+    const saveOptions = getSaveOptions(this, abilityId);
+    const advantage = options.advantage || (saveOptions.advantage && !options.disadvantage && !options.normal);
+    const disadvantage = options.disadvantage || (saveOptions.disadvantage && !options.advantage && !options.normal);
 
-    const isAdvantage = advFlags.all || advFlags.save?.all || (advFlags.save && advFlags.save[abilityId]);
-    const isDisdvantage = disFlags.all || disFlags.save?.all || (disFlags.save && disFlags.save[abilityId]);
-
-    const advantage = options.advantage || (isAdvantage && !isDisdvantage);
-    const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
-
-    const parts = bonus ? [bonus] : undefined;
+    const bonusParts = bonus ? [bonus] : [];
+    const optionParts = options.parts || [];
+    const parts = [...optionParts, ...bonusParts];
     return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage, parts })]);
 }
 

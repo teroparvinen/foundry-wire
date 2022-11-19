@@ -565,16 +565,16 @@
     gap: 2px;
 }
 
-.configure-damage__damage-row, .configure-attack__part-row {
+.configure-damage__damage-row, .configure-check__part-row {
     margin-bottom: 5px;
 }
 
-.configure-damage__type, .configure-attack__part {
+.configure-damage__type, .configure-check__part {
     text-align: left;
     color: #4b4a44;
 }
 
-.configure-damage__formula, .configure-attack__bonus {
+.configure-damage__formula, .configure-check__bonus {
     text-align: center;
     background: var(--faint-color);
     border-radius: 5px;
@@ -586,17 +586,17 @@
     margin-bottom: 10px;
 }
 
-.configure-attack .configure-attack__values {
+.configure-check .configure-check__values {
     margin-top: 10px;
     margin-bottom: 10px;
     gap: 5px;
 }
 
-.configure-damage .configure-damage__custom-damage::placeholder, .configure-attack .configure-attack__custom-bonus::placeholder {
+.configure-damage .configure-damage__custom-damage::placeholder, .configure-attack .configure-check__custom-bonus::placeholder {
     opacity: 0.5;
 }
 
-.configure-attack__hint {
+.configure-check__hint {
     font-size: var(--font-size-12);
     line-height: var(--line-height-16);
     color: var(--color-text-dark-secondary);

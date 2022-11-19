@@ -127,10 +127,12 @@
         "select-variant": {
             "prompt": "Select a variant"
         },
-        "configure-attack": {
-            "title": "Configure Attack",
+        "configure-check": {
+            "attack-title": "Configure Attack",
+            "save-title": "Configure Save",
+            "check-title": "Configure Ability Check",
             "custom-placeholder": "e.g. 2 / 1d4",
-            "roll": "Roll Attack",
+            "roll": "Roll",
             "fast-forward-hint": "Shift-click or right-click the item to skip this dialog"
         },
         "configure-damage": {
@@ -144,6 +146,10 @@
             "prof": "Proficiency",
             "bonus": "Bonus",
             "ammo": "Ammo Bonus",
+            "specificSave": "This save",
+            "allSaves": "All saves",
+            "specificCheck": "This check",
+            "allChecks": "All checks",
             "situational": "Situational",
             "item-short": "Item",
             "ability-short": "Ability",
