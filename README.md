@@ -14,7 +14,7 @@ In Foundry, item rolls refer to the activation of items in an actor's inventory,
 
 ## Where to go for more information?
 
-The repository wiki is where all documentation will be kept.
+[The repository wiki](https://github.com/teroparvinen/foundry-wire/wiki) is where all documentation will be kept.
 
 - Check out the feature list
 - Recipes with examples of spells and skills and how to set them up

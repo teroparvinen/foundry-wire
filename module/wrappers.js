@@ -22,6 +22,12 @@ async function onItemRoll(wrapped, options, event) {
     }
 
     const item = this;
+
+    if (!Object.values(game.canvas.tokens._controlled).map(t => t.actor).includes(item.actor)) {
+        wrapped(options, event);
+        return;
+    }
+
     console.log("ROLLING ITEM", item, options);
 
     const concentrationEffect = item.actor.effects.find(effect => effect.getFlag("wire", "isConcentration"));
@@ -115,7 +121,7 @@ async function onActorPreUpdate(wrapped, change, options, user) {
                 await ceApi.toggleEffect("Dead", { uuids: [actor.uuid], overlay: true });
                 
                 const combatant = actor.token ? game.combat?.getCombatantByToken(actor.token.id) : game.combat?.getCombatantByActor(actor.id);
-                await combatant.update({ defeated: needsDead });
+                await combatant?.update({ defeated: needsDead });
             }
         }
     }

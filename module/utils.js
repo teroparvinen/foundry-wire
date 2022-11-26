@@ -375,3 +375,9 @@ export function makeModifier(value) {
     }
     return value;
 }
+
+export function handleError(error) {
+    const msg = `A technical error occurred. Please check the console error log and notify the GM.`;
+    ui.notifications.error(msg);
+    console.error(msg, error);
+}

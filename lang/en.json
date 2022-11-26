@@ -171,6 +171,10 @@
         "keybindings": {
             "next-turn": "Next turn",
             "previous-turn": "Previous turn"
+        },
+        "beta-warning": {
+            "title": "WIRE is in beta",
+            "content": "<p>This is a large and ambitious module and it has only seen a very limited amount of testing among a wider public. There will be bugs, potentially game stopping ones. Please keep this in mind as you try it out.</p><p>I appreciate any interest in using the module and good bug reports in the module repository issue tracker can help get issues fixed for all the interested users.</p><p>As this is a complex module, reading the documentation on github (both the README and the wiki) is strongly recommended. Missing or unclear documentation can also be reported on the issue tracker.</p><p>I want to specifically mention that any unforeseen problems following public release might require changes that are not compatible with some items set up to work with WIRE and future updates might require you to redo some of the customization you've done already. I will try to keep this to a minimum and apologize in advance for any inconvenience this might cause.</p><p>Thank you for checking WIRE out. Clicking Yes below will hide this message in the future.</p>"
         }
     }
 }

@@ -16,10 +16,13 @@ import { setupWrappers } from "./wrappers.js";
 import { placeTemplate } from "./preroll.js";
 import { fromUuid } from "./utils.js";
 import { createChildEffects, removeChildEffects } from "./game/active-effects.js";
+import { initSettings } from "./settings.js";
 
 Hooks.once("init", () => {
     initHooks();
     registerHandlebarsHelpers();
+
+    initSettings();
 
     initItemSheetHooks();
     initActiveEffectSheetHooks();
@@ -53,4 +56,18 @@ Hooks.once("setup", () => {
 
 Hooks.once("ready", () => {
     readyCharacterSheetWrappers();
+
+    checkBetaWarning();
 });
+
+function checkBetaWarning() {
+    if (game.user.isGM && !game.settings.get("wire", "beta-warning-displayed")) {
+        let d = Dialog.confirm({
+            title: game.i18n.localize("wire.beta-warning.title"),
+            content: game.i18n.localize("wire.beta-warning.content"),
+            yes: () => { game.settings.set("wire", "beta-warning-displayed", true) },
+            no: () => {},
+            defaultYes: false
+        });
+    }
+}

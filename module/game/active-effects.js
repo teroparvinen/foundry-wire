@@ -69,7 +69,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
 }
 
 export async function applySingleEffect(effect, targets, masterEffect, config, extraData, { createStatus } = {}) {
-    const item = fromUuid(masterEffect.data.origin);
+    const item = masterEffect ? fromUuid(masterEffect.data.origin) : fromUuid(effect.data.origin);
     const actor = item.actor;
 
     const staticDuration = effectDurationFromItemDuration(item.data.data.duration, isInCombat(actor));

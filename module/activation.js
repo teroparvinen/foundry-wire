@@ -10,7 +10,7 @@ import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
 import { wireSocket } from "./socket.js";
 import { determineUpdateTargets } from "./updater-utility.js";
-import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, i18n, isActorDefeated, triggerConditions } from "./utils.js";
+import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, handleError, i18n, isActorDefeated, triggerConditions } from "./utils.js";
 
 export class Activation {
     static async _initializeGmMessage(gmMessage, masterMessage) {
@@ -300,16 +300,24 @@ export class Activation {
     async _activate() {
         const resolver = new Resolver(this);
         runInQueue(async () => {
-            await resolver.start();
-            await this._finalizeUpdate();
+            try {
+                await resolver.start();
+                await this._finalizeUpdate();
+            } catch (error) {
+                handleError(error);
+            }
         });
     }
 
     async _step() {
         const resolver = new Resolver(this);
         await runInQueue(async () => {
-            await resolver.step();
-            await this._finalizeUpdate();
+            try {
+                await resolver.step();
+                await this._finalizeUpdate();
+            } catch (error) {
+                handleError(error);
+            }
         });
     }
 
