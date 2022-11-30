@@ -15,8 +15,8 @@ export class ApplyEffectsUpdater extends Updater {
     }
 
     async process() {
-        const masterEffect = this.item.actor.effects.find(e => e.data.origin === this.item.uuid && e.data.flags.wire?.isMasterEffect);
-        const activationConfig = this.effect?.data.flags.wire?.activationConfig;
+        const masterEffect = this.item.actor.effects.find(e => e.origin === this.item.uuid && e.flags.wire?.isMasterEffect);
+        const activationConfig = this.effect?.flags.wire?.activationConfig;
         const targets = determineUpdateTargets(this.item, this.effect, this.condition, this.externalTargetActor);
         await applyTargetEffects(this.item, this.applicationType, targets, targets, masterEffect, activationConfig);
     }

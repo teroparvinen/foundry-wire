@@ -85,7 +85,7 @@ export class DamageCard {
     }
 
     constructor(message) {
-        const data = message.data.flags.wire;
+        const data = message.flags.wire;
 
         const actor = fromUuid(data.actorUuid);
         const targetEntries = data.targets.map(t => {
@@ -109,7 +109,7 @@ export class DamageCard {
     async applyDamage(actor) {
         const entry = this.targetEntries.find(t => t.actor == actor);
         if (entry) {
-            const attrs = actor.data.data.attributes;
+            const attrs = actor.system.attributes;
             const isCurrent = attrs.hp.value == entry.info.hp && (attrs.hp.temp || 0) == entry.info.tempHp;
 
             if (isCurrent) {
@@ -132,7 +132,7 @@ export class DamageCard {
     async undoDamage(actor) {
         const entry = this.targetEntries.find(t => t.actor == actor);
         if (entry) {
-            const attrs = actor.data.data.attributes;
+            const attrs = actor.system.attributes;
             const isCurrent = attrs.hp.value == entry.info.newHp && (attrs.hp.temp || 0) == entry.info.newTempHp;
 
             if (isCurrent) {
@@ -258,7 +258,7 @@ export class DamageCard {
     static async _buildTargetEntries(targetDamage) {
         return targetDamage.map(t => {
             const actor = t.actor;
-            const token = t.token;
+            const token = t.token.document;
             const info = DamageCard._getActorInfo(t.actor, t.points);
             const damage = t.points;
             return { actor, token, info, damage };
@@ -267,7 +267,8 @@ export class DamageCard {
 
     static async _getFlagData(actor, targetEntries) {
         return {
-            actorUuid: actor.uuid,
+            isDamageCard: true,
+            actorUuid: actor?.uuid,
             targets: targetEntries.map(t => ({
                 actorUuid: t.actor.uuid,
                 tokenUuid: t.token.uuid || t.token.document.uuid,
@@ -307,9 +308,9 @@ export class DamageCard {
             tempHpReceived *= 2;
         }
 
-        const hp = actor.data.data.attributes.hp.value;
-        const effectiveMaxHp = actor.data.data.attributes.hp.max + actor.data.data.attributes.hp.tempmax;
-        const tempHp = actor.data.data.attributes.hp.temp || 0;
+        const hp = actor.system.attributes.hp.value;
+        const effectiveMaxHp = actor.system.attributes.hp.max + actor.system.attributes.hp.tempmax;
+        const tempHp = actor.system.attributes.hp.temp || 0;
         const newTempHp = Math.max(0, tempHp - dmg, tempHpReceived);
         const newHp = Math.min(Math.max(0, Math.min(hp + tempHp - dmg, hp)) + healing, effectiveMaxHp);
         const hpDmg = Math.max(hp - newHp, 0);

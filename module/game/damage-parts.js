@@ -10,7 +10,7 @@ export class DamageParts {
         let isCritical = getAttackRollResultType(activation.attackRoll) == "critical";
     
         // Flags
-        const actionType = item.data.data.actionType;
+        const actionType = item.system.actionType;
 
         if (attackTarget) {
             const grantFlags = getEffectFlags(attackTarget)?.grants?.critical || {};
@@ -39,8 +39,8 @@ export class DamageParts {
         const attackTarget = isAttack ? activation.singleTarget?.actor : undefined;
 
         if (!item.hasDamage) throw new Error("You may not make a Damage Roll with this Item.");
-        const itemData = item.data.data;
-        const actorData = item.actor.data.data;
+        const itemData = item.system;
+        const actorData = item.actor.system;
 
         // Get damage components
         let parts = this._itemDamageParts(item, applicationType, onlyUnavoidable, variant);
@@ -52,7 +52,7 @@ export class DamageParts {
         }
 
         // Check versatile
-        if (itemData.damage?.versatile && item.actor.data.flags.wire?.damage?.versatile) {
+        if (itemData.damage?.versatile && item.actor.flags.wire?.damage?.versatile) {
             parts[0].formula = itemData.damage.versatile;
         }
     
@@ -65,22 +65,22 @@ export class DamageParts {
             const targetType = Object.keys(CONFIG.DND5E.creatureTypes).reduce((accumulator, value) => {
                 return {...accumulator, [value]: 0 };
             }, {});
-            if (attackTarget.data.data.details?.type?.value) {
-                targetType[attackTarget.data.data.details.type.value] = 1;
+            if (attackTarget.system.details?.type?.value) {
+                targetType[attackTarget.system.details.type.value] = 1;
             }
     
             const targetSize = Object.keys(CONFIG.DND5E.actorSizes).reduce((accumulator, value) => {
                 return {...accumulator, [value]: 0 };
             }, {});
-            if (attackTarget.data.data.details?.size) {
-                targetSize[attackTarget.data.data.details?.size] = 1;
+            if (attackTarget.system.details?.size) {
+                targetSize[attackTarget.system.details?.size] = 1;
             }
     
             rollData.target = { type: targetType, size: targetSize };
         }
     
         // Scale damage from up-casting spells
-        if ((item.data.type === "spell")) {
+        if (item.type === "spell") {
             let levelMultiplier = 0;
             let scalingFormula = itemData.scaling.formula;
             if ((itemData.scaling.mode === "cantrip")) {
@@ -95,7 +95,7 @@ export class DamageParts {
                 levelMultiplier = Math.max(spellLevel - itemData.level, 0);
             }
             if (levelMultiplier > 0) {
-                const upcastInterval = item.data.flags.wire?.upcastInterval || 1;
+                const upcastInterval = item.flags.wire?.upcastInterval || 1;
                 const scalingMultiplier = upcastInterval ? Math.floor(levelMultiplier / upcastInterval) : levelMultiplier;
                 const s = new Roll(scalingFormula, rollData).alter(scalingMultiplier);
                 if (s.formula) {
@@ -147,9 +147,9 @@ export class DamageParts {
     
         // Handle ammunition damage
         let ammoParts = [];
-        const ammoData = item._ammo?.data;
-        if (item._ammo && (ammoData.type === "consumable") && (ammoData.data.consumableType === "ammo")) {
-            ammoParts = this._itemDamageParts(item._ammo, applicationType, onlyUnavoidable);
+        const ammoItem = item._ammo;
+        if (ammoItem && (ammoItem.type === "consumable") && (ammoItem.system.consumableType === "ammo")) {
+            ammoParts = this._itemDamageParts(ammoItem, applicationType, onlyUnavoidable);
             delete item._ammo;
         }
 
@@ -196,8 +196,8 @@ export class DamageParts {
         }
 
         let criticalThreshold = 20;
-        if (item.data.type === "weapon") { criticalThreshold = item.actor.data.flags?.dnd5e?.weaponCriticalThreshold || criticalThreshold }
-        if (item.data.type === "spell") { criticalThreshold = item.actor.data.flags?.dnd5e?.spellCriticalThreshold || criticalThreshold }
+        if (item.type === "weapon") { criticalThreshold = item.actor.flags?.dnd5e?.weaponCriticalThreshold || criticalThreshold }
+        if (item.type === "spell") { criticalThreshold = item.actor.flags?.dnd5e?.spellCriticalThreshold || criticalThreshold }
 
         // Apply flavor to dice
         partsWithRolls.forEach(pr => pr.roll.dice.forEach(die => {
@@ -301,9 +301,9 @@ export class DamageParts {
             if (type === "healing") { return { healing: caused } };
             if (type === "temphp") { return { temphp: caused } };
 
-            const traits = actor.data.data.traits;
+            const traits = actor.system.traits;
             const isActorAttackMagical = item.actor.getFlag("wire", "damage.magical");
-            const isAttackMagical = (item.type === "weapon" && item.data.data.properties.mgc) || item.type === "spell" || isActorAttackMagical;
+            const isAttackMagical = (item.type === "weapon" && item.system.properties.mgc) || item.type === "spell" || isActorAttackMagical;
             const nmi = traits.di.value.includes("physical") && !isAttackMagical;
             const nmr = traits.dr.value.includes("physical") && !isAttackMagical;
             const nmv = traits.dv.value.includes("physical") && !isAttackMagical;

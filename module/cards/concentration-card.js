@@ -40,7 +40,7 @@ export class ConcentrationCard {
     }
 
     static fromMessage(message) {
-        const data = message.data.flags.wire;
+        const data = message.flags.wire;
         return new ConcentrationCard(fromUuid(data.actorUuid), fromUuid(data.concentrationEffectUuid), data.damageAmount);
     }
 
@@ -83,7 +83,7 @@ export class ConcentrationCard {
         const templateData = {
             actor: this.actor,
             damageAmount: this.damageAmount,
-            originName: fromUuid(this.concentrationEffect.data.origin).name,
+            originName: fromUuid(this.concentrationEffect.origin).name,
             dc: this.dc,
             result: this.result
         };

@@ -22,10 +22,10 @@ export function initHooks() {
         await runInQueue(async () => {
             if (game.user.isGM && !message.isAuthor && message.getFlag("wire", "originatorUserId")) {
                 const gmMessageData = {
-                    content: message.data.content,
-                    flags: foundry.utils.mergeObject(message.data.flags, { "wire.isGmView": true }),
-                    flavor: message.data.flavor,
-                    speaker: message.data.speaker,
+                    content: message.content,
+                    flags: foundry.utils.mergeObject(message.flags, { "wire.isGmView": true }),
+                    flavor: message.flavor,
+                    speaker: message.speaker,
                     user: game.user.id,
                     whisper: [game.user.id]
                 };
@@ -45,8 +45,8 @@ export function initHooks() {
             await removeLinkedMessage(message.getFlag("wire", "gmMessageUuid"));
             await removeLinkedMessage(message.getFlag("wire", "playerMessageUuid"));
 
-            const templateUuid = message.data.flags.wire?.activation?.templateUuid;
-            const masterEffectUuid = message.data.flags.wire?.activation?.masterEffectUuid;
+            const templateUuid = message.flags.wire?.activation?.templateUuid;
+            const masterEffectUuid = message.flags.wire?.activation?.masterEffectUuid;
             if (!masterEffectUuid && templateUuid) {
                 fromUuid(templateUuid)?.delete();
             }
@@ -57,8 +57,22 @@ export function initHooks() {
         const shouldHidePlayerOriginated = game.user.isGM && !message.isAuthor && message.getFlag("wire", "originatorUserId");
         const shouldHidePlayerView = game.user.isGM && message.getFlag("wire", "isPlayerView");
         const isExplicitlyHidden = message.getFlag("wire", "isHidden");
-        if (shouldHidePlayerOriginated || shouldHidePlayerView || isExplicitlyHidden) {
+        const isHiddenFromPlayer = !game.user.isGM && ((message.blind) || (message.whisper.length && !message.isAuthor && !message.whisper.includes(game.user.id)));
+
+        if (shouldHidePlayerOriginated || shouldHidePlayerView || isExplicitlyHidden || isHiddenFromPlayer) {
             html[0].classList.add("wire-gm-hide");
+        }
+
+        const hideSpeakerFields = message.getFlag("wire", "hideSpeakerFields");
+        if (hideSpeakerFields) {
+            html[0].classList.add("wire-hide-speaker-fields");
+        }
+
+        if (message.getFlag("wire", "activation")) {
+            html[0].classList.add("wire-activation-view");
+        }
+        if (message.getFlag("wire", "isDamageCard")) {
+            html[0].classList.add("wire-damage-card");
         }
     });
 
@@ -84,7 +98,7 @@ export function initHooks() {
             const casterUuid = effect.getFlag("wire", "castingActorUuid");
             if (casterUuid) {
                 const caster = fromUuid(casterUuid);
-                const effectUuids = caster?.data.flags.wire?.turnUpdatedEffectUuids?.filter(uuid => uuid !== effect.uuid);
+                const effectUuids = caster?.flags.wire?.turnUpdatedEffectUuids?.filter(uuid => uuid !== effect.uuid);
                 caster.setFlag("wire", "turnUpdatedEffectUuids", effectUuids);
             }
 
@@ -102,7 +116,7 @@ export function initHooks() {
     });
 
     Hooks.on("deleteMeasuredTemplate", (template, options, user) => {
-        if (template.author === game.user) {
+        if (template.user === game.user) {
             const attachedTokenId = template.getFlag("wire", "attachedTokenId");
             if (attachedTokenId) {
                 const token = canvas.tokens.get(attachedTokenId);
@@ -115,8 +129,8 @@ export function initHooks() {
         if (change.x || change.y) {
             const templateId = await tokenDoc.getFlag("wire", "attachedTemplateId");
             const template = canvas.templates.get(templateId);
-            if (template && template.document.author === game.user) {
-                const update = tokenDoc.object.getCenter(tokenDoc.data.x, tokenDoc.data.y);
+            if (template && template.document.user === game.user) {
+                const update = tokenDoc.object.getCenter(tokenDoc.x, tokenDoc.y);
                 await template.document.update(update);
             }
 
@@ -140,7 +154,7 @@ export function initHooks() {
                     content: await renderTemplate("modules/wire/templates/round-change-card.hbs", { round: change.round }),
                     whisper: null,
                     emote: true,
-                    speaker: { alias: " " }
+                    flags: { "wire.hideSpeakerFields": true }
                 })
             }
 
@@ -154,10 +168,10 @@ export function initHooks() {
     
                 if (!combatant.isDefeated) {
                     ChatMessage.create({
-                        content: await renderTemplate("modules/wire/templates/turn-change-card.hbs", { token: combatant.token }),
+                        content: await renderTemplate("modules/wire/templates/turn-change-card.hbs", { token: combatant.token.object }),
                         whisper: combatant.isNPC ? [game.user.id] : null,
                         emote: true,
-                        speaker: { alias: " " }
+                        flags: { "wire.hideSpeakerFields": true }
                     })              
                 }
     
@@ -187,7 +201,7 @@ export function initHooks() {
                 callback: li => {
                     const message = game.messages.get(li.data("messageId"));
                     const actors = [...game.user.targets];
-                    declareDamage(message.roll, actors);
+                    declareDamage(message.rolls, actors);
                 }
             },
             {
@@ -200,7 +214,7 @@ export function initHooks() {
                 callback: li => {
                     const message = game.messages.get(li.data("messageId"));
                     const actors = canvas.tokens.controlled;
-                    declareDamage(message.roll, actors);
+                    declareDamage(message.rolls, actors);
                 }
             },
 
@@ -209,21 +223,21 @@ export function initHooks() {
                 icon: '<i class="fas fa-ruler-combined"></i>',
                 condition: li => {
                     const message = game.messages.get(li.data("messageId"));
-                    const masterEffectUuid = message?.data.flags.wire?.activation?.masterEffectUuid;
+                    const masterEffectUuid = message?.flags.wire?.activation?.masterEffectUuid;
                     const effect = fromUuid(masterEffectUuid);
                     if (effect) {
-                        const item = fromUuid(effect.data.origin);
-                        const template = fromUuid(effect.data.flags.wire?.templateUuid);
+                        const item = fromUuid(effect.origin);
+                        const template = fromUuid(effect.flags.wire?.templateUuid);
                         return item.hasAreaTarget && !template;
                     }
                 },
                 callback: async li => {
                     const message = game.messages.get(li.data("messageId"));
-                    const masterEffectUuid = message?.data.flags.wire?.activation?.masterEffectUuid;
+                    const masterEffectUuid = message?.flags.wire?.activation?.masterEffectUuid;
                     const effect = fromUuid(masterEffectUuid);
                     if (effect) {
-                        const item = fromUuid(effect.data.origin);
-                        const template = fromUuid(effect.data.flags.wire?.templateUuid);
+                        const item = fromUuid(effect.origin);
+                        const template = fromUuid(effect.flags.wire?.templateUuid);
                         if (item.hasAreaTarget && !template) {
                             const templateData = await createTemplate(item, true);
                             if (templateData) {
@@ -279,12 +293,12 @@ export function initHooks() {
     });
 }
 
-async function declareDamage(roll, tokens) {
+async function declareDamage(rolls, tokens) {
     const damage = tokens.map(token => {
         return {
             actor: token.actor,
             token,
-            points: { damage: roll.total }
+            points: { damage: rolls.map(r => r.total).reduce((a, b) => a + b, 0) }
         }
     });
 
@@ -292,12 +306,10 @@ async function declareDamage(roll, tokens) {
     const npcDamage = damage.filter(d => !d.actor.hasPlayerOwner);
 
     if (pcDamage.length) {
-        const pcDamageCard = new DamageCard(true, null, pcDamage);
-        await pcDamageCard.make();
+        await DamageCard.make(null, pcDamage);
     }
     if (npcDamage.length) {
-        const npcDamageCard = new DamageCard(false, null, npcDamage);
-        await npcDamageCard.make();
+        await DamageCard.make(null, npcDamage);
     }
 }
 
@@ -341,20 +353,20 @@ async function updateAuras() {
     });
 
     for (let source of auraSources) {
-        const item = fromUuid(source.effect.data.origin);
-        const range = item?.data.data.target?.value;
+        const item = fromUuid(source.effect.origin);
+        const range = item?.system.target?.value;
         const auraToken = source.token;
         const sourceUuid = source.effect.uuid;
 
-        auraEffects = auraEffects.filter(e => e.data.flags.wire?.auraSourceUuid !== sourceUuid)
+        auraEffects = auraEffects.filter(e => e.flags.wire?.auraSourceUuid !== sourceUuid)
         
         if (range) {
-            const disposition = source.effect.data.flags.wire.auraTargets;
+            const disposition = source.effect.flags.wire.auraTargets;
             let targets = [];
 
             for (let token of tokens) {
                 const isInRange = tokenSeparation(auraToken, token) <= range;
-                const existingEffect = token.actor.effects.find(effect => effect.data.origin === source.effect.data.origin)
+                const existingEffect = token.actor.effects.find(effect => effect.origin === source.effect.origin)
 
                 if (!isInRange && existingEffect) {
                     await existingEffect.delete();
@@ -371,7 +383,7 @@ async function updateAuras() {
             }
 
             if (targets.length) {
-                const masterEffectUuid = source.effect.data.flags.wire?.masterEffectUuid;
+                const masterEffectUuid = source.effect.flags.wire?.masterEffectUuid;
                 const masterEffect = masterEffectUuid ? fromUuid(masterEffectUuid) : null;
                 const extraData = {
                     "flags.wire.auraSourceUuid": source.effect.uuid

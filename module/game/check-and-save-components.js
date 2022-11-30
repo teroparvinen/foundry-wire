@@ -13,7 +13,7 @@ export function getDisplayableSaveComponents(actor, abilityId, short = false) {
 }
 
 export function getSaveComponents(actor, abilityId) {
-    const abl = actor.data.data.abilities[abilityId];
+    const abl = actor.system.abilities[abilityId];
     const actorRollData = actor.getRollData();
 
     const parts = {};
@@ -32,7 +32,7 @@ export function getSaveComponents(actor, abilityId) {
     }
 
     // Include a global actor ability save bonus
-    const bonuses = getProperty(actor.data.data, "bonuses.abilities") || {};
+    const bonuses = getProperty(actor.system, "bonuses.abilities") || {};
     if ( bonuses.save ) {
         parts.allSaves = Roll.replaceFormulaData(bonuses.save, actorRollData);
     }
@@ -53,7 +53,7 @@ export function getDisplayableCheckComponents(actor, abilityId, short = false) {
 }
 
 export function getCheckComponents(actor, abilityId) {
-    const abl = actor.data.data.abilities[abilityId];
+    const abl = actor.system.abilities[abilityId];
     const actorRollData = actor.getRollData();
 
     const parts = {};
@@ -72,7 +72,7 @@ export function getCheckComponents(actor, abilityId) {
     }
 
     // Include a global actor ability save bonus
-    const bonuses = getProperty(actor.data.data, "bonuses.abilities") || {};
+    const bonuses = getProperty(actor.system, "bonuses.abilities") || {};
     if ( bonuses.check ) {
         parts.allChecks = Roll.replaceFormulaData(bonuses.check, actorRollData);
     }

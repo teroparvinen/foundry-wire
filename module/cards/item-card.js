@@ -17,12 +17,12 @@ export class ItemCard {
                 isPlayerView,
                 isGMActorPlayerView: isPlayerView && !actor.hasPlayerOwner,
                 hasPlayerOwner: item.hasPlayerOwner,
-                actor: actor.data,
+                actor: actor,
                 tokenId: token?.uuid || null,
-                item: item.data,
-                data: item.getChatData(),
+                item: item,
+                data: await item.getChatData(),
                 isVersatile: item.isVersatile,
-                isSpell: item.data.type === "spell",
+                isSpell: item.type === "spell",
                 activation: activationData,
                 abilityNames: CONFIG.DND5E.abilities,
                 isSecondary
@@ -116,7 +116,7 @@ export class ItemCard {
                     }
                     const actorUuid = event.target.closest('.saving-throw-target').dataset.actorId;
                     const actor = fudgeToActor(fromUuid(actorUuid));
-                    const usedSave = activation.item.data.data.save.ability;
+                    const usedSave = activation.item.system.save.ability;
                     const usedCheck = activation.abilityToCheckForSave;
                     const config = activation.config;
                     const app = usedCheck ? new ConfigureCheck(actor, usedCheck, config, dialogOptions) : new ConfigureSave(actor, usedSave, config, dialogOptions);

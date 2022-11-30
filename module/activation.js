@@ -26,7 +26,7 @@ export class Activation {
         const messageData = await item.displayCard({ createMessage: false });
         messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
         messageData.speaker = getSpeaker((speakerIsEffectOwner && effect) ? effect.parent : item.actor);
-        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", effect?.data.flags.wire?.originatorUserId || game.user.id);
+        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", effect?.flags.wire?.originatorUserId || game.user.id);
         if (revealToPlayers) { messageData.whisper = null; }
         const message = await ChatMessage.create(messageData);
 
@@ -118,7 +118,7 @@ export class Activation {
     get effectiveTargets() { return this.effectiveTargetUuids?.map(uuid => this._targetRecord(uuid)) ?? []; }
     get attackTarget() { return this._targetRecord(this.attackTargetUuid); }
 
-    get abilityToCheckForSave() { return this.condition?.update === "end-on-check" ? (this.item.data.flags.wire?.checkedAbility || this.item.data.data.save?.ability) : null; }
+    get abilityToCheckForSave() { return this.condition?.update === "end-on-check" ? (this.item.flags.wire?.checkedAbility || this.item.system.save?.ability) : null; }
 
     _targetRecord(uuid) {
         if (uuid) {
@@ -145,8 +145,13 @@ export class Activation {
         const damageRoll = await this.getCombinedDamageRoll();
         const damageRollTooltip = await damageRoll?.getTooltip();
 
-        const isTempHps = this.item.data.data.damage?.parts?.every(p => p[1] === "temphp") || this.damageParts?.result?.every(p => p.part.type === "temphp");
-        const isHealing = !isTempHps && this.item.data.data.damage?.parts?.every(p => ["healing", "temphp"].includes(p[1])) || this.damageParts?.result?.every(p => ["healing", "temphp"].includes(p.part.type));
+        const isTempHps = 
+            (this.item.system.damage?.parts?.length && this.item.system.damage?.parts?.every(p => p[1] === "temphp")) ||
+            (this.damageParts?.result?.length && this.damageParts?.result?.every(p => p.part.type === "temphp"));
+        const isHealing = 
+            !isTempHps && 
+            (this.item.system.damage?.parts?.length && this.item.system.damage?.parts?.every(p => ["healing", "temphp"].includes(p[1]))) || 
+            (this.damageParts?.result?.length && this.damageParts?.result?.every(p => ["healing", "temphp"].includes(p.part.type)));
 
         return {
             state: this.state,
@@ -184,11 +189,11 @@ export class Activation {
             foundry.utils.setProperty(this.data, "sourceEffectUuid", sourceEffect.uuid);
             foundry.utils.setProperty(this.data, "isSecondary", true);
 
-            foundry.utils.setProperty(this.data, "config", sourceEffect.data.flags.wire?.activationConfig);
-            if (sourceEffect.data.flags.wire?.isMasterEffect) {
+            foundry.utils.setProperty(this.data, "config", sourceEffect.flags.wire?.activationConfig);
+            if (sourceEffect.flags.wire?.isMasterEffect) {
                 foundry.utils.setProperty(this.data, "masterEffectUuid", sourceEffect.uuid);
             } else {
-                foundry.utils.setProperty(this.data, "masterEffectUuid", sourceEffect.data.flags.wire?.masterEffectUuid);
+                foundry.utils.setProperty(this.data, "masterEffectUuid", sourceEffect.flags.wire?.masterEffectUuid);
             }
 
             const targetUuids = determineUpdateTargets(item, sourceEffect, condition, externalEffectTarget)?.map(a => a.uuid);
@@ -231,10 +236,14 @@ export class Activation {
     async _finalizeUpdate() {
         if (this._updatePending) {
             const template = await this.templateProxy?.commit();
-            await this.masterEffectProxy?.commit();
+            const masterEffect = await this.masterEffectProxy?.commit();
+
             await this.message.setFlag("wire", "activation", this.data);
 
             await wireSocket.executeForOthers("activationUpdated", this.message.uuid);
+            if (template) {
+                await wireSocket.executeAsGM("activationTemplateCreated", template.uuid);
+            }
 
             // Wait for the template to be rendered at least once - avoids a host of problems
             while (template && !template?.object?.controlIcon?.renderable) {
@@ -284,11 +293,11 @@ export class Activation {
             flags: {
                 wire: {
                     masterMessageUuid: this.message.uuid,
-                    originatorUserId: this.message.data.flags.wire?.originatorUserId,
+                    originatorUserId: this.message.flags.wire?.originatorUserId,
                     isPlayerView: true
                 }
             },
-            speaker: this.message.data.speaker,
+            speaker: this.message.speaker,
             user: game.user.id
         };
         const playerMessage = await ChatMessage.create(playerMessageData);
@@ -331,6 +340,12 @@ export class Activation {
 
         this.templateProxy.setFlag("wire", "activationMessageId", this.message.id);
 
+        const tokenId = templateData.flags.wire?.attachedTokenId;
+        if (tokenId) {
+            const tokenDoc = game.canvas.scene.tokens.get(tokenId);
+            await tokenDoc.setFlag("wire", "attachedTemplateId", this.templateProxy.id);
+        }
+
         foundry.utils.setProperty(this.data, "templateUuid", this.templateProxy.uuid);
         await this._update();
     }
@@ -346,7 +361,7 @@ export class Activation {
             await this.templateProxy.setFlag("wire", "masterEffectUuid", this.masterEffectUuid);
         }
 
-        await this.masterEffectProxy.setFlag("wire", "originatorUserId", this.message.data.flags.wire?.originatorUserId);
+        await this.masterEffectProxy.setFlag("wire", "originatorUserId", this.message.flags.wire?.originatorUserId);
         await this.registerCreatedEffects([this.masterEffectProxy]);
     }
 
@@ -510,8 +525,8 @@ export class Activation {
     }
 
     async _rollSave(actor, options = {}) {
-        const spellDC = this.item.data.data.save.dc;
-        const usedSave = this.item.data.data.save.ability;
+        const spellDC = this.item.system.save.dc;
+        const usedSave = this.item.system.save.ability;
         const usedCheck = this.abilityToCheckForSave;
 
         const actorOptions = usedCheck ? getAbilityCheckOptions(actor, usedCheck) : getSaveOptions(actor, usedSave);

@@ -2,35 +2,47 @@ import { generateId } from "./generate-id.js";
 
 export class DocumentProxy {
     constructor(parent, documentType, data) {
-        this.parent = parent;
-        this.documentType = documentType;
-        this.data = data;
-        this.isDirty = false;
+        this._parent = parent;
+        this._documentType = documentType;
+        this._data = data;
+        this._isDirty = false;
 
-        this.data._id = generateId();
+        this.updateLocalData(data);
+
+        this._data._id = generateId();
     }
 
     get id() {
-        return this.data._id;
+        return this._data._id;
     }
 
     get uuid() {
-        return `${this.parent.uuid}.${this.documentType}.${this.id}`;
+        return `${this._parent.uuid}.${this._documentType}.${this.id}`;
+    }
+
+    updateLocalData(data) {
+        for (const key in data) {
+            if (key !== "id") {
+                this[key] = data[key];
+            }
+        }
     }
 
     update(data) {
-        this.data = foundry.utils.mergeObject(this.data, data);
-        this.isDirty = true;
+        this._data = foundry.utils.mergeObject(this._data, data);
+        this._isDirty = true;
+
+        this.updateLocalData(data);
     }
 
     setFlag(domain, flag, value) {
         const key = `flags.${domain}.${flag}`;
-        this.data = foundry.utils.mergeObject(this.data, { [key]: value });
-        this.isDirty = true;
+        this._data = foundry.utils.mergeObject(this._data, { [key]: value });
+        this._isDirty = true;
     }
 
     async commit() {
-        const result = await this.parent.createEmbeddedDocuments(this.documentType, [this.data], { keepId: true });
+        const result = await this._parent.createEmbeddedDocuments(this._documentType, [this._data], { keepId: true });
         return result[0];
     }
 }

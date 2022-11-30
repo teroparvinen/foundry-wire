@@ -68,7 +68,7 @@ function onItemSubmit(wrapped, updateData) {
 
     // Create the expanded update data object
     const fd = new FormDataExtended(this.form, {editors: this.editors});
-    let data = fd.toObject();
+    let data = fd.object;
     if ( updateData ) data = mergeObject(data, updateData);
     else data = expandObject(data);
 

@@ -7,7 +7,7 @@ import { preRollCheck, preRollConfig } from "./preroll.js";
 import { fromUuid, i18n, triggerConditions } from "./utils.js";
 
 export function setupWrappers() {
-    libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.roll", onItemRoll, "MIXED");
+    libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.use", onItemUse, "MIXED");
     libWrapper.register("wire", "ClientKeybindings._onDismiss", onEscape, "OVERRIDE");
     libWrapper.register("wire", "CONFIG.ui.chat.prototype.scrollBottom", onChatLogScrollBottom, "MIXED");
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype._preUpdate", onActorPreUpdate, "MIXED");
@@ -15,7 +15,7 @@ export function setupWrappers() {
 
 let templateInfo = null;
 
-async function onItemRoll(wrapped, options, event) {
+async function onItemUse(wrapped, options, event) {
     let configure = true;
     if (event?.shiftKey || event?.altKey || event?.metaKey || event?.ctrlKey || event?.which === 3) {
         configure = false;
@@ -23,7 +23,7 @@ async function onItemRoll(wrapped, options, event) {
 
     const item = this;
 
-    if (!Object.values(game.canvas.tokens._controlled).map(t => t.actor).includes(item.actor)) {
+    if (!Object.values(game.canvas.tokens.controlled).map(t => t.actor).includes(item.actor)) {
         wrapped(options, event);
         return;
     }
@@ -31,8 +31,8 @@ async function onItemRoll(wrapped, options, event) {
     console.log("ROLLING ITEM", item, options);
 
     const concentrationEffect = item.actor.effects.find(effect => effect.getFlag("wire", "isConcentration"));
-    if (concentrationEffect && item.data.data.components?.concentration) {
-        const originName = fromUuid(concentrationEffect.data.origin).name;
+    if (concentrationEffect && item.system.components?.concentration) {
+        const originName = fromUuid(concentrationEffect.origin).name;
         if (!await Dialog.confirm({
             title: i18n("wire.ui.end-concentration-dialog-title"),
             content: i18n("wire.ui.end-concentration-dialog-content", { originName })
@@ -88,11 +88,11 @@ async function onActorPreUpdate(wrapped, change, options, user) {
 
     const actor = this;
 
-    const hpUpdate = getProperty(change, "data.attributes.hp.value");
-    const tempUpdate = getProperty(change, "data.attributes.hp.temp");
+    const hpUpdate = getProperty(change, "system.attributes.hp.value");
+    const tempUpdate = getProperty(change, "system.attributes.hp.temp");
 
     if (hpUpdate !== undefined && !this.hasPlayerOwner) {
-        const maxHp = actor.data.data.attributes.hp.max;
+        const maxHp = actor.system.attributes.hp.max;
         const woundedThreshold = Math.floor(0.5 * maxHp);
 
         const isDamaged = hpUpdate < maxHp;
@@ -127,12 +127,12 @@ async function onActorPreUpdate(wrapped, change, options, user) {
     }
 
     if (hpUpdate !== undefined || tempUpdate !== undefined) {
-        const current = actor.data.data.attributes.hp;
+        const current = actor.system.attributes.hp;
         const damage = (current.value - (hpUpdate || current.value)) + (current.temp - (tempUpdate || current.temp));
 
         if (damage > 0) {
             // Concentration check
-            const concentrationEffect = actor.effects.find(e => e.data.flags.wire?.isConcentration);
+            const concentrationEffect = actor.effects.find(e => e.flags.wire?.isConcentration);
             if (concentrationEffect) {
                 const concentrationCard = new ConcentrationCard(actor, concentrationEffect, damage);
                 await concentrationCard.make();
@@ -146,7 +146,7 @@ async function onActorPreUpdate(wrapped, change, options, user) {
 
 function onEscape(context) {
     // Save fog of war if there are pending changes
-    if (canvas.ready) canvas.sight.commitFog();
+    if (canvas.ready) canvas.fog.commit();
 
     // Dismiss an open context menu
     if (ui.context && ui.context.menu.length) {

@@ -121,8 +121,8 @@ const flagInitialValues = {
 
 export function getEffectFlags(actor) {
     return foundry.utils.mergeObject(
-        actor?.data.flags["midi-qol"] || {},
-        actor?.data.flags.wire || {}
+        actor?.flags["midi-qol"] || {},
+        actor?.flags.wire || {}
     );
 }
 
@@ -138,11 +138,11 @@ export function getStaticAttackOptions(item, defender, attackConfig) {
     const disFlags = foundry.utils.mergeObject(attDis, gntDis);
 
     const usedAbility = item.abilityMod;
-    const actionType = item.data.data.actionType;
+    const actionType = item.system.actionType;
     const checkProperties = ["all", "attack.all", `attack.${actionType}`, `attack.${usedAbility}`];
 
-    const attackerType = attacker.data.data.details?.type?.value || "humanoid";
-    const defenderType = defender?.data.data.details?.type?.value || "humanoid";
+    const attackerType = attacker.system.details?.type?.value || "humanoid";
+    const defenderType = defender?.system.details?.type?.value || "humanoid";
     const attackerTypeProperty = `attack.${attackerType}`;
     const defenderTypeProperty = `attack.${defenderType}`;
     const isTypeAdv = foundry.utils.getProperty(attAdv, defenderTypeProperty) || foundry.utils.getProperty(gntAdv, attackerTypeProperty);
@@ -175,8 +175,8 @@ export function getDamageMultiplier(item, actor, target) {
     const multiplierFlags = getEffectFlags(actor)?.damage?.multiplier || {};
 
     const globalMultiplier = multiplierFlags.all || 1;
-    const actionTypeMultiplier = multiplierFlags.action ? multiplierFlags.action[item.data.data.actionType] || 1 : 1;
-    const creatureTypeMultiplier = multiplierFlags.creature ? (target?.data.data.details?.type?.value ? multiplierFlags.creature[target.data.data.details.type.value] || 1 : 1) : 1;
+    const actionTypeMultiplier = multiplierFlags.action ? multiplierFlags.action[item.system.actionType] || 1 : 1;
+    const creatureTypeMultiplier = multiplierFlags.creature ? (target?.system.details?.type?.value ? multiplierFlags.creature[target.system.details.type.value] || 1 : 1) : 1;
     const abilityMultiplier = multiplierFlags.ability ? multiplierFlags.ability[item.abilityMod] || 1 : 1;
 
     return globalMultiplier * actionTypeMultiplier * creatureTypeMultiplier * abilityMultiplier;
@@ -186,8 +186,8 @@ export function getDamageInflictingOptions(item, actor, damageType) {
     const maxFlags = getEffectFlags(actor)?.max?.damage || {};
     const minFlags = getEffectFlags(actor)?.min?.damage || {};
 
-    const hasMax = maxFlags.all || maxFlags[item.data.data.actionType] || maxFlags[damageType];
-    const hasMin = minFlags.all || minFlags[item.data.data.actionType] || minFlags[damageType];
+    const hasMax = maxFlags.all || maxFlags[item.system.actionType] || maxFlags[damageType];
+    const hasMin = minFlags.all || minFlags[item.system.actionType] || minFlags[damageType];
 
     const maximize = hasMax && !hasMin;
     const minimize = hasMin && !hasMax;
@@ -199,8 +199,8 @@ export function getDamageReceivingOptions(item, actor, damageType) {
     const maxFlags = getEffectFlags(actor)?.receive?.max?.damage || {};
     const minFlags = getEffectFlags(actor)?.receive?.min?.damage || {};
 
-    const hasMax = maxFlags.all || maxFlags[item.data.data.actionType] || maxFlags[damageType];
-    const hasMin = minFlags.all || minFlags[item.data.data.actionType] || minFlags[damageType];
+    const hasMax = maxFlags.all || maxFlags[item.system.actionType] || maxFlags[damageType];
+    const hasMin = minFlags.all || minFlags[item.system.actionType] || minFlags[damageType];
 
     const maximize = hasMax && !hasMin;
     const minimize = hasMin && !hasMax;
@@ -263,8 +263,8 @@ export function applyConditionImmunity(actor, effectDataList) {
                         "wire.custom.statusEffect"
                     ]
                     const immunities = [
-                        ...actor.data.data.traits?.ci?.value,
-                        ...actor.data.data.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase())
+                        ...actor.system.traits?.ci?.value,
+                        ...actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase())
                     ];
                     return !keys.includes(change.key) || !immunities.includes(change.value.toLowerCase())
                 })
@@ -279,13 +279,13 @@ export function initEffectFlagHooks() {
     Hooks.on("createActiveEffect", async (effect, options, user) => {
         if (game.user.isGM && isActorEffect(effect) && isEffectEnabled(effect)) {
             const actor = effect.parent;
-            for (let change of effect.data.changes) {
+            for (let change of effect.changes) {
                 if (change.key === "wire.custom.statusEffect" || change.key === "wire.custom.persistentStatusEffect") {
                     await runInQueue(async () => {
                         const effectName = change.value;
                         const uuid = actor.uuid;
                         const isLinked = change.key !== "wire.custom.persistentStatusEffect";
-                        const origin = isLinked ? effect.data.origin : null;
+                        const origin = isLinked ? effect.origin : null;
                         await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
                     });
                 }
@@ -303,14 +303,14 @@ export function initEffectFlagHooks() {
     Hooks.on("updateActiveEffect", async(effect, changes, options, user) => {
         if (game.user.isGM && isActorEffect(effect)) {
             const actor = effect.parent;
-            for (let change of effect.data.changes) {
+            for (let change of effect.changes) {
                 if (change.key === "wire.custom.statusEffect" || change.key === "wire.custom.persistentStatusEffect") {
                     if (changes.disabled === false) {
                         await runInQueue(async () => {
                             const effectName = change.value;
                             const uuid = actor.uuid;
                             const isLinked = change.key !== "wire.custom.persistentStatusEffect";
-                            const origin = isLinked ? effect.data.origin : null;
+                            const origin = isLinked ? effect.origin : null;
                             await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
                         });
                     }
@@ -345,7 +345,7 @@ export function initEffectFlagHooks() {
     Hooks.on("deleteActiveEffect", async (effect, options, user) => {
         if (game.user.isGM && isActorEffect(effect)) {
             const actor = effect.parent;
-            for (let change of effect.data.changes) {
+            for (let change of effect.changes) {
                 if (change.key === "wire.custom.statusEffect" || change.key === "wire.custom.persistentStatusEffect") {
                     await runInQueue(async () => {
                         const effectName = change.value;
@@ -385,12 +385,12 @@ export function setupRollFlagWrappers() {
 // TODO: Might be nice, unfortunately DAE makes it impossible
 // function onActorApplyActiveEffects(wrapped) {
 //     for (let effect of this.effects) {
-//         for (let change of effect.data.changes) {
-//             const item = fromUuid(effect.data.origin);
+//         for (let change of effect.changes) {
+//             const item = fromUuid(effect.origin);
 //             if (isActorEffect(effect) && item && item instanceof CONFIG.Item.documentClass) {
 //                 const rollData = this.getRollData();
 //                 const itemRollData = item.getRollData();
-//                 const config = effect.data.flags?.wire?.activationConfig;
+//                 const config = effect.flags?.wire?.activationConfig;
 //                 const spellLevel = config?.spellLevel;
 //                 itemRollData.level = spellLevel;
 //                 rollData.itemLevel = spellLevel;
@@ -408,7 +408,7 @@ export function setupRollFlagWrappers() {
 
 function onActiveEffectApply(wrapped, actor, change) {
     if (change.key.startsWith("flags.wire.")) {
-        const current = foundry.utils.getProperty(actor.data, change.key) ?? null;
+        const current = foundry.utils.getProperty(actor, change.key) ?? null;
 
         if (current === null ) {
             let initialValue = null;
@@ -420,7 +420,7 @@ function onActiveEffectApply(wrapped, actor, change) {
             }
             
             if (initialValue !== null) {
-                foundry.utils.setProperty(actor.data, change.key, initialValue);
+                foundry.utils.setProperty(actor, change.key, initialValue);
             }
         }
     }
@@ -428,10 +428,19 @@ function onActiveEffectApply(wrapped, actor, change) {
     wrapped.apply(this, [actor, change]);
 }
 
+async function makeRollParts(parts) {
+    if (parts && Array.isArray(parts) && parts.length) {
+        await Dialog.prompt({
+            title: "Irrecoverable bug in the DND5E system",
+            content: "Due to a bug in the system, additional bonuses can't be applied to skill, ability check or save rolls. The bonus has been ignored. This will be reverted once the bug has been addressed."
+        })
+    }
+}
+
 async function onActorRollSkill(wrapped, skillId, options) {
     const bonus = await triggerConditions(this, "prepare-skill-check");
 
-    const skill = this.data.data.skills[skillId];
+    const skill = this.system.skills[skillId];
     const abilityId = skill.ability;
 
     const advFlags = getEffectFlags(this)?.advantage || {};
@@ -447,8 +456,8 @@ async function onActorRollSkill(wrapped, skillId, options) {
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
 
-    const parts = bonus ? [bonus] : undefined;
-    return wrapped.apply(this, [skillId, foundry.utils.mergeObject(options, { advantage, disadvantage, parts })]);
+    const parts = await makeRollParts(bonus ? [bonus] : undefined);
+    return wrapped.apply(this, [skillId, foundry.utils.mergeObject(options, { advantage, disadvantage/*, parts*/ })]);
 }
 
 async function onActorRollAbilityTest(wrapped, abilityId, options) {
@@ -460,8 +469,8 @@ async function onActorRollAbilityTest(wrapped, abilityId, options) {
 
     const bonusParts = bonus ? [bonus] : [];
     const optionParts = options.parts || [];
-    const parts = [...optionParts, ...bonusParts];
-    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage, parts })]);
+    const parts = await makeRollParts([...optionParts, ...bonusParts]);
+    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage/*, parts*/ })]);
 }
 
 async function onActorRollAbilitySave(wrapped, abilityId, options) {
@@ -473,8 +482,8 @@ async function onActorRollAbilitySave(wrapped, abilityId, options) {
 
     const bonusParts = bonus ? [bonus] : [];
     const optionParts = options.parts || [];
-    const parts = [...optionParts, ...bonusParts];
-    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage, parts })]);
+    const parts = await makeRollParts([...optionParts, ...bonusParts]);
+    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage/*, parts*/ })]);
 }
 
 function onActorRollDeathSave(wrapped, options) {

@@ -13,7 +13,7 @@ export function getDisplayableAttackComponents(item, short = false) {
 }
 
 export function getAttackComponents(item) {
-    const itemData = item.data.data;
+    const itemData = item.system;
     if (!item.hasAttack || !itemData) return;
     const rollData = item.getRollData();
 
@@ -32,27 +32,27 @@ export function getAttackComponents(item) {
     parts.ability = rollData.mod;
 
     // Add proficiency bonus if an explicit proficiency flag is present or for non-item features
-    if (!["weapon", "consumable"].includes(item.data.type) || itemData.proficient) {
-        if (item.data.data.prof?.hasProficiency) {
-            parts.prof = item.data.data.prof.term;
+    if (!["weapon", "consumable"].includes(item.type) || itemData.proficient) {
+        if (item.system.prof?.hasProficiency) {
+            parts.prof = item.system.prof.term;
         }
     }
 
     // Actor-level global bonus to attack rolls
-    const actorBonus = item.actor.data.data.bonuses?.[itemData.actionType] || {};
+    const actorBonus = item.actor.system.bonuses?.[itemData.actionType] || {};
     if (actorBonus.attack) {
         parts.bonus = actorBonus.attack;
     }
 
     // One-time bonus provided by consumed ammunition
     if ((itemData.consume?.type === "ammo") && item.actor.items) {
-        const ammoItemData = item.actor.items.get(itemData.consume.target)?.data;
+        const ammoItemData = item.actor.items.get(itemData.consume.target);
 
         if (ammoItemData) {
-            const ammoItemQuantity = ammoItemData.data.quantity;
+            const ammoItemQuantity = ammoItemData.system.quantity;
             const ammoCanBeConsumed = ammoItemQuantity && (ammoItemQuantity - (itemData.consume.amount ?? 0) >= 0);
-            const ammoItemAttackBonus = ammoItemData.data.attackBonus;
-            const ammoIsTypeConsumable = (ammoItemData.type === "consumable") && (ammoItemData.data.consumableType === "ammo");
+            const ammoItemAttackBonus = ammoItemData.system.attackBonus;
+            const ammoIsTypeConsumable = (ammoItemData.type === "consumable") && (ammoItemData.system.consumableType === "ammo");
             if (ammoCanBeConsumed && ammoItemAttackBonus && ammoIsTypeConsumable) {
                 parts.ammo = ammoItemAttackBonus;
             }

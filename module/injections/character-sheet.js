@@ -1,6 +1,6 @@
 
 export function readyCharacterSheetWrappers() {
-    libWrapper.register("wire", "CONFIG.Actor.sheetClasses.character['dnd5e.ActorSheet5eCharacter'].cls.prototype._onItemRoll", onItemRoll, "MIXED");
+    libWrapper.register("wire", "game.dnd5e.applications.actor.ActorSheet5eCharacter.prototype._onItemUse", onItemUse, "MIXED");
 
     Hooks.on("renderTidy5eSheet", (app, html, data) => {
         let favContent = html.find('.favorites-target');
@@ -22,11 +22,11 @@ export function readyCharacterSheetWrappers() {
     });
 }
 
-function onItemRoll(wrapped, event) {
+function onItemUse(wrapped, event) {
     event.preventDefault();
     const itemId = event.currentTarget.closest(".item").dataset.itemId;
     const item = this.actor.items.get(itemId);
-    if ( item ) return item.roll({}, event);
+    if ( item ) return item.use({}, event);
 }
 
 function onItemImageRightClick(event) {

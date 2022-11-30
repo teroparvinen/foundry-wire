@@ -10,7 +10,7 @@ export class Flow {
         this.allowMacro = allowMacro;
         this.isConditionTrigger = isConditionTriggered;
 
-        const macroCommand = item?.data.flags.itemacro?.macro?.data.command?.trim();
+        const macroCommand = item?.flags.itemacro?.macro?.command?.trim();
         if (macroCommand) {
             try {
                 this.macroFunction = new Function(macroCommand);

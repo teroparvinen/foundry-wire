@@ -75,7 +75,7 @@ export async function injectConditionList(object, html, containerSelector, condi
 
     let customUpdaters = [];
     try {
-        const item = object instanceof CONFIG.Item.documentClass ? object : (isItemEffect(object) ? object.parent : fromUuid(object.data.origin));
+        const item = object instanceof CONFIG.Item.documentClass ? object : (isItemEffect(object) ? object.parent : fromUuid(object.origin));
         const flow = new Flow(item, "none");
         flow.evaluate();
         customUpdaters = Object.keys(flow.customUpdaters);

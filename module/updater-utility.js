@@ -35,8 +35,8 @@ export function makeUpdater(condition, effect, item, externalTargetActor = null,
 
 export function determineUpdateTargets(item, effect, condition, externalTargetActor) {
     const getOriginalTargets = () => {
-        if (effect.data.flags.wire?.isMasterEffect) {
-            return effect.data.flags.wire?.childEffectUuids?.map(uuid => fromUuid(uuid)).map(e => e?.parent).filter(a => a);
+        if (effect.flags.wire?.isMasterEffect) {
+            return effect.flags.wire?.childEffectUuids?.map(uuid => fromUuid(uuid)).map(e => e?.parent).filter(a => a);
         } else {
             return [effect.parent];
         }

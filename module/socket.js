@@ -10,6 +10,7 @@ export let wireSocket = undefined;
 export function setupSocket() {
     wireSocket = socketlib.registerModule("wire");
     wireSocket.register("activationUpdated", activationUpdated);
+    wireSocket.register("activationTemplateCreated", activationTemplateCreated);
     wireSocket.register("refreshActivation", refreshActivation);
     wireSocket.register("updateMessage", updateMessage);
     wireSocket.register("scrollBottom", scrollBottom);
@@ -42,6 +43,13 @@ async function activationUpdated(messageUuid) {
             }
         }
     });
+}
+
+async function activationTemplateCreated(templateUuid) {
+    const templateDoc = fromUuid(templateUuid);
+    if (templateDoc) {
+        Hooks.callAll("createActivationMeasuredTemplate", templateDoc);
+    }
 }
 
 async function refreshActivation(messageUuid, data) {
@@ -83,7 +91,7 @@ function scrollBottom() {
 async function runCustomUpdater(condition, effectUuid, details) {
     const effect = fromUuid(effectUuid);
     if (effect) {
-        const item = fromUuid(effect.data.origin);
+        const item = fromUuid(effect.origin);
 
         if (item) {
             const flow = new Flow(item, "none");

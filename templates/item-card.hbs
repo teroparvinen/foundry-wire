@@ -1,5 +1,5 @@
 <div class="dnd5e chat-card item-card wire-item-card {{#if isSecondary}}item-card-secondary{{/if}} {{#if (eq activation.state "waiting-for-action-trigger")}}item-card-action{{/if}}" data-actor-id="{{actor._id}}" data-item-id="{{item._id}}"
-    {{#if tokenId}}data-token-id="{{tokenId}}"{{/if}} {{#if isSpell}}data-spell-level="{{item.data.level}}"{{/if}}>
+    {{#if tokenId}}data-token-id="{{tokenId}}"{{/if}} {{#if isSpell}}data-spell-level="{{item.system.level}}"{{/if}}>
     {{#unless isGMActorPlayerView}}
         <header class="card-header flexrow">
             <img src="{{item.img}}" title="{{item.name}}" />
@@ -53,11 +53,11 @@
                     </div>
 
                     <div class="flexrow">
-                        <img class="flex0 token-image" src="{{activation.attack.target.token.data.img}}" />
+                        <img class="flex0 token-image" src="{{activation.attack.target.token.document.texture.src}}" />
                         <div class="flex1 token-info flexcol">
                             <div class="token-name">{{activation.attack.target.token.name}}</div>
                             {{#if isGM}}
-                                <div class="token-ac"><i class="fas fa-shield-alt"></i> {{activation.attack.target.actor.data.data.attributes.ac.value}}</div>
+                                <div class="token-ac"><i class="fas fa-shield-alt"></i> {{activation.attack.target.actor.system.attributes.ac.value}}</div>
                             {{/if}}
                         </div>
                         {{#if activation.attack.result}}
@@ -68,8 +68,8 @@
                         {{else}}
                             {{#if isGM}}
                                 <div class="flex0 confirm-buttons flexrow">
-                                    <a data-action="confirm-attack-hit" class="flex0 confirm-yes {{#if (gte activation.attack.roll.total activation.attack.target.actor.data.data.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-check fa-2x"></i></a>
-                                    <a data-action="confirm-attack-miss" class="flex0 confirm-no {{#if (lt activation.attack.roll.total activation.attack.target.actor.data.data.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-times fa-2x"></i></a>
+                                    <a data-action="confirm-attack-hit" class="flex0 confirm-yes {{#if (gte activation.attack.roll.total activation.attack.target.actor.system.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-check fa-2x"></i></a>
+                                    <a data-action="confirm-attack-miss" class="flex0 confirm-no {{#if (lt activation.attack.roll.total activation.attack.target.actor.system.attributes.ac.value)}}recommended{{/if}}"><i class="fas fa-times fa-2x"></i></a>
                                 </div>
                             {{else}}
                                 <div class="flex0 waiting-for-hit"><i class="fas fa-shield-alt fa-2x anim-beat"></i></div>
@@ -109,15 +109,15 @@
         {{#if (or (eq activation.state "waiting-for-saves") activation.saves.length)}}
             {{#*inline "target-save-row"}}
                 <div class="saving-throw-target flexrow" data-actor-id="{{actor.uuid}}">
-                    <img class="flex0 target-image" src="{{token.data.img}}" />
+                    <img class="flex0 target-image" src="{{token.document.texture.src}}" />
                     <div class="flex1 target-name">{{token.name}}</div>
                     {{#if (arrayLookup ../activation.saves "actorUuid" actor.uuid)}}
                         {{#with (arrayLookup ../activation.saves "actorUuid" actor.uuid)}}
-                            <div class="flex0 target-save-result {{#if (gte roll.total ../../item.data.save.dc)}}success{{else}}fail{{/if}}">
+                            <div class="flex0 target-save-result {{#if (gte roll.total ../../item.system.save.dc)}}success{{else}}fail{{/if}}">
                                 {{#if (or ../../isGM isPC)}}
                                     {{roll.total}}
                                 {{else}}
-                                    {{#if (gte roll.total ../../item.data.save.dc)}}
+                                    {{#if (gte roll.total ../../item.system.save.dc)}}
                                         <i class="fas fa-check"></i>
                                     {{else}}
                                         <i class="fas fa-times"></i>
@@ -146,12 +146,12 @@
                 <div class="flexrow">
                     <h3 class="phase-heading">
                         {{#unless activation.abilityToCheckForSave}}
-                            {{localize "wire.ui.saving-throw-heading" ability=(lookup abilityNames item.data.save.ability)}}
+                            {{localize "wire.ui.saving-throw-heading" ability=(lookup abilityNames item.system.save.ability)}}
                         {{else}}
                             {{localize "wire.ui.ability-check-heading" ability=(lookup abilityNames activation.abilityToCheckForSave)}}
                         {{/unless}}
                         {{#if (or isGM item.hasPlayerOwner)}}
-                            ({{localize "wire.ui.dc" value=item.data.save.dc}})
+                            ({{localize "wire.ui.dc" value=item.system.save.dc}})
                         {{/if}}
                     </h3>
                     {{#if isGM}}

@@ -2,6 +2,18 @@
     display: none;
 }
 
+.chat-message.wire-hide-speaker-fields .message-sender, .chat-message.wire-hide-speaker-fields .whisper-to {
+    display: none;
+}
+
+.chat-message.wire-activation-view .whisper-to {
+    display: none;
+}
+
+.chat-message.wire-damage-card .whisper-to {
+    display: none;
+}
+
 
 .item-card .card-header img {
     width: 36px;

@@ -70,7 +70,7 @@ export function effectDurationFromItemDuration(itemDuration, inActorInCombat) {
 export function checkEffectDurationOverride(duration, effect) {
     const roundTime = CONFIG.time.roundTime;
 
-    const effectDuration = effect.data.duration;
+    const effectDuration = effect.duration;
     const isCombatTime = effectDuration.rounds || effectDuration.turns;
     const startTime = game.time.worldTime;
     const startRound = game.combat?.round;
@@ -138,7 +138,7 @@ export function getSpeaker(actor) {
 }
 
 export function copyEffectChanges(effect) {
-    return effect.data.changes.map(c => {
+    return effect.changes.map(c => {
         const { key, mode, priority, value } = c;
         return { key, mode, priority, value };
     })
@@ -158,19 +158,19 @@ export function substituteEffectConfig(actor, config, changes) {
 }
 
 export function copyConditions(effect) {
-    const conditions = effect.data.flags.wire?.conditions;
+    const conditions = effect.flags.wire?.conditions;
     if (conditions) {
         return duplicate(conditions);
     }
 }
 
 export function copyEffectDuration(effect) {
-    const { seconds, startTime, rounds, turns, startRound, startTurn } = effect.data.duration;
+    const { seconds, startTime, rounds, turns, startRound, startTurn } = effect.duration;
     return { seconds, startTime, rounds, turns, startRound, startTurn };
 }
 
 export function isCasterDependentEffect(effect) {
-    return effect.data.flags.wire?.conditions?.some(c => ["start-of-turn-caster", "end-of-turn-caster"].includes(c.condition));
+    return effect.flags.wire?.conditions?.some(c => ["start-of-turn-caster", "end-of-turn-caster"].includes(c.condition));
 }
 
 export function i18n(...args) {
@@ -181,14 +181,19 @@ export function i18n(...args) {
 }
 
 export function getTokenSquarePositions(token) {
+    const tokenX = token.document._source.x;
+    const tokenY = token.document._source.y;
+    const tokenW = token.document._source.width;
+    const tokenH = token.document._source.height;
+
     let tokenPositions = [];
-    if (token.data.width === 1 && token.data.height === 1) {
-        tokenPositions.push(`${token.data.x}.${token.data.y}`);
+    if (tokenW === 1 && tokenH === 1) {
+        tokenPositions.push(`${tokenX}.${tokenY}`);
     } else {
         const gs = canvas.grid.size;
-        for (let x = 0; x < token.data.width; x++) {
-            for (let y = 0; y < token.data.height; y++) {
-                tokenPositions.push(`${token.data.x + gs * x}.${token.data.y + gs * y}`);
+        for (let x = 0; x < tokenW; x++) {
+            for (let y = 0; y < tokenH; y++) {
+                tokenPositions.push(`${tokenX + gs * x}.${tokenY + gs * y}`);
             }
         }
     }
@@ -199,7 +204,7 @@ export function getTokenTemplateIds(token, requireAll = false) {
     const tokenPositions = getTokenSquarePositions(token);
 
     return Object.entries(canvas.grid.highlightLayers)
-        .filter(e => e[0].startsWith("Template."))
+        .filter(e => e[0].startsWith("MeasuredTemplate."))
         .filter(e => {
             if (requireAll) {
                 return tokenPositions.every(p => e[1].positions.has(p));
@@ -207,14 +212,14 @@ export function getTokenTemplateIds(token, requireAll = false) {
                 return tokenPositions.some(p => e[1].positions.has(p));
             }
         })
-        .map(e => e[0].substring(9));
+        .map(e => e[0].substring(17));
 }
 
-export function getTemplateTokenUuids(template, requireAll = true) {
-    const templatePositions = canvas.grid.highlightLayers[`Template.${template.id}`]?.positions;
+export function getTemplateTokens(template, requireAll = true) {
+    const templatePositions = canvas.grid.highlightLayers[`MeasuredTemplate.${template.id}`]?.positions;
     if (templatePositions) {
         const tokens = canvas.tokens.objects.children;
-        return tokens
+        const result = tokens
             .filter(t => t.isVisible)
             .filter(t => {
                 if (requireAll) {
@@ -222,10 +227,14 @@ export function getTemplateTokenUuids(template, requireAll = true) {
                 } else {
                     return getTokenSquarePositions(t).some(p => templatePositions.has(p));
                 }
-            })
-            .map(t => t.document.uuid);
+            });
+        return result;
     }
     return [];
+}
+
+export function getTemplateTokenUuids(template, requireAll = true) {
+    return getTemplateTokens(template, requireAll).map(t => t.document.uuid);
 }
 
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
@@ -242,9 +251,9 @@ export async function triggerConditions(actor, condition, { externalTargetActor 
     let result;
     const effects = actor.effects.filter(e => isEffectEnabled(e) && !ignoredEffects.includes(e))
     for (let effect of effects) {
-        const conditions = effect.data.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
+        const conditions = effect.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
         for (let condition of conditions) {
-            const item = fromUuid(effect.data.origin);
+            const item = fromUuid(effect.origin);
             const updater = makeUpdater(condition, effect, item, externalTargetActor, details);
             result = await updater?.process();
         }
@@ -254,7 +263,7 @@ export async function triggerConditions(actor, condition, { externalTargetActor 
 
 export function getDisposition(actor) {
     // Without a token, assume players are friendly, non-players with character sheets are neutral and npc sheet means enemy
-    const disp = getActorToken(actor)?.data.disposition;
+    const disp = getActorToken(actor)?.document.disposition;
     const tokenDisposition = typeof disp === "number" ? disp : undefined;
     const assumedDisposition = actor.hasPlayerOwner ? 1 : (actor.type === "npc" ? -1 : 0);
     return tokenDisposition || assumedDisposition;
@@ -297,7 +306,7 @@ export function damagePartMatchesVariant(formula, variant) {
 }
 
 export function effectMatchesVariant(effect, variant) {
-    return effect?.data.label.toLowerCase().includes(variant?.toLowerCase());
+    return effect?.label.toLowerCase().includes(variant?.toLowerCase());
 }
 
 export function stringMatchesVariant(str, variant) {
@@ -313,25 +322,25 @@ export function isItemEffect(effect) {
 }
 
 export function isAuraEffect(effect) {
-    return effect.data.flags.wire?.auraTargets;
+    return effect.flags.wire?.auraTargets;
 }
 
 export function isAuraTargetEffect(effect) {
-    return effect.data.flags.wire?.auraSourceUuid;
+    return effect.flags.wire?.auraSourceUuid;
 }
 
 export function isEffectEnabled(effect) {
-    return !effect.isSuppressed && !effect.data.disabled;
+    return !effect.isSuppressed && !effect.disabled;
 }
 
 export function areAreaConditionsBlockedForActor(item, actor) {
     const itemUuid = item.uuid;
-    return !!actor.effects.find(e => isEffectEnabled(e) && e.data.origin === itemUuid && e.data.flags.wire?.blocksAreaConditions);
+    return !!actor.effects.find(e => isEffectEnabled(e) && e.origin === itemUuid && e.flags.wire?.blocksAreaConditions);
 }
 
 export function compositeDamageParts(item) {
-    const itemParts = item.data.data.damage?.parts || [];
-    const wireParts = item.data.flags.wire?.damageParts || [];
+    const itemParts = item.system.damage?.parts || [];
+    const wireParts = item.flags.wire?.damageParts || [];
 
     return itemParts.map((parts, i) => {
         return {
@@ -362,7 +371,7 @@ export function deleteTokenFX(token, effect) {
 }
 
 export function isActorDefeated(actor) {
-    return actor.effects.some(e => e.getFlag("core", "statusId") === CONFIG.Combat.defeatedStatusId);
+    return actor.effects.some(e => e.getFlag("core", "statusId") === CONFIG.specialStatusEffects.DEFEATED);
 }
 
 export function tokenSeparation(token1, token2) {

@@ -1,4 +1,3 @@
-import AbilityUseDialog from "../../../systems/dnd5e/module/apps/ability-use-dialog.js";
 import { hasApplicationsOfType, hasSaveableApplicationsOfType, isAttack, isSelfRange, isSelfTarget, targetsSingleToken } from "./item-properties.js";
 import { getActorToken, localizedWarning, runAndAwait, setTemplateTargeting } from "./utils.js";
 
@@ -13,9 +12,9 @@ export function preRollCheck(item) {
 }
 
 export async function preRollConfig(item, options = {}, event) {
-    const id = item.data.data;                // Item system data
+    const id = item.system;                // Item system data
     const actor = item.actor;
-    const ad = actor.data.data;               // Actor system data
+    const ad = actor.system;               // Actor system data
 
     let activationConfig = foundry.utils.mergeObject({}, options.config || {});
 
@@ -66,7 +65,7 @@ export async function preRollConfig(item, options = {}, event) {
         useConfig.doCreateMeasuredTemplate || useConfig.doConsumeRecharge || useConfig.doConsumeResource || 
         useConfig.doConsumeSpellSlot || useConfig.consumedUsageCount;
     if (needsConfiguration && !options.skipConfigurationDialog && !useConfig.skipDefaultDialog) {
-        const configuration = await AbilityUseDialog.create(item);
+        const configuration = await game.dnd5e.applications.item.AbilityUseDialog.create(item);
         if (!configuration) return;
 
         // Determine consumption preferences
@@ -96,9 +95,9 @@ export async function preRollConfig(item, options = {}, event) {
     const { actorUpdates, itemUpdates, resourceUpdates } = usage;
 
     // Commit pending data updates
-    if (!foundry.utils.isObjectEmpty(itemUpdates)) await item.update(itemUpdates);
-    if (consumedItemQuantity && (item.data.data.quantity === 0)) await item.delete();
-    if (!foundry.utils.isObjectEmpty(actorUpdates)) await actor.update(actorUpdates);
+    if (!foundry.utils.isEmpty(itemUpdates)) await item.update(itemUpdates);
+    if (consumedItemQuantity && (item.system.quantity === 0)) await item.delete();
+    if (!foundry.utils.isEmpty(actorUpdates)) await actor.update(actorUpdates);
     if (resourceUpdates.length) await actor.updateEmbeddedDocuments("Item", resourceUpdates);
 
     // Initiate measured template creation
@@ -121,27 +120,29 @@ export async function preRollConfig(item, options = {}, event) {
 async function evaluateTemplateFormulas(item, templateData, config) {
     const rollData = foundry.utils.mergeObject(item.getRollData(), config);
 
-    const targetValue = getProperty(item.data, "flags.wire.override.target.value") || getProperty(item.data, "data.target.value") || "";
-    const targetFormula = Roll.replaceFormulaData(targetValue, rollData);
-    let distance = Roll.safeEval(targetFormula);
-    if (templateData.t == "rect") {
-        distance = Math.hypot(distance, distance);
+    const targetValue = getProperty(item, "flags.wire.override.target.value") || getProperty(item, "system.target.value");
+    if (targetValue) {
+        const targetFormula = Roll.replaceFormulaData(targetValue, rollData);
+        let distance = Roll.safeEval(targetFormula);
+        if (templateData.t == "rect") {
+            distance = Math.hypot(distance, distance);
+        }
+        await templateData.updateSource({ distance });
     }
-    await templateData.update({ distance });
 }
 
 export async function createTemplate(item, disableTargetSelection, config) {
-    if (isSelfRange(item) && item.hasAreaTarget && (item.data.data.target.type === "sphere" || item.data.data.target.type === "radius")) {
+    if (isSelfRange(item) && item.hasAreaTarget && (item.system.target.type === "sphere" || item.system.target.type === "radius")) {
         const token = getActorToken(item.actor);
         if (token) {
-            const destination = canvas.grid.getSnappedPosition(token.data.x, token.data.y, 2);
+            const destination = canvas.grid.getSnappedPosition(token.x, token.y, 2);
             destination.x = destination.x + token.w / 2;
             destination.y = destination.y + token.h / 2;
             const preTemplate = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
-            evaluateTemplateFormulas(preTemplate.data);
-            await preTemplate.data.update(destination);
+            evaluateTemplateFormulas(item, preTemplate.document);
+            await preTemplate.document.updateSource(destination);
 
-            return foundry.utils.mergeObject(preTemplate.data.toObject(), { "flags.wire.attachedTokenId": token.id });
+            return foundry.utils.mergeObject(preTemplate.document.toObject(), { "flags.wire.attachedTokenId": token.id });
         }
     } else {
         const selectTargets = !disableTargetSelection && hasApplicationsOfType(item, "immediate", config.variant);
@@ -153,7 +154,7 @@ export async function placeTemplate(item, config, { selectTargets = true } = {})
     let template;
     if (item instanceof CONFIG.Item.documentClass) {
         template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
-        await evaluateTemplateFormulas(item, template.data, config);
+        await evaluateTemplateFormulas(item, template.document, config);
     } else {
         const cls = CONFIG.MeasuredTemplate.documentClass;
         const templateObject = new cls(item, {parent: canvas.scene});
@@ -197,8 +198,7 @@ export async function placeTemplate(item, config, { selectTargets = true } = {})
                 if (now - moveTime <= 20) return;
                 const center = event.data.getLocalPosition(template.layer);
                 const snapped = canvas.grid.getSnappedPosition(center.x, center.y, 2);
-                if (game.release.generation < 10) template.data.update({ x: snapped.x, y: snapped.y });
-                else template.document.updateSource({ x: snapped.x, y: snapped.y });
+                template.document.updateSource({ x: snapped.x, y: snapped.y });
                 template.refresh();
                 moveTime = now;
             };
@@ -212,11 +212,10 @@ export async function placeTemplate(item, config, { selectTargets = true } = {})
             // Confirm the workflow (left-click)
             handlers.lc = async event => {
                 await dismiss(event);
-                const destination = canvas.grid.getSnappedPosition(template.data.x, template.data.y, 2);
-                if (game.release.generation < 10) await template.data.update(destination);
-                else await template.document.updateSource(destination);
+                const destination = canvas.grid.getSnappedPosition(template.document.x, template.document.y, 2);
+                await template.document.updateSource(destination);
                 await setTemplateTargeting(false);
-                resolve(template.data.toObject());
+                resolve(template.document.toObject());
             };
     
             // Rotate the template by 3 degree increments (mouse-wheel)
@@ -225,9 +224,8 @@ export async function placeTemplate(item, config, { selectTargets = true } = {})
                 event.stopPropagation();
                 let delta = canvas.grid.type > CONST.GRID_TYPES.SQUARE ? 30 : 15;
                 let snap = event.shiftKey ? delta : (event.altKey ? 0.5 : 5);
-                const update = { direction: template.data.direction + (snap * Math.sign(event.deltaY)) };
-                if (game.release.generation < 10) template.data.update(update);
-                else template.document.updateSource(update);
+                const update = { direction: template.document.direction + (snap * Math.sign(event.deltaY)) };
+                template.document.updateSource(update);
                 template.refresh();
             };
     
@@ -245,7 +243,7 @@ export async function placeTemplate(item, config, { selectTargets = true } = {})
 function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedSpellLevel, consumedUsageCount, consumedItemQuantity }) {
 
     // Reference item data
-    const id = item.data.data;
+    const id = item.system;
     const actorUpdates = {};
     const itemUpdates = {};
     const resourceUpdates = [];
@@ -269,7 +267,7 @@ function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedS
     // Consume Spell Slots
     if (consumedSpellLevel) {
         if (Number.isNumeric(consumedSpellLevel)) consumedSpellLevel = `spell${consumedSpellLevel}`;
-        const level = item.actor?.data.data.spells[consumedSpellLevel];
+        const level = item.actor?.system.spells[consumedSpellLevel];
         const spells = Number(level?.value ?? 0);
         if (spells === 0) {
             const label = game.i18n.localize(consumedSpellLevel === "pact" ? "DND5E.SpellProgPact" : `DND5E.SpellLevel${id.level}`);
