@@ -7,6 +7,7 @@ export function initActiveEffectSheetHooks() {
         const applyOnSaveOrMiss = effect.getFlag("wire", "applyOnSaveOrMiss");
         const blocksAreaConditions = effect.getFlag("wire", "blocksAreaConditions");
         const applicationType = effect.getFlag("wire", "applicationType");
+        const auraTargets = effect.getFlag("wire", "auraTargets");
         const checked = (value) => { return value ? "checked" : "" };
         const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
         const detailsFields = `
@@ -23,9 +24,9 @@ export function initActiveEffectSheetHooks() {
                 <label>${i18n("wire.active-effect.aura-targets")}</label>
                 <select name="flags.wire.auraTargets">
                     <option value="">${i18n("wire.active-effect.aura-target-none")}</option>
-                    <option value="creature">${i18n("wire.active-effect.aura-target-creature")}</option>
-                    <option value="ally">${i18n("wire.active-effect.aura-target-ally")}</option>
-                    <option value="enemy">${i18n("wire.active-effect.aura-target-enemy")}</option>
+                    <option value="creature" ${selected(auraTargets, "creature")}>${i18n("wire.active-effect.aura-target-creature")}</option>
+                    <option value="ally" ${selected(auraTargets, "ally")}>${i18n("wire.active-effect.aura-target-ally")}</option>
+                    <option value="enemy" ${selected(auraTargets, "enemy")}>${i18n("wire.active-effect.aura-target-enemy")}</option>
                 </select>
                 <div class="hint">${i18n("wire.active-effect.aura-targets-hint")}</div>
             </div>

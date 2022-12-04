@@ -77,9 +77,9 @@ export async function preRollConfig(item, options = {}, event) {
 
         // Handle spell upcasting
         if (requireSpellSlot) {
-            useConfig.consumedSpellLevel = configuration.level === "pact" ? "pact" : `spell${configuration.level}`;
+            useConfig.consumedSpellLevel = configuration.consumeSpellLevel === "pact" ? "pact" : `spell${configuration.consumeSpellLevel}`;
             if (useConfig.doConsumeSpellSlot === false) useConfig.consumedSpellLevel = null;
-            const upcastLevel = configuration.level === "pact" ? ad.spells.pact.level : parseInt(configuration.level);
+            const upcastLevel = configuration.consumeSpellLevel === "pact" ? ad.spells.pact.level : parseInt(configuration.consumeSpellLevel);
 
             activationConfig.spellLevel = upcastLevel;
             activationConfig.upcastLevel = upcastLevel - id.level;

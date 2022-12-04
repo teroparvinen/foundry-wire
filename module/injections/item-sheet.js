@@ -51,7 +51,7 @@ export function initItemSheetHooks() {
                 <label>${i18n("wire.ui.ability-check")}</label>
                 <div class="form-fields">
                     <select name="flags.wire.checkedAbility" ${disabled}>
-                        <option>${i18n("wire.ui.use-save-for-check")}</option>
+                        <option value="">${i18n("wire.ui.use-save-for-check")}</option>
                         ${abilityOptions}
                     </select>
                     <div style="flex: 4"></div>

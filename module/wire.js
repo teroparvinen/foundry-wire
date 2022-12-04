@@ -17,6 +17,7 @@ import { placeTemplate } from "./preroll.js";
 import { fromUuid } from "./utils.js";
 import { createChildEffects, removeChildEffects } from "./game/active-effects.js";
 import { initSettings } from "./settings.js";
+import { setupCompendiumHooks } from "./compendiums.js";
 
 Hooks.once("init", () => {
     initHooks();
@@ -52,6 +53,7 @@ Hooks.once("setup", () => {
     setupSocket();
     setupActionQueue();
     setupKeybindings();
+    setupCompendiumHooks();
 });
 
 Hooks.once("ready", () => {

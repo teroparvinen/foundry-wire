@@ -188,20 +188,24 @@ export function getTokenSquarePositions(token) {
 
     let tokenPositions = [];
     if (tokenW === 1 && tokenH === 1) {
-        tokenPositions.push(`${tokenX}.${tokenY}`);
+        tokenPositions.push({ x: tokenX, y: tokenY });
     } else {
         const gs = canvas.grid.size;
         for (let x = 0; x < tokenW; x++) {
             for (let y = 0; y < tokenH; y++) {
-                tokenPositions.push(`${tokenX + gs * x}.${tokenY + gs * y}`);
+                tokenPositions.push({ x: tokenX + gs * x, y: tokenY + gs * y });
             }
         }
     }
     return tokenPositions;
 }
 
+export function getTokenSquarePositionStrings(token) {
+    return getTokenSquarePositions(token).map(p => `${p.x}.${p.y}`);
+}
+
 export function getTokenTemplateIds(token, requireAll = false) {
-    const tokenPositions = getTokenSquarePositions(token);
+    const tokenPositions = getTokenSquarePositionStrings(token);
 
     return Object.entries(canvas.grid.highlightLayers)
         .filter(e => e[0].startsWith("MeasuredTemplate."))
@@ -220,12 +224,12 @@ export function getTemplateTokens(template, requireAll = true) {
     if (templatePositions) {
         const tokens = canvas.tokens.objects.children;
         const result = tokens
-            .filter(t => t.isVisible)
+            // .filter(t => !t.document.hidden)
             .filter(t => {
                 if (requireAll) {
-                    return getTokenSquarePositions(t).every(p => templatePositions.has(p));
+                    return getTokenSquarePositionStrings(t).every(p => templatePositions.has(p));
                 } else {
-                    return getTokenSquarePositions(t).some(p => templatePositions.has(p));
+                    return getTokenSquarePositionStrings(t).some(p => templatePositions.has(p));
                 }
             });
         return result;
@@ -375,7 +379,21 @@ export function isActorDefeated(actor) {
 }
 
 export function tokenSeparation(token1, token2) {
-    return canvas.grid.measureDistance(token1.center, token2.center, { gridSpaces: true });
+    const positions1 = getTokenSquarePositions(token1);
+    const positions2 = getTokenSquarePositions(token2);
+
+    let result;
+
+    for (let p1 of positions1) {
+        for (let p2 of positions2) {
+            const d = canvas.grid.measureDistance(p1, p2, { gridSpaces: true });
+            if (result === undefined || result > d) {
+                result = d;
+            }
+        }
+    }
+
+    return result;
 }
 
 export function makeModifier(value) {

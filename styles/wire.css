@@ -684,3 +684,46 @@
     border: 1px solid var(--faint-color);
     border-radius: 5px;
 }
+
+.compendium-upgrade section {
+    padding-bottom: 1rem;
+}
+
+.compendium-upgrade .centered {
+    text-align: center;
+}
+
+.compendium-upgrade .warning {
+    color: var(--warning-accent);
+}
+
+.compendium-upgrade-container {
+    overflow: auto;
+}
+
+.item-upgrade-header-row {
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--secondary-color);
+    margin-top: 6px;
+}
+
+.item-upgrade-header-row .image {
+    flex-basis: 24px;
+}
+
+.item-upgrade-row {
+    align-items: center;
+    gap: 10px;
+    background: var(--faintest-color);
+    margin-bottom: 2px;
+    border-radius: 5px;
+}
+
+.item-upgrade-row .image {
+    flex: 0 0 24px;
+    height: 24px;
+    background-repeat: no-repeat;
+    background-size: cover;
+}

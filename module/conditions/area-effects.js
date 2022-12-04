@@ -146,6 +146,9 @@ async function checkTemplateEnvelopment(templateDoc) {
         const enteredSet = new Set([...currentSet].filter(x => !previousSet.has(x)));
         const exitedSet = new Set([...previousSet].filter(x => !currentSet.has(x)));
 
+        console.log("ENTERED", [...enteredSet].map(a => fromUuid(a).name).join(", "));
+        console.log("EXITED", [...exitedSet].map(a => fromUuid(a).name).join(", "));
+
         // Enter
         for (let actor of [...enteredSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a)) {
             if (!areAreaConditionsBlockedForActor(item, actor)) {

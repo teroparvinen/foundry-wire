@@ -35,7 +35,7 @@ function onItemImageRightClick(event) {
         event.stopPropagation();
         const itemId = event.currentTarget.closest(".item").dataset.itemId;
         const item = this.items.get(itemId);
-        if ( item ) return item.roll({}, event);
+        if ( item ) return item.use({}, event);
     }
 }
 

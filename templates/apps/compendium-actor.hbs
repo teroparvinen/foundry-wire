@@ -1,0 +1,50 @@
+{{#*inline "item-row-header"}}
+    <div class="item-upgrade-header-row flexrow">
+        <div class="flex0"><input type="checkbox" class="list-toggle" data-list="{{listName}}" {{#if checked}}checked{{/if}} /></div>
+        <div class="flex0 image"></div>
+        <div class="flex3">{{localize "wire.compendium.actor-upgrade.item-name"}}</div>
+        <div class="flex2">{{localize "wire.compendium.actor-upgrade.item-source"}}</div>
+        <div class="flex1 centered">{{localize "wire.compendium.actor-upgrade.current-version"}}</div>
+        <div class="flex1 centered">{{localize "wire.compendium.actor-upgrade.available-version"}}</div>
+    </div>
+{{/inline}}
+
+{{#*inline "item-row"}}
+    <div class="item-upgrade-row flexrow" data-actor-item-uuid="{{actorItem.uuid}}" data-pack-item-uuid="{{packItem.uuid}}">
+        <div class="flex0"><input type="checkbox" data-list="{{listName}}" name="import" value="{{actorItem.uuid}}" {{#if checked}}checked{{/if}} /></div>
+        <div class="image flex0" style="background-image: url({{actorItem.img}})"></div>
+        <div class="flex3 flexrow">{{actorItem.name}}</div>
+        <div class="flex2">{{lookup packOptions packItem.flags.wire.compendiumSource}}</div>
+        <div class="flex1 centered"><a data-action="open-actor-item">{{actorItem.flags.wire.compendiumVersion}}</a></div>
+        <div class="flex1 centered"><a data-action="open-pack-item">{{packItem.flags.wire.compendiumVersion}}</a></div>
+    </div>
+{{/inline}}
+
+<form>
+    <div class="compendium-upgrade-container">
+        <section>
+            <h3>{{localize "wire.compendium.actor-upgrade.upgradeable-heading"}}</h3>
+            <p class="hint">{{localize "wire.compendium.actor-upgrade.upgradeable-hint"}}</p>
+
+            {{> item-row-header listName="upgradeable" checked=true }}
+            {{#each upgradeableItems}}
+                {{> item-row packOptions=../availablePackOptions listName="upgradeable" checked=true }}
+            {{/each}}
+        </section>
+
+        <section>
+            <h3>{{localize "wire.compendium.actor-upgrade.replaceable-heading"}}</h3>
+            <p class="hint">{{localize "wire.compendium.actor-upgrade.replaceable-hint"}}</p>
+
+            {{> item-row-header listName="replaceable" }}
+            {{#each replaceableItems}}
+                {{> item-row packOptions=../availablePackOptions listName="replaceable" }}
+            {{/each}}
+        </section>
+
+        <p class="hint warning centered">{{localize "wire.compendium.actor-upgrade.modification-warning"}}</p>
+        <footer class="sheet-footer flexrow">
+            <button type="submit">{{localize "wire.compendium.actor-upgrade.submit"}}</button>
+        </footer>
+    </div>
+</form>

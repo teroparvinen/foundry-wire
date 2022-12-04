@@ -240,8 +240,8 @@ export function getAbilityCheckOptions(actor, abilityId) {
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
 
-    const advFlags = getEffectFlags(this)?.advantage?.ability || {};
-    const disFlags = getEffectFlags(this)?.disadvantage?.ability || {};
+    const advFlags = getEffectFlags(actor)?.advantage?.ability || {};
+    const disFlags = getEffectFlags(actor)?.disadvantage?.ability || {};
 
     const isAdvantage = advFlags.all || advFlags.check?.all || (advFlags.check && advFlags.check[abilityId]);
     const isDisdvantage = disFlags.all || disFlags.check?.all || (disFlags.check && disFlags.check[abilityId]);
@@ -254,24 +254,19 @@ export function getAbilityCheckOptions(actor, abilityId) {
 
 export function applyConditionImmunity(actor, effectDataList) {
     return effectDataList
-        .map(effectData => {
-            return foundry.utils.mergeObject(effectData, {
-                changes: effectData.changes.filter(change => {
-                    const keys = [
-                        "macro.CE",
-                        "StatusEffect",
-                        "wire.custom.statusEffect"
-                    ]
-                    const immunities = [
-                        ...actor.system.traits?.ci?.value,
-                        ...actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase())
-                    ];
-                    return !keys.includes(change.key) || !immunities.includes(change.value.toLowerCase())
-                })
-            });
-        })
         .filter(effectData => {
-            return effectData.changes.length;
+            return !effectData.changes.find(change => {
+                const keys = [
+                    "macro.CE",
+                    "StatusEffect",
+                    "wire.custom.statusEffect"
+                ]
+                const immunities = [
+                    ...actor.system.traits?.ci?.value,
+                    ...actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase())
+                ];
+                return keys.includes(change.key) && immunities.includes(change.value.toLowerCase())
+            });
         });
 }
 
