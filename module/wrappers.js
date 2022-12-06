@@ -154,6 +154,18 @@ function onEscape(context) {
         return true;
     }
 
+    // Case 2 - dismiss an open Tour
+    if (Tour.tourInProgress) {
+        Tour.activeTour.exit();
+        return true;
+      }
+  
+    // (GM) - release controlled objects (if not in a preview)
+    if (game.user.isGM && ui.controls.activeControl !== "token" && canvas.activeLayer && Object.keys(canvas.activeLayer.controlled).length) {
+        if (!canvas.activeLayer.preview?.children.length) canvas.activeLayer.releaseAll();
+        return true;
+    }
+
     // Return to chat tab
     if (ui.sidebar.activeTab !== "chat") {
         ui.sidebar.activateTab("chat");
@@ -184,17 +196,12 @@ function onEscape(context) {
     //     return true;
     // }
 
-    // // (GM) - release controlled objects (if not in a preview)
-    // if (game.user.isGM && canvas.activeLayer && Object.keys(canvas.activeLayer._controlled).length) {
-    //     if (!canvas.activeLayer.preview?.children.length) canvas.activeLayer.releaseAll();
-    //     return true;
-    // }
-
     // Toggle the main menu
     // ui.menu.toggle();
 
     // Save the fog immediately rather than waiting for the 3s debounced save as part of commitFog.
-    if (canvas.ready) canvas.sight.saveFog();
+    if (canvas.ready) canvas.fog.save();
+
     return true;
 }
 

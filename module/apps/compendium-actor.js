@@ -131,11 +131,14 @@ export class ActorCompendiumUpgrade extends FormApplication {
                 const incoming = entry.packItem.toObject();
                 const outgoing = entry.actorItem.toObject();
     
-                const sort = outgoing.sort;
-                const { preparation, uses } = outgoing.system;
+                const { sort, img } = outgoing;
+                const { preparation, uses, description } = outgoing.system;
     
                 Object.assign(incoming.system, { preparation, uses });
                 Object.assign(incoming, { sort });
+
+                if (!incoming.system.description.value) { Object.assign(incoming.system, { description }); };
+                if (!incoming.img) { Object.assign(incoming, { img }); };
     
                 toDelete.push(entry.actorItem.id);
                 toCreate.push(incoming);

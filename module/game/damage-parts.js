@@ -341,7 +341,7 @@ export class DamageParts {
     async combinedRoll() {
         const partsWithRolls = this.result;
 
-        let terms = partsWithRolls.map(pr => new NumericTerm({ number: (pr.part.multiplier || 1) * pr.roll.total, options: { flavor: pr.part.type } }));
+        let terms = partsWithRolls.map(pr => new NumericTerm({ number: Math.floor((pr.part.multiplier || 1) * pr.roll.total), options: { flavor: pr.part.type } }));
         const dice = partsWithRolls.flatMap(pr => pr.roll.dice);
     
         for (let i = terms.length - 2; i >= 0; i--) {

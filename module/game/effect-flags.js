@@ -341,7 +341,7 @@ export function initEffectFlagHooks() {
         if (game.user.isGM && isActorEffect(effect)) {
             const actor = effect.parent;
             for (let change of effect.changes) {
-                if (change.key === "wire.custom.statusEffect" || change.key === "wire.custom.persistentStatusEffect") {
+                if (change.key === "wire.custom.statusEffect" /*|| change.key === "wire.custom.persistentStatusEffect"*/) {
                     await runInQueue(async () => {
                         const effectName = change.value;
                         const uuid = actor.uuid;

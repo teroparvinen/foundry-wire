@@ -10,7 +10,8 @@ export class Flow {
         this.allowMacro = allowMacro;
         this.isConditionTrigger = isConditionTriggered;
 
-        const macroCommand = item?.flags.itemacro?.macro?.command?.trim();
+        const macroData = item?.flags.itemacro?.macro;
+        const macroCommand = macroData?.command?.trim() || macroData?.data?.command?.trim(); // Support for failed V9 item macro migration 
         if (macroCommand) {
             try {
                 this.macroFunction = new Function(macroCommand);

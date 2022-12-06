@@ -1,4 +1,4 @@
-import { fromUuid, getSpeaker } from "../utils.js";
+import { fromUuid, getActorToken, getSpeaker } from "../utils.js";
 
 export class ConcentrationCard {
 
@@ -82,6 +82,7 @@ export class ConcentrationCard {
     async _renderContent() {
         const templateData = {
             actor: this.actor,
+            token: getActorToken(this.actor),
             damageAmount: this.damageAmount,
             originName: fromUuid(this.concentrationEffect.origin).name,
             dc: this.dc,
