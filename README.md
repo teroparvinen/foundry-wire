@@ -36,6 +36,10 @@ The more advanced customization of the item rolls is controlled using a script m
 
 Managing and viewing concentration and temporary active effects is quite important when using WIRE. This module makes it really easy to see the effects and to click them off when required. Highly recommended with WIRE.
 
+### Action Pack
+
+Because WIRE aims to automate manual adjustments, there is less need to keep the character sheet constantly open. I originally made Action Pack as a companion for WIRE, but it turned into a stand-alone module. Check it out.
+
 ### DAE
 
 Pretty much necessary at this point if only for the ability to edit active effects directly attached to an actor's spells. DAE is very heavily leaned towards co-operating with Midi-QOL, which is not compatible (see below), but for now using it is recommended.

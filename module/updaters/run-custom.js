@@ -11,13 +11,13 @@ export class RunCustomUpdater extends Updater {
     async process() {
         console.log("CUSTOM UPDATER", this.condition.update);
         if (this.handlerProperties.runAsTarget || game.user.isGM) {
-            const result = this.handlerProperties.fn(this.condition, this.effect, this.details);
+            const result = this.handlerProperties.fn(this.condition, this.item, this.effect, this.details);
             if (result instanceof Promise) {
                 return await result;
             }
             return result
         } else {
-            return await wireSocket.executeAsGM("runCustomUpdater", this.condition, this.effect.uuid, this.details);
+            return await wireSocket.executeAsGM("runCustomUpdater", this.condition, this.item.uuid, this.effect?.uuid, this.details);
         }
     }
 }

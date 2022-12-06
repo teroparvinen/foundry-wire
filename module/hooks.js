@@ -68,7 +68,7 @@ export function initHooks() {
             html[0].classList.add("wire-hide-speaker-fields");
         }
 
-        if (message.getFlag("wire", "activation")) {
+        if (message.getFlag("wire", "activation") || message.getFlag("wire", "isGmView")) {
             html[0].classList.add("wire-activation-view");
         }
         if (message.getFlag("wire", "isDamageCard")) {

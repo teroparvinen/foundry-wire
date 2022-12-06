@@ -88,7 +88,8 @@ function scrollBottom() {
     ui.chat.scrollBottom();
 }
 
-async function runCustomUpdater(condition, effectUuid, details) {
+async function runCustomUpdater(condition, itemUuid, effectUuid, details) {
+    const item = fromUuid(itemUuid);
     const effect = fromUuid(effectUuid);
     if (effect) {
         const item = fromUuid(effect.origin);
@@ -99,7 +100,7 @@ async function runCustomUpdater(condition, effectUuid, details) {
             const updater = flow.customUpdaters[condition.update]
         
             if (updater) {
-                const result = updater.fn(condition, effect, details);
+                const result = updater.fn(condition, item, effect, details);
                 if (result instanceof Promise) {
                     return await result;
                 }
