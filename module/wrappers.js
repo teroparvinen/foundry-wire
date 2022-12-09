@@ -52,6 +52,7 @@ async function onItemUse(wrapped, options, event) {
 
     if (result) {
         const { messageData, config, templateData } = result;
+        let isPublicRoll = false;
 
         if (item.hasAttack) {
             if (event?.altKey) {
@@ -65,6 +66,10 @@ async function onItemUse(wrapped, options, event) {
         }
     
         messageData.content = await ItemCard.renderHtml(item);
+        if (game.user.isGM && !messageData.whisper.includes(game.user.id)) {
+            isPublicRoll = true;
+            messageData.whisper.push(game.user.id);
+        }
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
         const message = await ChatMessage.create(messageData);
     
@@ -77,6 +82,11 @@ async function onItemUse(wrapped, options, event) {
                 await activation._assignTemplateData(templateData);
             }
             await activation._activate();
+
+            if (isPublicRoll) {
+                await activation._setPublic(true);
+                await activation._createPlayerMessage();
+            }
         }
     
         return message;

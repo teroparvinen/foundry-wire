@@ -70,10 +70,10 @@ export async function preRollConfig(item, options = {}, event) {
 
         // Determine consumption preferences
         useConfig.doCreateMeasuredTemplate = Boolean(configuration.placeTemplate);
-        useConfig.consumedUsageCount = Boolean(configuration.consumeUse) ? 1 : 0;
+        useConfig.consumedUsageCount = Boolean(configuration.consumeUsage) ? 1 : 0;
         useConfig.doConsumeRecharge = Boolean(configuration.consumeRecharge);
         useConfig.doConsumeResource = Boolean(configuration.consumeResource);
-        useConfig.doConsumeSpellSlot = Boolean(configuration.consumeSlot);
+        useConfig.doConsumeSpellSlot = Boolean(configuration.consumeSpellSlot);
 
         // Handle spell upcasting
         if (requireSpellSlot) {
@@ -255,7 +255,7 @@ function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedS
             ui.notifications.warn(game.i18n.format("DND5E.ItemNoUses", { name: item.name }));
             return false;
         }
-        itemUpdates["data.recharge.charged"] = false;
+        itemUpdates["system.recharge.charged"] = false;
     }
 
     // Consume Limited Resource
@@ -274,7 +274,7 @@ function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedS
             ui.notifications.warn(game.i18n.format("DND5E.SpellCastNoSlots", { name: item.name, level: label }));
             return false;
         }
-        actorUpdates[`data.spells.${consumedSpellLevel}.value`] = Math.max(spells - 1, 0);
+        actorUpdates[`system.spells.${consumedSpellLevel}.value`] = Math.max(spells - 1, 0);
     }
 
     // Consume Limited Usage
@@ -287,7 +287,7 @@ function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedS
         const remaining = Math.max(available - consumedUsageCount, 0);
         if (available >= consumedUsageCount) {
             used = true;
-            itemUpdates["data.uses.value"] = remaining;
+            itemUpdates["system.uses.value"] = remaining;
         }
 
         // Reduce quantity if not reducing usages or if usages hit 0 and we are set to consumeQuantity
@@ -295,8 +295,8 @@ function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedS
             const q = Number(id.quantity ?? 1);
             if (q >= 1) {
                 used = true;
-                itemUpdates["data.quantity"] = Math.max(q - 1, 0);
-                itemUpdates["data.uses.value"] = uses.max ?? 1;
+                itemUpdates["system.quantity"] = Math.max(q - 1, 0);
+                itemUpdates["system.uses.value"] = uses.max ?? 1;
             }
         }
 

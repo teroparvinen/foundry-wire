@@ -81,13 +81,6 @@ export function initAreaConditionHooks() {
         }
     });
 
-    Hooks.on("updateCombat", async (combat, change, options, userId) => {
-        if (game.user.isGM) {
-            const token = canvas.tokens.get(game.combat.current.tokenId);
-            await token?.document.setFlag("wire", "visitedTemplateIds", getTokenTemplateIds(token));
-        }
-    });
-
     Hooks.on("createActivationMeasuredTemplate", async (templateDoc) => {
         if (game.user.isGM) {
             await checkTokenOccupation(templateDoc);
@@ -115,6 +108,14 @@ export function initAreaConditionHooks() {
             });
         }
     });
+}
+
+export async function resetVisitedTemplates() {
+    if (game.user.isGM) {
+        for (const token of canvas.tokens.objects.children) {
+            await token?.document.setFlag("wire", "visitedTemplateIds", getTokenTemplateIds(token));
+        }
+    }
 }
 
 async function checkTokenOccupation(templateDoc) {

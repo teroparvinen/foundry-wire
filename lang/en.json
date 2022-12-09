@@ -45,7 +45,7 @@
             "application-overtime": "Over time",
             "activation-header": "Effect application",
             "conditions-and-effects": "Conditions and effects",
-            "condition-creature-enters-area": "A creature first enters the area on its turn",
+            "condition-creature-enters-area": "A creature first enters the area on a turn",
             "condition-creature-starts-turn-inside-area": "A creature starts its turn inside the area",
             "condition-creature-ends-turn-inside-area": "A creature ends its turn inside the area",
             "condition-creature-moves-within-area": "A creature moves within the area",

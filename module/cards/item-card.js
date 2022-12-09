@@ -15,7 +15,7 @@ export class ItemCard {
             const templateData = {
                 isGM: isPlayerView ? false : game.user.isGM,
                 isPlayerView,
-                isGMActorPlayerView: isPlayerView && !actor.hasPlayerOwner,
+                isGMActorPlayerView: isPlayerView && !actor.hasPlayerOwner && !activation.isPublic,
                 hasPlayerOwner: item.hasPlayerOwner,
                 actor: actor,
                 tokenId: token?.uuid || null,

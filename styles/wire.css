@@ -283,12 +283,19 @@
     color: white;
 }
 
+.item-card .saving-throw-target .target-save-mode {
+    white-space: nowrap;
+    flex: 0 20px;
+    text-align: center;
+}
+
 .item-card .saving-throw-target .target-save-result {
     white-space: nowrap;
-    flex: 0 50px;
+    flex: 0 32px;
     font-size: 17px;
     font-weight: bold;
     text-align: center;
+    padding-right: 10px;
 }
 
 .item-card .saving-throw-target .target-save-result.success {

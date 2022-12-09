@@ -3,6 +3,7 @@ import { Activation } from "./activation.js";
 import { ConcentrationCard } from "./cards/concentration-card.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { ItemCard } from "./cards/item-card.js";
+import { resetVisitedTemplates } from "./conditions/area-effects.js";
 import { updateCombatTurnEndConditions, updateCombatTurnStartConditions } from "./conditions/combat-turns.js";
 import { applySingleEffect } from "./game/active-effects.js";
 import { getDisplayableAttackComponents } from "./game/attack-components.js";
@@ -159,6 +160,8 @@ export function initHooks() {
             }
 
             if (combat.current.combatantId !== lastKnownCombatantId) {
+                await resetVisitedTemplates();
+
                 const combatant = combat.combatants.get(combat.current.combatantId);
 
                 if (combatant?.isNPC && !combatant.isDefeated) {

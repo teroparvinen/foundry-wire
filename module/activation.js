@@ -28,6 +28,7 @@ export class Activation {
         messageData.speaker = getSpeaker((speakerIsEffectOwner && effect) ? effect.parent : item.actor);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", effect?.flags.wire?.originatorUserId || game.user.id);
         if (revealToPlayers) { messageData.whisper = null; }
+        else if (game.user.isGM) { messageData.whisper = [game.user.id]; }
         const message = await ChatMessage.create(messageData);
 
         if (message) {
@@ -43,10 +44,17 @@ export class Activation {
     }
 
     async spawnActivation(applicationType, config) {
+        let isPublicRoll = false;
         const item = this.item;
         const messageData = await item.displayCard({ createMessage: false });
+
         messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
+        if (game.user.isGM && !messageData.whisper.includes(game.user.id)) {
+            isPublicRoll = true;
+            messageData.whisper.push(game.user.id);
+        }
+
         const message = await ChatMessage.create(messageData);
 
         if (message) {
@@ -56,6 +64,11 @@ export class Activation {
             await activation._initialize(item, flow, { isSecondary: true });
             await activation.assignConfig(config);
             await activation._activate();
+
+            if (isPublicRoll) {
+                await activation._setPublic(true);
+                await activation._createPlayerMessage();
+            }
         }
     }
 
@@ -74,6 +87,7 @@ export class Activation {
     get itemUuid() { return this.data.itemUuid; }
     get applicationType() { return this.data.applicationType; }
     get state() { return this.data.state; }
+    get isPublic() { return this.data.isPublic; }
     get flowSteps() { return this.data.flowSteps; }
     get config() { return this.data.config || {}; }
     get variant() { return this.config?.variant; }
@@ -170,7 +184,7 @@ export class Activation {
                 isHealing,
                 isTempHps
             },
-            saves: this.data.saves,
+            saves: this.saveResults,
             allTargets: this.allTargets,
             pcTargets: this.pcTargets,
             singleTarget: this.singleTarget,
@@ -288,20 +302,22 @@ export class Activation {
     }
 
     async _createPlayerMessage() {
-        const playerMessageData = {
-            content: await ItemCard.renderHtml(this.item, this, { isPlayerView: true }),
-            flags: {
-                wire: {
-                    masterMessageUuid: this.message.uuid,
-                    originatorUserId: this.message.flags.wire?.originatorUserId,
-                    isPlayerView: true
-                }
-            },
-            speaker: this.message.speaker,
-            user: game.user.id
-        };
-        const playerMessage = await ChatMessage.create(playerMessageData);
-        this.message.setFlag("wire", "playerMessageUuid", playerMessage.uuid);
+        if (!this.message.flags.wire?.playerMessageUuid) {
+            const playerMessageData = {
+                content: await ItemCard.renderHtml(this.item, this, { isPlayerView: true }),
+                flags: {
+                    wire: {
+                        masterMessageUuid: this.message.uuid,
+                        originatorUserId: this.message.flags.wire?.originatorUserId,
+                        isPlayerView: true
+                    }
+                },
+                speaker: this.message.speaker,
+                user: game.user.id
+            };
+            const playerMessage = await ChatMessage.create(playerMessageData);
+            this.message.setFlag("wire", "playerMessageUuid", playerMessage.uuid);
+        }
 
         ui.chat.scrollBottom();
     }
@@ -332,6 +348,11 @@ export class Activation {
 
     async updateFlowSteps(flowSteps) {
         foundry.utils.setProperty(this.data, 'flowSteps', flowSteps);
+        await this._update();
+    }
+
+    async _setPublic(state) {
+        foundry.utils.setProperty(this.data, 'isPublic', state);
         await this._update();
     }
 

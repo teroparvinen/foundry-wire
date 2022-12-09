@@ -111,8 +111,18 @@
                 <div class="saving-throw-target flexrow" data-actor-id="{{actor.uuid}}">
                     <img class="flex0 target-image" src="{{token.document.texture.src}}" />
                     <div class="flex1 target-name">{{token.name}}</div>
-                    {{#if (arrayLookup ../activation.saves "actorUuid" actor.uuid)}}
-                        {{#with (arrayLookup ../activation.saves "actorUuid" actor.uuid)}}
+                    {{#if (arrayLookup ../activation.saves "actor" actor)}}
+                        {{#with (arrayLookup ../activation.saves "actor" actor)}}
+                            <div class="flex0 target-save-mode">
+                                {{#if (or ../../isGM isPC)}}
+                                    {{#if roll.hasAdvantage}}
+                                        <i class="flex0 fas fa-angle-double-up"></i>
+                                    {{/if}}
+                                    {{#if roll.hasDisadvantage}}
+                                        <i class="flex0 fas fa-angle-double-down"></i>
+                                    {{/if}}
+                                {{/if}}
+                            </div>
                             <div class="flex0 target-save-result {{#if (gte roll.total ../../item.system.save.dc)}}success{{else}}fail{{/if}}">
                                 {{#if (or ../../isGM isPC)}}
                                     {{roll.total}}
@@ -197,7 +207,7 @@
     {{/if}}
 
     <div class="card-buttons">
-        {{#unless isGMActorPlayerView}}
+        {{#unless (or isGMActorPlayerView isPlayerView)}}
             {{#if (or (eq activation.state "waiting-for-attack-damage-roll") (eq activation.state "waiting-for-save-damage-roll"))}}
                 <div class="flexrow small-gap">
                     <button class="flex1" data-action="wire-damage">

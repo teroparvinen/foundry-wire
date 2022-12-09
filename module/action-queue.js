@@ -11,7 +11,7 @@ export function setupActionQueue() {
             });
         }
     } else {
-        semaphore = new semaphore();
+        semaphore = new Semaphore();
     }
 }
 
