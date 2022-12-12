@@ -544,7 +544,7 @@ export class Activation {
             additionalDamage = situationalBonus;
         }
 
-        Object.assign(this.data, { config });
+        foundry.utils.setProperty(this.data, 'config', foundry.utils.mergeObject(this.data.config || {}, config));
         foundry.utils.setProperty(this.data, 'config.damageBonus', additionalDamage);
         await this._update();
 

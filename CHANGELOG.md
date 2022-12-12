@@ -1,5 +1,11 @@
 # Changes by version number
 
+### 0.10.3
+
+Fixes
+
+- The last update broke upcasting. Quick fix to that.
+
 ### 0.10.2
 
 Changes
