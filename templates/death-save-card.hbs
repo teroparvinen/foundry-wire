@@ -1,0 +1,23 @@
+<div class="dnd5e chat-card death-save-card">
+    <header class="card-header flexrow">
+        <h3 class="item-name">{{localize "wire.ui.death-save-header"}}</h3>
+    </header>
+
+    <div class="death-save-row flexrow">
+        <img class="flex0 actor-image clickable-token" data-token-uuid="{{token.document.uuid}}" src="{{token.document.texture.src}}" />
+        <div class="flex1 death-save-status flexrow">
+            <i class="flex0 fas fa-check"></i>
+            <div class="flex0 counter">{{actor.system.attributes.death.success}}</div>
+            <i class="flex0 skull fas fa-skull"></i>
+            <div class="flex0 counter">{{actor.system.attributes.death.failure}}</div>
+            <i class="flex0 fas fa-times"></i>
+        </div>
+        {{#if this.result}}
+            <div class="flex0 death-save-result {{#if (gte result 10)}}success{{else}}fail{{/if}}">
+                {{result}}
+            </div>
+        {{else}}
+            <a data-action="death-save" class="flex0 death-save"></a>
+        {{/if}}
+    </div>
+</div>

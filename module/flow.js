@@ -38,7 +38,6 @@ export class Flow {
             result = this.evaluator.apply(this);
         }
         
-        // const steps = result?.flat(100).filter(i => i);
         const steps = result;
         this.isEvaluated = true;
         this.evaluatedSteps = steps;

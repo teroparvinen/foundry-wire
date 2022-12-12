@@ -23,7 +23,7 @@ async function onItemUse(wrapped, options, event) {
 
     const item = this;
 
-    if (!Object.values(game.canvas.tokens.controlled).map(t => t.actor).includes(item.actor)) {
+    if (!Object.values(game.canvas.tokens.objects.children).map(t => t.actor).includes(item.actor)) {
         wrapped(options, event);
         return;
     }
@@ -99,15 +99,17 @@ async function onActorPreUpdate(wrapped, change, options, user) {
     const actor = this;
 
     const hpUpdate = getProperty(change, "system.attributes.hp.value");
+    const maxHpUpdate = getProperty(change, "system.attributes.hp.max");
     const tempUpdate = getProperty(change, "system.attributes.hp.temp");
 
-    if (hpUpdate !== undefined && !this.hasPlayerOwner) {
-        const maxHp = actor.system.attributes.hp.max;
-        const woundedThreshold = Math.floor(0.5 * maxHp);
+    if ((hpUpdate !== undefined || maxHpUpdate !== undefined) && !this.hasPlayerOwner) {
+        const hp = hpUpdate === undefined ? actor.system.attributes.hp.value : hpUpdate;
+        const maxHp = maxHpUpdate === undefined ? actor.system.attributes.hp.max : maxHpUpdate;
+        const woundedThreshold = Math.floor(game.settings.get("wire", "wounded-threshold") * maxHp / 100);
 
-        const isDamaged = hpUpdate < maxHp;
-        const isWounded = hpUpdate <= woundedThreshold;
-        const isAtZero = hpUpdate == 0;
+        const isDamaged = hp < maxHp;
+        const isWounded = hp <= woundedThreshold;
+        const isAtZero = hp == 0;
 
         const needsDamaged = isDamaged && !isAtZero && !isWounded;
         const needsWounded = isWounded && !isAtZero;

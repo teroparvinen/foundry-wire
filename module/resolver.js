@@ -390,7 +390,6 @@ export class Resolver {
             const ceEffect = ceApi.findEffectByName("Concentrating").convertToActiveEffectData({ origin: item.uuid, overlay: false });
             const effectData = duplicate(ceEffect);
             effectData.duration = effectDurationFromItemDuration(item.system.duration, isInCombat(actor));
-            // FIX: v10
             effectData.flags = foundry.utils.mergeObject(effectData.flags, {
                 wire: {
                     isMasterEffect: true,

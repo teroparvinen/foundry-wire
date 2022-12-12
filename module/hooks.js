@@ -2,6 +2,7 @@ import { runInQueue } from "./action-queue.js";
 import { Activation } from "./activation.js";
 import { ConcentrationCard } from "./cards/concentration-card.js";
 import { DamageCard } from "./cards/damage-card.js";
+import { DeathSaveCard } from "./cards/death-save-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { resetVisitedTemplates } from "./conditions/area-effects.js";
 import { updateCombatTurnEndConditions, updateCombatTurnStartConditions } from "./conditions/combat-turns.js";
@@ -16,6 +17,12 @@ export function initHooks() {
          ItemCard.activateListeners(html)
          DamageCard.activateListeners(html);
          ConcentrationCard.activateListeners(html);
+         DeathSaveCard.activateListeners(html);
+
+         html.on("click", ".clickable-token", function(event) {
+            const token = fromUuid(event.target.dataset.tokenUuid)?.object;
+            token?.control({ releaseOthers: true });
+        });
     });
     Hooks.on("renderChatPopout", (app, html, data) => ItemCard.activateListeners(html));
 
@@ -74,6 +81,12 @@ export function initHooks() {
         }
         if (message.getFlag("wire", "isDamageCard")) {
             html[0].classList.add("wire-damage-card");
+        }
+        if (message.getFlag("wire", "isConcentrationCard")) {
+            html[0].classList.add("wire-concentration-card");
+        }
+        if (message.getFlag("wire", "isDeathSaveCard")) {
+            html[0].classList.add("wire-death-save-card");
         }
     });
 
@@ -136,8 +149,14 @@ export function initHooks() {
             }
 
             if (game.user.isGM) {
-                updateAuras(tokenDoc.object);
+                updateAuras();
             }
+        }
+    });
+
+    Hooks.on("createToken", () => {
+        if (game.user.isGM) {
+            updateAuras();
         }
     });
 
@@ -150,7 +169,7 @@ export function initHooks() {
                 await updateCombatTurnEndConditions();
             }
 
-            if (change.round && change.round !== lastKnownRound) {
+            if (change.round && change.round !== lastKnownRound && game.settings.get("wire", "round-change-notifications")) {
                 ChatMessage.create({
                     content: await renderTemplate("modules/wire/templates/round-change-card.hbs", { round: change.round }),
                     whisper: null,
@@ -159,23 +178,33 @@ export function initHooks() {
                 })
             }
 
-            if (combat.current.combatantId !== lastKnownCombatantId) {
+            const combatant = combat.combatants.get(combat.current.combatantId);
+            if (combat.current.combatantId !== lastKnownCombatantId && combatant) {
                 await resetVisitedTemplates();
 
-                const combatant = combat.combatants.get(combat.current.combatantId);
-
-                if (combatant?.isNPC && !combatant.isDefeated) {
+                if (combatant.isNPC && !combatant.isDefeated) {
                     combatant.token?.object?.control();
                     canvas.animatePan({ x: combatant.token?._object?.x, y: combatant.token?._object?.y })
                 }
     
-                if (!combatant.isDefeated) {
+                if (!combatant.isDefeated && game.settings.get("wire", "turn-change-notifications")) {
+                    const revealNpcs = game.settings.get("wire", "reveal-npc-turn-change");
+                    const isHidden = combatant.hidden
+                    const shouldWhisper = combatant.isNPC && (!revealNpcs || isHidden);
+
                     ChatMessage.create({
                         content: await renderTemplate("modules/wire/templates/turn-change-card.hbs", { token: combatant.token.object }),
-                        whisper: combatant.isNPC ? [game.user.id] : null,
+                        whisper: shouldWhisper ? [game.user.id] : null,
                         emote: true,
                         flags: { "wire.hideSpeakerFields": true }
                     })              
+                }
+
+                const death = combatant.actor?.system.attributes.death;
+                const needsDeathSave = !combatant.isNPC && combatant.actor?.system.attributes.hp.value == 0 && death?.failure < 3 && death?.success < 3;
+                if (needsDeathSave) {
+                    const card = new DeathSaveCard(combatant.actor);
+                    await card.make();
                 }
     
                 await updateCombatTurnStartConditions();

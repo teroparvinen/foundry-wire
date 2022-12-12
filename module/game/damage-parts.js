@@ -1,5 +1,6 @@
+import { isAttackMagical } from "../item-properties.js";
 import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant } from "../utils.js";
-import { getDamageInflictingOptions, getDamageMultiplier, getDamageReceivingOptions, getEffectFlags } from "./effect-flags.js";
+import { getDamageInflictingOptions, getDamageMultiplier, getDamageReceivingOptions, getDamageReduction, getEffectFlags } from "./effect-flags.js";
 
 
 export class DamageParts {
@@ -34,6 +35,8 @@ export class DamageParts {
         const variant = activation.config?.variant;
         const onlyUnavoidable = activation.effectiveTargets.length == 0;
         const additionalDamage = activation.config.damageBonus;
+        const isOffhand = activation.config.damageOffhand;
+        const isVersatile = activation.config.damageVersatile;
 
         let isCritical = (isAttack && evaluateCritical) ? DamageParts.isCritical(activation) : undefined;
         const attackTarget = isAttack ? activation.singleTarget?.actor : undefined;
@@ -51,8 +54,13 @@ export class DamageParts {
             return new DamageParts([]);
         }
 
+        // Check offhand
+        if (isOffhand && !item.actor.flags.wire?.twoWeaponFighting) {
+            primaryModifiers.push("-@mod");
+        }
+
         // Check versatile
-        if (itemData.damage?.versatile && item.actor.flags.wire?.damage?.versatile) {
+        if (itemData.damage?.versatile && (isVersatile || item.actor.flags.wire?.damage?.versatile)) {
             parts[0].formula = itemData.damage.versatile;
         }
     
@@ -278,7 +286,24 @@ export class DamageParts {
             return 1;
         }
 
+        const traits = actor.system.traits;
+        const isMagical = isAttackMagical(item);
+        const nmi = traits.di.value.includes("physical") && !isMagical;
+        const nmr = traits.dr.value.includes("physical") && !isMagical;
+        const nmv = traits.dv.value.includes("physical") && !isMagical;
+
+        let damageReduction = getDamageReduction(actor);
+        let reductionApplied = 0;
         let damageByType = {};
+
+        function applyDamageReduction(type, incoming) {
+            const current = damageReduction[type] || 0;
+            const used = Math.min(current, incoming);
+            reductionApplied += used;
+            const remaining = current - used;
+            damageReduction[type] = current - used;
+            return incoming - used;
+        }
 
         await Promise.all(this.result.map(async pr => {
             const { maximize, minimize } = getDamageReceivingOptions(item, actor, pr.part.type);
@@ -290,8 +315,9 @@ export class DamageParts {
             const mult = typeof pr.part.multiplier === "number" ? pr.part.multiplier : 1;
             const type = pr.part.type;
             const halving = pr.part.halving;
-            const points = Math.floor(roll.total * mult);
 
+            const reduced = applyDamageReduction("all", applyDamageReduction(pr.part.type, applyDamageReduction(item.system.actionType, isMagical ? roll.total : applyDamageReduction("physical", roll.total))));
+            const points = Math.floor(reduced * mult);
             const caused = Math.floor(halvingFactor(halving, isEffective) * points);
 
             damageByType[type] = Math.max((damageByType[type] || 0) + caused, 0);
@@ -300,13 +326,6 @@ export class DamageParts {
         const components = Object.entries(damageByType).map(([type, caused]) => {
             if (type === "healing") { return { healing: caused } };
             if (type === "temphp") { return { temphp: caused } };
-
-            const traits = actor.system.traits;
-            const isActorAttackMagical = item.actor.getFlag("wire", "damage.magical");
-            const isAttackMagical = (item.type === "weapon" && item.system.properties.mgc) || item.type === "spell" || isActorAttackMagical;
-            const nmi = traits.di.value.includes("physical") && !isAttackMagical;
-            const nmr = traits.dr.value.includes("physical") && !isAttackMagical;
-            const nmv = traits.dv.value.includes("physical") && !isAttackMagical;
 
             const di = traits.di.all || traits.di.value.includes(type) || nmi ? 0 : 1;
             const dr = traits.dr.all || traits.dr.value.includes(type) || nmr ? 0.5 : 1;
@@ -328,8 +347,9 @@ export class DamageParts {
                 di: prev.di + c.di || 0,
                 dr: prev.dr + c.dr || 0,
                 dv: prev.dv + c.dv || 0,
+                damagereduction: prev.damagereduction
             }
-        }, { damage: 0, healing: 0, temphp: 0, di: 0, dr: 0, dv: 0 });
+        }, { damage: 0, healing: 0, temphp: 0, di: 0, dr: 0, dv: 0, damagereduction: reductionApplied });
     }
 
     async roll3dDice() {

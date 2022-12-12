@@ -167,6 +167,14 @@ export class Activation {
             (this.item.system.damage?.parts?.length && this.item.system.damage?.parts?.every(p => ["healing", "temphp"].includes(p[1]))) || 
             (this.damageParts?.result?.length && this.damageParts?.result?.every(p => ["healing", "temphp"].includes(p.part.type)));
 
+        const allowOffhand = 
+            (this.actor.flags.wire?.dualWielder && this.item.type === "weapon" && this.item.system.actionType === "mwak") ||
+            (this.actor.items.filter(i => i.type === "weapon" && i.system.actionType === "mwak" && i.system.equipped && i.system.properties.lgt) || []).length >= 2;
+        const allowVersatile = 
+            this.item.system.damage.versatile &&
+            !((this.actor.items.filter(i => i.type === "weapon" && i.system.actionType === "mwak" && i.system.equipped) || []).length >= 2) &&
+            !this.actor.items.find(i => i.system.armor?.type === "shield" && i.system.equipped);
+
         return {
             state: this.state,
             attack: {
@@ -182,7 +190,9 @@ export class Activation {
                 tooltip: damageRollTooltip,
                 isCritical: DamageParts.isCritical(this),
                 isHealing,
-                isTempHps
+                isTempHps,
+                allowOffhand,
+                allowVersatile
             },
             saves: this.saveResults,
             allTargets: this.allTargets,
@@ -445,7 +455,7 @@ export class Activation {
 
     async applyState(state) {
         console.log("STATE", state, "for message", this.message.id);
-        foundry.utils.setProperty(this.data, "state", state);
+        foundry.utils.setProperty(this.data, "state", state || null);
         await this._update();
         await this._updateCard();
         await wireSocket.executeForOthers("refreshActivation", this.message.uuid, this.data);
@@ -522,7 +532,7 @@ export class Activation {
         await this._step();
     }
 
-    async _rollDamage(doDialog, dialogOptions) {
+    async _rollDamage(config = {}, doDialog, dialogOptions) {
         let additionalDamage;
 
         const situationalBonus = await triggerConditions(this.item.actor, "prepare-damage-roll");
@@ -534,6 +544,7 @@ export class Activation {
             additionalDamage = situationalBonus;
         }
 
+        Object.assign(this.data, { config });
         foundry.utils.setProperty(this.data, 'config.damageBonus', additionalDamage);
         await this._update();
 

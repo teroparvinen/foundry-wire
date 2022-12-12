@@ -36,7 +36,8 @@ export class ActorCompendiumUpgrade extends FormApplication {
                     const items = packItems
                         .flatMap(pi => pi.documents)
                         .filter(packItem =>
-                            packItem.name === actorItem.name
+                            packItem.name === actorItem.name &&
+                            packItem.type === actorItem.type
                         );
                     if (items.length) {
                         replaceableItems.push(...items.map(packItem => ({ actorItem, packItem })));

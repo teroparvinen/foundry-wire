@@ -28,7 +28,7 @@
 
     <div class="card-phases">
         {{#unless isGMActorPlayerView}}
-            {{#if (eq activation.state "performAttackRoll")}}
+            {{#if (eq activation.state "attack-configured")}}
                 <div class="phase-waiting-for-roll">
                     <i class="fas fa-dice-d20 fa-3x anim-pulse"></i>
                 </div>
@@ -53,7 +53,7 @@
                     </div>
 
                     <div class="flexrow">
-                        <img class="flex0 token-image" src="{{activation.attack.target.token.document.texture.src}}" />
+                        <img class="flex0 token-image clickable-token" data-token-uuid="{{activation.attack.target.token.document.uuid}}" src="{{activation.attack.target.token.document.texture.src}}" />
                         <div class="flex1 token-info flexcol">
                             <div class="token-name">{{activation.attack.target.token.name}}</div>
                             {{#if isGM}}
@@ -109,7 +109,7 @@
         {{#if (or (eq activation.state "waiting-for-saves") activation.saves.length)}}
             {{#*inline "target-save-row"}}
                 <div class="saving-throw-target flexrow" data-actor-id="{{actor.uuid}}">
-                    <img class="flex0 target-image" src="{{token.document.texture.src}}" />
+                    <img class="flex0 target-image clickable-token" data-token-uuid="{{token.document.uuid}}" src="{{token.document.texture.src}}" />
                     <div class="flex1 target-name">{{token.name}}</div>
                     {{#if (arrayLookup ../activation.saves "actor" actor)}}
                         {{#with (arrayLookup ../activation.saves "actor" actor)}}
@@ -127,11 +127,13 @@
                                 {{#if (or ../../isGM isPC)}}
                                     {{roll.total}}
                                 {{else}}
-                                    {{#if (gte roll.total ../../item.system.save.dc)}}
-                                        <i class="fas fa-check"></i>
-                                    {{else}}
-                                        <i class="fas fa-times"></i>
-                                    {{/if}}
+                                    {{#unless ../../settings.hideNpcSaveResults}}
+                                        {{#if (gte roll.total ../../item.system.save.dc)}}
+                                            <i class="fas fa-check"></i>
+                                        {{else}}
+                                            <i class="fas fa-times"></i>
+                                        {{/if}}
+                                    {{/unless}}
                                 {{/if}}
                             </div>
                         {{/with}}
@@ -160,7 +162,7 @@
                         {{else}}
                             {{localize "wire.ui.ability-check-heading" ability=(lookup abilityNames activation.abilityToCheckForSave)}}
                         {{/unless}}
-                        {{#if (or isGM item.hasPlayerOwner)}}
+                        {{#if (or isGM item.hasPlayerOwner settings.revealSaveDc)}}
                             ({{localize "wire.ui.dc" value=item.system.save.dc}})
                         {{/if}}
                     </h3>
@@ -174,7 +176,9 @@
                 <div>
                     {{#if (or isGM hasPlayerOwner)}}
                         {{#each activation.allTargets}}
-                            {{> target-save-row }}
+                            {{#if (or ../isGM (not token.document.hidden))}}
+                                {{> target-save-row }}
+                            {{/if}}
                         {{/each}}
                     {{else}}
                         {{#each activation.pcTargets}}
@@ -224,6 +228,12 @@
                             {{/if}}
                         {{/if}}
                     </button>
+                    {{#if activation.damage.allowOffhand}}
+                        <button class="flex1" data-action="wire-damage-offhand">{{localize "wire.ui.off-hand"}}</button>
+                    {{/if}}
+                    {{#if activation.damage.allowVersatile}}
+                        <button class="flex1" data-action="wire-damage-versatile">{{localize "DND5E.Versatile"}}</button>
+                    {{/if}}
                     <button class="flex0" data-action="wire-damage-configure">
                         <i class="fas fa-ellipsis-h"></i>
                     </button>

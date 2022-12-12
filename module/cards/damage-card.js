@@ -7,7 +7,7 @@ export class DamageCard {
 
     static activateListeners(html) {
         html.on("click", ".damage-card a", this._onDamageCardAction.bind(this));
-        html.on("click", ".damage-card .target-image", this._onExpandEntry.bind(this));
+        html.on("click", ".damage-card .expand-toggle", this._onExpandEntry.bind(this));
     }
 
     static async _onExpandEntry(event) {
@@ -28,27 +28,27 @@ export class DamageCard {
         const message = game.messages.get(messageId);
         const damageCard = new DamageCard(message);
         const action = button.dataset.action;
-        const targetUuid = button.closest('.damage-card-target').dataset.actorUuid;
-        const target = fudgeToActor(fromUuid(targetUuid));
+        const targetUuid = button.closest('.damage-card-target')?.dataset.actorUuid;
+        const target = targetUuid ? fudgeToActor(fromUuid(targetUuid)) : null;
 
         switch (action) {
             case "apply-damage":
-                if (game.user.isGM || target.isOwner) {
+                if (target && (game.user.isGM || target.isOwner)) {
                     await damageCard.applyDamage(target);
                 }
                 break;
             case "undo-damage":
-                if (game.user.isGM || target.isOwner) {
+                if (target && (game.user.isGM || target.isOwner)) {
                     await damageCard.undoDamage(target);
                 }
                 break;
             case "recalculate-damage":
-                if (game.user.isGM || target.isOwner) {
+                if (target && (game.user.isGM || target.isOwner)) {
                     await damageCard.recalculate(target);
                 }
                 break;
             case "option-halve-damage":
-                if (game.user.isGM || target.isOwner) {
+                if (target && (game.user.isGM || target.isOwner)) {
                     const current = damageCard.getOptions(target).isHalved;
                     if (current) {
                         await damageCard.setOptions(target, {
@@ -64,7 +64,7 @@ export class DamageCard {
                 }
                 break;
             case "option-double-damage":
-                if (game.user.isGM || target.isOwner) {
+                if (target && (game.user.isGM || target.isOwner)) {
                     const current = damageCard.getOptions(target).isDoubled;
                     if (current) {
                         await damageCard.setOptions(target, {
@@ -76,6 +76,15 @@ export class DamageCard {
                             isDoubled: !current,
                             isHalved: !!current
                         });
+                    }
+                }
+                break;
+            case "apply-all":
+                if (game.user.isGM) {
+                    for (let entry of damageCard.targetEntries) {
+                        if (!entry.isApplied) {
+                            damageCard.applyDamage(entry.actor);
+                        }
                     }
                 }
                 break;
@@ -296,6 +305,7 @@ export class DamageCard {
         const di = points.di || 0;
         const dr = points.dr || 0;
         const dv = points.dv || 0;
+        const damagereduction = points.damagereduction;
 
         if (options.isHalved) {
             dmg = Math.floor(dmg * 0.5);
@@ -315,10 +325,11 @@ export class DamageCard {
         const newHp = Math.min(Math.max(0, Math.min(hp + tempHp - dmg, hp)) + healing, effectiveMaxHp);
         const hpDmg = Math.max(hp - newHp, 0);
         const tempHpDmg = Math.max(tempHp - newTempHp, 0);
+        const totalDmg = hpDmg + tempHpDmg;
         const hpHeal = Math.max(newHp - hp, 0);
         const tempHpRaise = Math.max(newTempHp - tempHp, 0);
 
-        return { hpDmg, tempHpDmg, hpHeal, tempHpRaise, hp, tempHp, newHp, newTempHp, di, dr, dv };
+        return { hpDmg, tempHpDmg, totalDmg, hpHeal, tempHpRaise, hp, tempHp, newHp, newTempHp, di, dr, dv, damagereduction };
     }
 
 }

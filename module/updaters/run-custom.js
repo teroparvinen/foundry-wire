@@ -1,4 +1,5 @@
 import { wireSocket } from "../socket.js";
+import { handleError, runAndAwait } from "../utils.js";
 import { Updater } from "./base-updater.js";
 
 export class RunCustomUpdater extends Updater {
@@ -11,11 +12,11 @@ export class RunCustomUpdater extends Updater {
     async process() {
         console.log("CUSTOM UPDATER", this.condition.update);
         if (this.handlerProperties.runAsTarget || game.user.isGM) {
-            const result = this.handlerProperties.fn(this.condition, this.item, this.effect, this.details);
-            if (result instanceof Promise) {
-                return await result;
+            try {
+                return runAndAwait(this.handlerProperties.fn, this.condition, this.item, this.effect, this.details);
+            } catch (error) {
+                handleError(error);
             }
-            return result
         } else {
             return await wireSocket.executeAsGM("runCustomUpdater", this.condition, this.item.uuid, this.effect?.uuid, this.details);
         }

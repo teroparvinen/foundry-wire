@@ -88,3 +88,8 @@ export function hasUnavoidableApplicationsOfType(item, applicationType, variant)
 export function hasOnlyUnavoidableEffectsOfType(item, applicationType, variant) {
     return !hasSaveableApplicationsOfType(item, applicationType, variant) && hasUnavoidableEffectsOfType(item, applicationType, variant);
 }
+
+export function isAttackMagical(item) {
+    const isActorAttackMagical = item.actor.getFlag("wire", "damage.magical");
+    return (item.type === "weapon" && item.system.properties.mgc) || item.type === "spell" || isActorAttackMagical;
+}

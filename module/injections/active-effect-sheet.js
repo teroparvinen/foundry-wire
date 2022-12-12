@@ -53,6 +53,9 @@ export function initActiveEffectSheetHooks() {
             </div>
         `;
         html.find('section[data-tab="duration"] .form-group').last().after(durationFields);
+
+        html.find('input[name^="flags.dae"]').closest('.form-group').remove();
+        html.find('.special-duration-list').parent().remove();
     });
 }
 

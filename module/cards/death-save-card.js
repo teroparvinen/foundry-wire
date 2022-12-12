@@ -1,14 +1,14 @@
 import { fromUuid, fudgeToActor, getActorToken, getSpeaker } from "../utils.js";
 
-export class ConcentrationCard {
+export class DeathSaveCard {
 
-    static templateName = "modules/wire/templates/concentration-card.hbs";
+    static templateName = "modules/wire/templates/death-save-card.hbs";
 
     static activateListeners(html) {
-        html.on("click", ".concentration-card a", this._onConcentrationCardAction.bind(this));
+        html.on("click", ".death-save-card a", this._onDeathSaveCardAction.bind(this));
     }
 
-    static async _onConcentrationCardAction(event) {
+    static async _onDeathSaveCardAction(event) {
         const button = event.currentTarget;
         button.disabled = true;
         const card = button.closest(".chat-card");
@@ -17,19 +17,19 @@ export class ConcentrationCard {
         const action = button.dataset.action;
 
         switch (action) {
-        case "concentration-save":
-            const card = ConcentrationCard.fromMessage(message);
+        case "death-save":
+            const card = DeathSaveCard.fromMessage(message);
             if (card.actor.isOwner) {
-                const roll = await card.actor.rollAbilitySave("con", { chatMessage: false, fastForward: true });
+                const options = { chatMessage: false, fastForward: true };
+                if (event.altKey) { options.advantage = true; }
+                if (event.metaKey || event.ctrlKey) { options.disadvantage = true; }
+
+                const roll = await card.actor.rollDeathSave(options);
                 await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
                 await message.setFlag("wire", "result", roll.total);
                 card.result = roll.total;
                 const content = await card._renderContent();
                 message.update({ content });
-
-                if (roll.total < card.dc) {
-                    await card.concentrationEffect.delete();
-                }
             }
             break;
         default:
@@ -41,16 +41,12 @@ export class ConcentrationCard {
 
     static fromMessage(message) {
         const data = message.flags.wire;
-        return new ConcentrationCard(fudgeToActor(fromUuid(data.actorUuid)), fromUuid(data.concentrationEffectUuid), data.damageAmount);
+        return new DeathSaveCard(fudgeToActor(fromUuid(data.actorUuid)));
     }
 
-    constructor(actor, concentrationEffect, damageAmount) {
+    constructor(actor) {
         this.actor = actor;
-        this.concentrationEffect = concentrationEffect;
-        this.damageAmount = damageAmount
     }
-
-    get dc() { return Math.max(Math.floor(this.damageAmount / 2), 10); }
 
     async make() {
         const flagData = await this._getFlagData();
@@ -73,10 +69,8 @@ export class ConcentrationCard {
 
     async _getFlagData() {
         return {
-            isConcentrationCard: true,
-            actorUuid: this.actor.uuid,
-            concentrationEffectUuid: this.concentrationEffect.uuid,
-            damageAmount: this.damageAmount
+            isDeathSaveCard: true,
+            actorUuid: this.actor.uuid
         };
     }
 
@@ -84,12 +78,9 @@ export class ConcentrationCard {
         const templateData = {
             actor: this.actor,
             token: getActorToken(this.actor),
-            damageAmount: this.damageAmount,
-            originName: fromUuid(this.concentrationEffect.origin).name,
-            dc: this.dc,
             result: this.result
         };
-        return await renderTemplate(ConcentrationCard.templateName, templateData);
+        return await renderTemplate(DeathSaveCard.templateName, templateData);
     }
 
 }

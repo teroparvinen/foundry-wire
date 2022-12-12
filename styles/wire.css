@@ -10,8 +10,14 @@
     display: none;
 }
 
-.chat-message.wire-damage-card .whisper-to {
+.chat-message.wire-damage-card .whisper-to, .chat-message.wire-concentration-card .whisper-to, .chat-message.wire-death-save-card .whisper-to {
     display: none;
+}
+
+
+.clickable-token {
+    cursor: pointer;
+    pointer-events: initial;
 }
 
 
@@ -106,11 +112,11 @@
 }
 
 .item-card .phase-attack .token-ac {
-    color: var(--secondary-color);
-    border: 1px solid var(--color-border-light-primary);
+    color: rgba(0, 0, 0, .65); /* var(--secondary-color); */
+    border: 1px solid #b5b3a4; /* var(--color-border-light-primary); */
     padding: 5px;
     border-radius: 3px;
-    background: var(--faint-white);
+    background: rgba(255, 255, 255, .2); /* var(--faint-white); */
 }
 
 .item-card .confirm-buttons {
@@ -123,7 +129,7 @@
 .item-card .confirm-buttons > * {
     flex: 1 50px;
     margin: 0;
-    border: 1px solid var(--color-border-light-tertiary);
+    border: 1px solid #7a7971; /* var(--color-border-light-tertiary); */
     background-color: rgba(0, 0, 0, 0.1);
     text-align: center;
 }
@@ -163,7 +169,7 @@
 .item-card .phase-waiting-for-roll {
     padding: 10px;
     text-align: center;
-    color: var(--icon-font);    
+    color: rgba(0, 0, 0, .4); /* var(--icon-font); */
 }
 
 @keyframes beat {
@@ -187,7 +193,7 @@
 }
 
 .item-card .waiting-for-hit {
-    color: var(--color-text-dark-3);
+    color: #444; /* var(--color-text-dark-3); */
     padding: 0 20px;
 }
 
@@ -327,13 +333,19 @@
     position: absolute;
     bottom: 3px;
     right: -7px;
-    opacity: 0.5;
-    background: rgba(255, 255, 255, 0.7);
-    padding: 3px;
+    opacity: 0.7;
+    background: rgba(255, 255, 255, 1);
+    padding: 0;
     border-radius: 50%;
+    height: 24px;
+    width: 24px;
+    line-height: 24px;
+    text-align: center;
+    font-size: 16px;
+    transition: opacity .4s;
 }
 
-.damage-card .target-image-container:hover i {
+.damage-card .target-image-container i:hover {
     opacity: 1.0;
 }
 
@@ -345,23 +357,18 @@
 
 .damage-card .target-damage-info {
     align-items: center;
+    justify-content: center;
+    padding: 0 5px;
 }
 
-.damage-card .target-damage-info .damage-state {
-    padding: 0;
+.damage-card .target-damage-info > * {
+    flex: 0;
+    white-space: nowrap;
+    padding: 0 1px;
 }
 
 .damage-card .target-damage-info > i {
     padding: 0 5px;
-}
-
-.damage-card .target-damage-info .damage-state:first-of-type {
-    text-align: right;
-}
-
-.damage-card .target-damage-info .icon {
-    color: rgba(0, 0, 0, 0.5);
-    font-size: 12px;
 }
 
 .damage-card .target-damage-info .hp, .damage-card .target-damage-info .heal {
@@ -394,7 +401,7 @@
 }
 
 .damage-card .target-buttons > a {
-    border: 1px solid var(--color-border-light-tertiary);
+    border: 1px solid #7a7971; /* var(--color-border-light-tertiary); */
     background: rgba(0, 0, 0, 0.1);
 }
 
@@ -442,6 +449,11 @@
     padding: 10px;
     font-size: 13px;
     color: rgba(0, 0, 0, 0.5);
+}
+
+.damage-card-toolbar {
+    text-align: right;
+    padding: 3px 5px;
 }
 
 
@@ -502,27 +514,27 @@
 }
 
 
-.dnd5e.chat-card.concentration-card .card-header {
+.dnd5e.chat-card.concentration-card .card-header, .dnd5e.chat-card.death-save-card .card-header {
     border: 0;
     margin-left: 5px;
 }
 
-.concentration-card .concentration-row {
+.concentration-card .concentration-row, .death-save-card .death-save-row {
     align-items: center;
     gap: 10px;
 }
 
-.concentration-card .actor-image {
+.concentration-card .actor-image, .death-save-card .actor-image {
     width: 50px;
     height: 50px;
     border: 0;
 }
 
-.concentration-card .actor-name {
+.concentration-card .actor-name, .death-save-card .actor-name {
     font-size: 14px;
 }
 
-.concentration-card .concentration-save {
+.concentration-card .concentration-save, .death-save-card .death-save {
     width: 50px;
     height: 50px;
     flex: 0 50px;
@@ -530,11 +542,11 @@
     background-size: 32px;
 }
 
-.concentration-card .concentration-save:hover {
+.concentration-card .concentration-save:hover, .death-save-card .death-save:hover {
     background-image: url(/icons/svg/d20-highlight.svg);
 }
 
-.concentration-card .concentration-save-result {
+.concentration-card .concentration-save-result, .death-save-card .death-save-result {
     white-space: nowrap;
     flex: 0 50px;
     font-size: 17px;
@@ -542,12 +554,24 @@
     text-align: center;
 }
 
-.concentration-card .concentration-save-result.success {
+.concentration-card .concentration-save-result.success, .death-save-card .death-save-result.success {
     color: green;
 }
 
-.concentration-card .taconcentrationrget-save-result.fail {
+.concentration-card .concentration-save-result.fail, .death-save-card .death-save-result.fail {
     color: red;
+}
+
+.death-save-card .death-save-status {
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.death-save-card .death-save-status .skull {
+    font-size: 20px;
 }
 
 .round-change-card {
@@ -640,7 +664,7 @@
     gap: 5px;
     color: black;
     background: url(/ui/parchment.jpg) repeat;
-    border: 1px solid var(--color-border-dark);
+    border: 1px solid #000; /* var(--color-border-dark); */
     border-radius: 3px;
 }
 

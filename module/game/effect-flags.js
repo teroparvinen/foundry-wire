@@ -1,4 +1,5 @@
 import { runInQueue } from "../action-queue.js";
+import { isAttackMagical } from "../item-properties.js";
 import { addTokenFX, deleteTokenFX, fromUuid, getActorToken, isActorEffect, isEffectEnabled, triggerConditions } from "../utils.js";
 
 export function getWireFlags() {
@@ -37,6 +38,10 @@ export function getWireFlags() {
         ...[
             "flags.wire.damage.versatile",
             "flags.wire.damage.magical"
+        ],
+        ...[
+            "flags.wire.dualWielder",
+            "flags.wire.twoWeaponFighting"
         ],
         ...Object.keys(CONFIG.DND5E.creatureTypes).flatMap(ct => [
             `flags.wire.advantage.attack.${ct}`,
@@ -89,6 +94,17 @@ export function getWireFlags() {
             `flags.wire.min.damage.${dt}`,
             `flags.wire.receive.max.damage.${dt}`,
             `flags.wire.receive.min.damage.${dt}`
+        ]),
+
+        ...[
+            "flags.wire.damagereduction.all",
+            "flags.wire.damagereduction.physical"
+        ],
+        ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
+            `flags.wire.damagereduction.${at}`,
+        ]),
+        ...[...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"].flatMap(dt => [
+            `flags.wire.damagereduction.${dt}`,
         ]),
 
         ...[
@@ -206,6 +222,19 @@ export function getDamageReceivingOptions(item, actor, damageType) {
     const minimize = hasMin && !hasMax;
 
     return { maximize, minimize };
+}
+
+export function getDamageReduction(actor) {
+    const reductionFlags = foundry.utils.mergeObject(getEffectFlags(actor)?.DR || {}, getEffectFlags(actor)?.damagereduction || {});
+    
+    const entries = {};
+
+    for (const type in reductionFlags) {
+        const amount = Math.max(0, parseInt(reductionFlags[type]) || 0);
+        entries[type] = (entries[type] || 0) + amount;
+    }
+
+    return entries;
 }
 
 export function getSaveOptions(actor, abilityId) {
@@ -358,6 +387,10 @@ export function initEffectFlagHooks() {
             }
         }
     });
+
+    Hooks.on("dnd5e.rollDeathSave", (actor, roll, details) => {
+        details.chatString = null;
+    })
 }
 
 export function setupRollFlagWrappers() {
@@ -420,7 +453,7 @@ function onActiveEffectApply(wrapped, actor, change) {
         }
     }
 
-    wrapped.apply(this, [actor, change]);
+    return wrapped.apply(this, [actor, change]);
 }
 
 async function makeRollParts(parts) {

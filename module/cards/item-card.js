@@ -25,7 +25,11 @@ export class ItemCard {
                 isSpell: item.type === "spell",
                 activation: activationData,
                 abilityNames: CONFIG.DND5E.abilities,
-                isSecondary
+                isSecondary,
+                settings: {
+                    revealSaveDc: game.settings.get("wire", "reveal-save-dc"),
+                    hideNpcSaveResults: game.settings.get("wire", "hide-npc-save-results")
+                }
             };
             return await renderTemplate(this.templateName, templateData);
         }
@@ -88,12 +92,18 @@ export class ItemCard {
             case "wire-damage":
                 activation._rollDamage();
                 break;
+            case "wire-damage-offhand":
+                activation._rollDamage({ damageOffhand: true });
+                break;
+            case "wire-damage-versatile":
+                activation._rollDamage({ damageVersatile: true });
+                break;
             case "wire-damage-configure":
                 const options = {
                     top: event ? event.clientY - 80 : null,
                     left: window.innerWidth - 610
                 }
-                activation._rollDamage(true, options);
+                activation._rollDamage({}, true, options);
                 break;
             case "wire-save":
             case "wire-save-success":

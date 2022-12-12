@@ -2,35 +2,52 @@
     {{#unless targets.length}}
         <div class="damage-card-empty">{{localize "wire.ui.no-damage"}}</div>    
     {{/unless}}
+    {{#if (and isGM (gt targets.length 1))}}
+        <div class="damage-card-toolbar">
+            <a data-action="apply-all">{{localize "wire.ui.apply-all-damage"}}</a>
+        </div>
+    {{/if}}
     {{#each targets}}
         <div class="damage-card-target" data-actor-uuid="{{actor.uuid}}">
             <div class="damage-card-target-details flexrow">
                 <div class="flex0 target-image-container">
-                    <img class="target-image" src="{{token.texture.src}}" title="{{token.name}}" />
-                    <i class="fas fa-ellipsis-h fa-xs"></i>
+                    <img class="target-image clickable-token" data-token-uuid="{{token.uuid}}" src="{{token.texture.src}}" title="{{token.name}}" />
+                    <i class="fas fa-ellipsis-h fa-xs expand-toggle"></i>
                 </div>
                 <div class="flex1 target-damage-info flexrow">
-                    <div class="flexcol damage-state">
-                        <div>
-                            <span class="icon"><i class="fas fa-heart"></i></span>
-                            <span class="hp">{{info.hp}}</span>{{#if (gt info.tempHp 0)}}+<span class="temphp">{{info.tempHp}}</span>{{/if}}
-                        </div>
-                        <div>
-                            {{#if (or (gt info.hpDmg 0) (gt info.tempHpDmg 0))}}
-                                <span class="icon"><i class="fas fa-tint"></i></span>
-                                <span class="damage">{{info.hpDmg}}</span>{{#if (gt info.tempHpDmg 0)}}+<span class="temphp">{{info.tempHpDmg}}</span>{{/if}}
-                            {{/if}}
-                            {{#if (or (gt info.hpHeal 0) (gt info.tempHpRaise 0))}}
-                                <span class="icon"><i class="fas fa-plus"></i></span>
-                                <span class="heal">{{info.hpHeal}}</span>{{#if (gt info.tempHpRaise 0)}}+<span class="temphp">{{info.tempHpRaise}}</span>{{/if}}
-                            {{/if}}
-                        </div>
+                    <div class="flex0 target-damage-info-block flexrow">
+                        <span class="hp">{{info.hp}}</span>
+                        {{#if (gt info.tempHp 0)}}
+                            <span>+</span>
+                            <span class="temphp">{{info.tempHp}}</span>
+                        {{/if}}
+
+                        {{~#if (gt info.totalDmg 0)}}
+                            <span>-</span>
+                            <span class="damage">{{info.totalDmg}}</span>
+                        {{/if~}}
+                        {{~#if (gt info.hpHeal 0)}}
+                            <span>+</span>
+                            <span class="heal">{{info.hpHeal}}</span>
+                        {{/if~}}
+                        {{~#if (gt info.tempHpRaise 0)}}
+                            <span>+</span>
+                            <span class="temphp">{{info.tempHpRaise}}</span>
+                        {{/if}}
                     </div>
+
                     <i class="fas fa-arrow-right flex0"></i>
-                    <div class="damage-state">
-                        <span class="icon"><i class="fas fa-heart"></i></span>
-                        <span class="hp">{{info.newHp}}</span>{{#if (gt info.newTempHp 0)}}+<span class="temphp">{{info.newTempHp}}</span>{{/if}}
-                        {{#if (eq info.newHp 0)}}<i class="fas fa-skull dead"></i>{{/if}}
+
+                    <div class="flex0 target-damage-info-block flexrow">
+                        {{#if (eq info.newHp 0)}}
+                            <i class="fas fa-skull dead"></i>
+                        {{else}}
+                            <span class="hp">{{info.newHp}}</span>
+                            {{#if (gt info.newTempHp 0)}}
+                                <span>+</span>
+                                <span class="temphp">{{info.newTempHp}}</span>
+                            {{/if}}
+                        {{/if}}
                     </div>
                 </div>
                 <div class="target-buttons flexrow">
@@ -50,6 +67,7 @@
             </div>
             {{#if (or ../isGM actor.hasPlayerOwner)}}
                 <div class="damage-card-target-modifiers">
+                    {{#if info.damagereduction}}{{localize "wire.ui.damagereduction"}} -{{info.damagereduction}}{{/if}}
                     {{#if info.di}}{{localize "wire.ui.di"}} -{{info.di}}{{/if}}
                     {{#if info.dr}}{{localize "wire.ui.dr"}} -{{info.dr}}{{/if}}
                     {{#if info.dv}}{{localize "wire.ui.dv"}} +{{info.dv}}{{/if}}

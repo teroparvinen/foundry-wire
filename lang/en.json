@@ -11,6 +11,7 @@
             "halve-damage": "Half",
             "double-damage": "Double",
             "damage-conflicted": "Needs recalculation",
+            "apply-all-damage": "Apply to all",
             "saving-throw-heading": "{ability} Saving Throw",
             "ability-check-heading": "{ability} Check",
             "roll-all-saves": "Roll all",
@@ -21,13 +22,16 @@
             "di": "Immunity",
             "dr": "Resistance",
             "dv": "Vulnerability",
+            "damagereduction": "Reduction",
             "no-damage": "No damage was done",
             "end-concentration-dialog-title": "End Concentration?",
             "end-concentration-dialog-content": "You are concentrating on {originName}. Are you sure you want to cast another concentration spell to replace it?",
             "activate-reaction": "Take a reaction",
             "activate-action": "Take an action",
             "concentration-save-header": "Concentration Save DC {dc}",
+            "death-save-header": "Death Save",
             "temporary-hp": "Temporary HP",
+            "off-hand": "Off hand",
             "declare-roll-as-damage-targeted": "Declare as damage to targeted tokens",
             "declare-roll-as-damage-selected": "Declare as damage to selected tokens",
             "recreate-template": "Recreate the area template",
@@ -168,9 +172,27 @@
             "could-not-parse-bonus-damage": "Could not parse bonus damage!",
             "resolve-performAttackRoll-noTarget": "Attack has no target!"
         },
+        "settings": {
+            "wounded-threshold": "HP percentage to apply \"Wounded\" condition to NPCs",
+            "wounded-threshold-hint": "(Convenient Effects required) When an NPC's hit points fall to below or equal to this percent of maximum hit points, The \"Wounded\" condition is applied. If a \"Damaged\" condition is available, it is applied whenever an NPC takes any damage at all.",
+            "round-change-notifications": "Show round change notifications",
+            "turn-change-notifications": "Show turn change notifications",
+            "reveal-npc-turn-change": "Reveal NPC turn change notifications to players",
+            "reveal-npc-turn-change-hint": "NPC combatants who are hidden in the combat tracker will not be shown even if this setting is enabled.",
+            "reveal-save-dc": "Reveal save DCs to players",
+            "reveal-save-dc-hint": "Players will always see DCs for player abilities. This will reveal DCs for NPC abilities when saves are required from PCs.",
+            "hide-npc-save-results": "Hide NPC save results",
+            "hide-npc-save-results-hint": "Without this option, players will see if NPCs targeted by their spells/abilities fail or succeed saves. Select this to hide the result."
+        },
         "keybindings": {
             "next-turn": "Next turn",
-            "previous-turn": "Previous turn"
+            "previous-turn": "Previous turn",
+            "confirm-attack-hit": "Confirm attack hit",
+            "confirm-attack-hit-hint": "Confirms the latest attack that needs an attack roll confirmation as ahit",
+            "confirm-attack-miss": "Confirm attack miss",
+            "confirm-attack-miss-hint": "Confirms the latest attack that needs an attack roll confirmation as a miss",
+            "confirm-attack-auto": "Confirm attack to use calculated result",
+            "confirm-attack-auto-hint": "Confirms the latest attack that needs an attack roll confirmation to either hit or miss based on a comparison with the target AC"
         },
         "compendium": {
             "pack-item": {
