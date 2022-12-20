@@ -108,7 +108,7 @@
 
         {{#if (or (eq activation.state "waiting-for-saves") activation.saves.length)}}
             {{#*inline "target-save-row"}}
-                <div class="saving-throw-target flexrow" data-actor-id="{{actor.uuid}}">
+                <div class="saving-throw-target flexrow {{#unless (arrayLookup ../activation.saves "actor" actor)}}needs-roll{{/unless}}" data-actor-id="{{actor.uuid}}">
                     <img class="flex0 target-image clickable-token" data-token-uuid="{{token.document.uuid}}" src="{{token.document.texture.src}}" />
                     <div class="flex1 target-name">{{token.name}}</div>
                     {{#if (arrayLookup ../activation.saves "actor" actor)}}
@@ -175,15 +175,23 @@
 
                 <div>
                     {{#if (or isGM hasPlayerOwner)}}
-                        {{#each activation.allTargets}}
-                            {{#if (or ../isGM (not token.document.hidden))}}
-                                {{> target-save-row }}
-                            {{/if}}
-                        {{/each}}
+                        {{#if activation.allTargets.length}}
+                            {{#each activation.allTargets}}
+                                {{#if (or ../isGM (not token.document.hidden))}}
+                                    {{> target-save-row }}
+                                {{/if}}
+                            {{/each}}
+                        {{else}}
+                            <div class="saving-throws-no-target">{{localize "wire.ui.no-targets"}}</div>
+                        {{/if}}
                     {{else}}
-                        {{#each activation.pcTargets}}
-                            {{> target-save-row }}
-                        {{/each}}
+                        {{#if activation.pcTargets.length}}
+                            {{#each activation.pcTargets}}
+                                {{> target-save-row }}
+                            {{/each}}
+                        {{else}}
+                            <div class="saving-throws-no-target">{{localize "wire.ui.no-targets"}}</div>
+                        {{/if}}
                     {{/if}}
                 </div>
             </div>
@@ -212,7 +220,7 @@
 
     <div class="card-buttons">
         {{#unless (or isGMActorPlayerView isPlayerView)}}
-            {{#if (or (eq activation.state "waiting-for-attack-damage-roll") (eq activation.state "waiting-for-save-damage-roll"))}}
+            {{#if (or (eq activation.state "waiting-for-attack-damage-roll") (eq activation.state "waiting-for-save-damage-roll") (and isGM settings.damageRollConfirmsHit (eq activation.state "waiting-for-attack-result") (eq activation.nextState "performAttackDamageRoll") (not actor.hasPlayerOwner)))}}
                 <div class="flexrow small-gap">
                     <button class="flex1" data-action="wire-damage">
                         {{#if activation.damage.isTempHps}}

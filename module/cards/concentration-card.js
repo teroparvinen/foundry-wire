@@ -20,7 +20,7 @@ export class ConcentrationCard {
         case "concentration-save":
             const card = ConcentrationCard.fromMessage(message);
             if (card.actor.isOwner) {
-                const roll = await card.actor.rollAbilitySave("con", { chatMessage: false, fastForward: true });
+                const roll = await card.actor.rollAbilitySave("con", { chatMessage: false, fastForward: true, isConcentration: true });
                 await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
                 await message.setFlag("wire", "result", roll.total);
                 card.result = roll.total;

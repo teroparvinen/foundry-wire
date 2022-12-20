@@ -13,11 +13,11 @@ import { initItemSheetHooks, setupItemSheetWrappers } from "./injections/item-sh
 import { setupKeybindings } from "./keybindings.js";
 import { setupSocket } from "./socket.js";
 import { setupWrappers } from "./wrappers.js";
-import { placeTemplate } from "./preroll.js";
 import { fromUuid } from "./utils.js";
 import { createChildEffects, removeChildEffects } from "./game/active-effects.js";
 import { initSettings } from "./settings.js";
-import { setupCompendiumHooks } from "./compendiums.js";
+import { getAvailablePackImports, importPackItems, setupCompendiumHooks } from "./compendiums.js";
+import { initTemplateHooks, placeTemplate, setupTemplateWrappers } from "./templates.js";
 
 Hooks.once("init", () => {
     initHooks();
@@ -27,6 +27,7 @@ Hooks.once("init", () => {
 
     initItemSheetHooks();
     initActiveEffectSheetHooks();
+    initTemplateHooks();
 
     initAreaConditionHooks();
     initRegularRollHooks();
@@ -41,7 +42,9 @@ Hooks.once("init", () => {
         runInQueue,
         fromUuid,
         removeChildEffects,
-        createChildEffects
+        createChildEffects,
+        getAvailablePackImports,
+        importPackItems
     }
 });
 
@@ -50,26 +53,44 @@ Hooks.once("setup", () => {
     setupItemSheetWrappers();
     setupActiveEffectSheetWrappers();
     setupRollFlagWrappers();
+    setupTemplateWrappers();
     setupSocket();
     setupActionQueue();
     setupKeybindings();
     setupCompendiumHooks();
 });
 
-Hooks.once("ready", () => {
+Hooks.once("ready", async () => {
     readyCharacterSheetWrappers();
 
-    checkBetaWarning();
+    await checkBetaWarning();
+    await checkItemMacroSettings();
 });
 
-function checkBetaWarning() {
+async function checkBetaWarning() {
     if (game.user.isGM && !game.settings.get("wire", "beta-warning-displayed")) {
-        let d = Dialog.confirm({
+        await Dialog.confirm({
             title: game.i18n.localize("wire.beta-warning.title"),
             content: game.i18n.localize("wire.beta-warning.content"),
             yes: () => { game.settings.set("wire", "beta-warning-displayed", true) },
             no: () => {},
             defaultYes: false
+        });
+    }
+}
+
+async function checkItemMacroSettings() {
+    if (game.user.isGM && game.modules.get("itemacro")?.active && (game.settings.get("itemacro", "charsheet") || game.settings.get("itemacro", "defaultmacro"))) {
+        await Dialog.confirm({
+            title: game.i18n.localize("wire.module-check.itemacro-title"),
+            content: game.i18n.localize("wire.module-check.itemacro-content"),
+            yes: () => {
+                game.settings.set("itemacro", "charsheet", false);
+                game.settings.set("itemacro", "defaultmacro", false);
+                setTimeout(() => window.location.reload(), 500);
+            },
+            no: () => {},
+            defaultYes: true
         });
     }
 }

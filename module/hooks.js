@@ -9,8 +9,9 @@ import { updateCombatTurnEndConditions, updateCombatTurnStartConditions } from "
 import { applySingleEffect } from "./game/active-effects.js";
 import { getDisplayableAttackComponents } from "./game/attack-components.js";
 import { getStaticAttackOptions, getWireFlags } from "./game/effect-flags.js";
-import { createTemplate } from "./preroll.js";
-import { areAllied, areEnemies, fromUuid, i18n, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, tokenSeparation } from "./utils.js";
+import { createTemplate } from "./templates.js";
+import { makeUpdater } from "./updater-utility.js";
+import { areAllied, areEnemies, evaluateFormula, fromUuid, getActorToken, i18n, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, isItemActorOnCanvas, tokenSeparation, triggerConditions } from "./utils.js";
 
 export function initHooks() {
     Hooks.on("renderChatLog", (app, html, data) => {
@@ -88,26 +89,66 @@ export function initHooks() {
         if (message.getFlag("wire", "isDeathSaveCard")) {
             html[0].classList.add("wire-death-save-card");
         }
+        if (message.getFlag("wire", "isConditionCard")) {
+            if (message.getFlag("wire", "wasUpdated")) {
+                html[0].classList.remove("wire-hidden-condition-card");
+            } else {
+                html[0].classList.add("wire-hidden-condition-card");
+            }
+        }
+    });
+
+    async function teardownMasterEffect(effect, clean) {
+        const templateUuid = effect.getFlag("wire", "templateUuid");
+        if (templateUuid) {
+            const template = fromUuid(templateUuid);
+            await template?.delete();
+        }
+
+        const childEffectUuids = effect.getFlag("wire", "childEffectUuids");
+        if (childEffectUuids && childEffectUuids.length) {
+            for (let uuid of childEffectUuids) {
+                await fromUuid(uuid)?.delete();
+            }
+        }
+
+        if (clean) {
+            await effect.unsetFlag("wire", "templateUuid");
+            await effect.unsetFlag("wire", "childEffectUuids");
+            await effect.unsetFlag("wire", "isMasterEffect");
+        }
+    }
+
+    async function triggerTransferEffect(effect) {
+        const condition = effect.flags.wire?.conditions?.find(c => c.condition === "effect-created");
+        if (condition) {
+            const updater = makeUpdater(condition, effect, fromUuid(effect.origin));
+            await updater?.process();
+        }
+    }
+
+    Hooks.on("preCreateActiveEffect", (effect, data, options, user) => {
+        if (data.transfer) {
+            effect.updateSource({
+                "flags.wire.wasTransferred": true,
+                "flags.wire.isMasterEffect": true
+            });
+        }
+    });
+
+    Hooks.on("createActiveEffect", async (effect, options, user) => {
+        if (user === game.user.id && effect.flags.wire?.wasTransferred && isEffectEnabled(effect) && isActorEffect(effect) && getActorToken(effect.parent)) {
+            await triggerTransferEffect(effect);
+        }
     });
 
     Hooks.on("deleteActiveEffect", async (effect, options, user) => {
         if (game.user.isGM && isActorEffect(effect)) {
             // Master effect deleted
             if (effect.getFlag("wire", "isMasterEffect")) {
-                const templateUuid = effect.getFlag("wire", "templateUuid");
-                if (templateUuid) {
-                    const template = fromUuid(templateUuid);
-                    await template?.delete();
-                }
-    
-                const childEffectUuids = effect.getFlag("wire", "childEffectUuids");
-                if (childEffectUuids && childEffectUuids.length) {
-                    for (let uuid of childEffectUuids) {
-                        await fromUuid(uuid)?.delete();
-                    }
-                }
+                teardownMasterEffect(effect);
             }
-
+    
             // Turn update linked effect deleted
             const casterUuid = effect.getFlag("wire", "castingActorUuid");
             if (casterUuid) {
@@ -123,12 +164,105 @@ export function initHooks() {
         }
     });
 
-    Hooks.on("updateActiveEffect", async(effect, changes, options, user) => {
+    Hooks.on("updateActiveEffect", async (effect, changes, options, user) => {
         if (game.user.isGM && changes.disabled !== undefined && isAuraEffect(effect)) {
             updateAuras();
         }
+
+        if (user === game.user.id && changes.disabled !== undefined && effect.flags.wire?.wasTransferred && isActorEffect(effect)) {
+            if (isEffectEnabled(effect) && getActorToken(effect.parent)) {
+                await effect.setFlag("wire", "isMasterEffect", true);
+                await triggerTransferEffect(effect);
+            } else {
+                teardownMasterEffect(effect, true);
+            }
+        }
     });
 
+    Hooks.on("createToken", async (tokenDoc, options, user) => {
+        if (user === game.user.id) {
+            const actor = tokenDoc.actor;
+
+            const deletions = actor.effects
+                .filter(e => e.flags.wire?.wasTransferred)
+                .map(e => e.id);
+            const additions = actor.items
+                .map(item => {
+                    return item.effects
+                        .filter(e => e.transfer)
+                        .map(e => e.toObject(false))
+                        .map(data => {
+                            return foundry.utils.mergeObject(data, {
+                                "origin": item.uuid,
+                                "disabled": tokenDoc.hidden
+                            });
+                        })
+                    })
+                .flatMap(e => e);
+    
+            if (deletions.length > 0) {
+                runInQueue(actor.deleteEmbeddedDocuments.bind(actor), "ActiveEffect", deletions);
+            }
+            if (additions.length > 0) {
+                runInQueue(actor.createEmbeddedDocuments.bind(actor), "ActiveEffect", additions);
+            }
+        }
+    });
+
+    Hooks.on("deleteToken", (tokenDoc, options, user) => {
+        if (game.user.isGM) {
+            const actor = tokenDoc.actor;
+
+            actor.effects
+                .filter(e => e.flags.wire?.isMasterEffect)
+                .forEach(effect => {
+                    teardownMasterEffect(effect);
+                });
+        }
+    });
+
+    Hooks.on("updateItem", (item, updates, options, user) => {
+        if (!item.isOwned)
+            return true;
+        if (user !== game.user.id)
+            return true;
+        if (options.isAdvancement) {
+            return;
+        }
+
+        const actor = item.parent;
+
+        if (!updates.effects || !game.modules.get("dae")?.active) {
+            const itemUuid = item.uuid;
+
+            const deletions = actor.effects
+                .filter(e => e.flags?.wire?.wasTransferred && e.origin === itemUuid)
+                .map(e => e.id);
+            const additions = item.effects
+                .filter(e => e.flags?.wire?.wasTransferred || e.transfer)
+                .map(e => e.toObject(false))
+                .map(data => {
+                    const updates = {
+                        "flags.wire.wasTransferred": true,
+                        "origin": itemUuid
+                    };
+                    if (game.modules.get("dae")?.active) {
+                        updates["flags.dae.transfer"] = true;
+                    }
+                    return foundry.utils.mergeObject(data, updates);
+                });
+
+            if (deletions.length > 0) {
+                runInQueue(actor.deleteEmbeddedDocuments.bind(actor), "ActiveEffect", deletions);
+            }
+            if (additions.length > 0) {
+                runInQueue(actor.createEmbeddedDocuments.bind(actor), "ActiveEffect", additions);
+            }
+        }
+
+        return true;
+    });
+    
     Hooks.on("deleteMeasuredTemplate", (template, options, user) => {
         if (template.user === game.user) {
             const attachedTokenId = template.getFlag("wire", "attachedTokenId");
@@ -265,24 +399,29 @@ export function initHooks() {
                 },
                 callback: async li => {
                     const message = game.messages.get(li.data("messageId"));
-                    const masterEffectUuid = message?.flags.wire?.activation?.masterEffectUuid;
-                    const effect = fromUuid(masterEffectUuid);
-                    if (effect) {
-                        const item = fromUuid(effect.origin);
-                        const template = fromUuid(effect.flags.wire?.templateUuid);
+                    const activation = new Activation(message);
+                    if (activation) {
+                        const item = activation.item;
+                        const template = fromUuid(activation.templateUuid);
                         if (item.hasAreaTarget && !template) {
-                            const templateData = await createTemplate(item, true);
+                            const templateData = await createTemplate(item, activation.config, activation.applicationType, { disableTargetSelection: true });
                             if (templateData) {
-                                const fullData = foundry.utils.mergeObject(templateData, { "flags.wire.masterEffectUuid": effect.uuid });
-                                const results = await game.scenes.current.createEmbeddedDocuments("MeasuredTemplate", [templateData]);
-                                const template = results[0];
-                                await effect.setFlag("wire", "templateUuid", template.uuid);
+                                await activation._assignTemplateData(templateData);
+                                await activation._finalizeUpdate();
                             }
                         }
                     }
                 }
             }
         );
+    });
+
+    Hooks.on("renderAbilityUseDialog", async (app, html) => {
+        if (isItemActorOnCanvas(app.item)) {
+            html.find('input[name="createMeasuredTemplate"]').closest('.form-group').remove();
+            html.css({ height: '' });
+            app.setPosition();
+        }
     });
 
     Hooks.on("actorItemHoverIn", async (item, html) => {
@@ -386,41 +525,49 @@ async function updateAuras() {
 
     for (let source of auraSources) {
         const item = fromUuid(source.effect.origin);
-        const range = item?.system.target?.value;
         const auraToken = source.token;
         const sourceUuid = source.effect.uuid;
 
-        auraEffects = auraEffects.filter(e => e.flags.wire?.auraSourceUuid !== sourceUuid)
-        
-        if (range) {
-            const disposition = source.effect.flags.wire.auraTargets;
-            let targets = [];
+        const rollData = foundry.utils.mergeObject(item.getRollData(), item.flags.wire?.activationConfig || {});
+        const targetValue = getProperty(item, "flags.wire.override.target.value") || getProperty(item, "system.target.value");
+        if (targetValue) {
+            let range = evaluateFormula(targetValue, rollData);
+            if (item.system.target?.units == "rect") {
+                range = Math.hypot(range, range);
+            }
+    
+            auraEffects = auraEffects.filter(e => e.flags.wire?.auraSourceUuid !== sourceUuid)
+            
+            if (range) {
+                const disposition = source.effect.flags.wire.auraTargets;
+                let targets = [];
 
-            for (let token of tokens) {
-                const isInRange = tokenSeparation(auraToken, token) <= range;
-                const existingEffect = token.actor.effects.find(effect => effect.origin === source.effect.origin)
+                for (let token of tokens) {
+                    const isInRange = tokenSeparation(auraToken, token) <= range;
+                    const existingEffect = token.actor.effects.find(effect => effect.origin === source.effect.origin)
 
-                if (!isInRange && existingEffect) {
-                    await existingEffect.delete();
-                } else if (isInRange && !existingEffect) {
-                    let dispositionCheck = false;
-                    if (disposition === "ally" && areAllied(auraToken.actor, token.actor)) { dispositionCheck = true; }
-                    else if (disposition === "enemy" && areEnemies(auraToken.actor, token.actor)) { dispositionCheck = true; }
-                    else if (disposition === "creature") { dispositionCheck = true; }
+                    if (!isInRange && existingEffect) {
+                        await existingEffect.delete();
+                    } else if (isInRange && !existingEffect) {
+                        let dispositionCheck = false;
+                        if (disposition === "ally" && areAllied(auraToken.actor, token.actor)) { dispositionCheck = true; }
+                        else if (disposition === "enemy" && areEnemies(auraToken.actor, token.actor)) { dispositionCheck = true; }
+                        else if (disposition === "creature") { dispositionCheck = true; }
 
-                    if (dispositionCheck) {
-                        targets.push(token.actor);
+                        if (dispositionCheck) {
+                            targets.push(token.actor);
+                        }
                     }
                 }
-            }
 
-            if (targets.length) {
-                const masterEffectUuid = source.effect.flags.wire?.masterEffectUuid;
-                const masterEffect = masterEffectUuid ? fromUuid(masterEffectUuid) : null;
-                const extraData = {
-                    "flags.wire.auraSourceUuid": source.effect.uuid
+                if (targets.length) {
+                    const masterEffectUuid = source.effect.flags.wire?.masterEffectUuid;
+                    const masterEffect = masterEffectUuid ? fromUuid(masterEffectUuid) : null;
+                    const extraData = {
+                        "flags.wire.auraSourceUuid": source.effect.uuid
+                    }
+                    await applySingleEffect(source.effect, targets, masterEffect, {}, extraData);
                 }
-                await applySingleEffect(source.effect, targets, masterEffect, {}, extraData);
             }
         }
     }

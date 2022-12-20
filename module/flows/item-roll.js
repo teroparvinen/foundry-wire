@@ -1,63 +1,9 @@
+import { friendlyTarget, nonAttack, secondary } from "./common.js"
 
 export function itemRollFlow() {
-    const friendlyTarget = this.applyDefaultTargetsAsEffective(
-        this.sequence(
-            this.performSaveDamageRoll(
-                this.applyDamage()
-            ),
-            this.applyEffects()
-        )
-    )
-
-    const nonAttack = this.pick(
-        this.isSave(
-            this.performSavingThrow(
-                this.hasDamage(
-                    this.performSaveDamageRoll(
-                        this.sequence(
-                            this.applyDamage(),
-                            this.applyEffects()
-                        )
-                    )
-                ),
-                this.applyEffects()
-            )
-        ),
-        this.otherwise(
-            friendlyTarget
-        )
-    )
-    
-    const secondary = this.pick(
-        this.hasSaveableApplications(
-            this.performSavingThrow(
-                this.hasDamage(
-                    this.performSaveDamageRoll(
-                        this.sequence(
-                            this.applyDamage(),
-                            this.applyEffects()
-                        )
-                    )
-                ),
-                this.applyEffects()
-            )
-        ),
-        this.hasDamage(
-            this.applyDefaultTargetsAsEffective(
-                this.performSaveDamageRoll(
-                    this.sequence(
-                        this.applyDamage(),
-                        this.applyEffects()
-                    )
-                )
-            )
-        ),
-        this.applyEffects()
-    )
-
     const immediate = this.pick(
         this.isConditionTriggered(
-            secondary
+            secondary.apply(this)
         ),
         this.sequence(
             this.hasDuration(
@@ -90,7 +36,7 @@ export function itemRollFlow() {
                                 )
                             ),
                             this.otherwise(
-                                nonAttack
+                                nonAttack.apply(this)
                             )
                         )
                     )
@@ -98,12 +44,12 @@ export function itemRollFlow() {
                 this.hasAreaTarget(
                     this.hasDamageOrEffects(
                         this.confirmTargets(
-                            nonAttack
+                            nonAttack.apply(this)
                         )
                     )
                 ),
                 this.isSelfTarget(
-                    friendlyTarget
+                    friendlyTarget.apply(this)
                 )
             )
         )
@@ -114,10 +60,10 @@ export function itemRollFlow() {
             immediate
         ),
         this.isDelayedApplication(
-            secondary
+            secondary.apply(this)
         ),
         this.isOverTimeApplication(
-            secondary
+            secondary.apply(this)
         )
     )
 }

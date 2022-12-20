@@ -1,5 +1,68 @@
 # Changes by version number
 
+### 0.10.4
+
+Changes
+
+- Item variants can now be created directly from the item sheet without having to write a macro script
+    - In addition to being more casual user friendly, this will allow different activation flows for different variants
+    - Added the `isVariant` activation flow step to branch based on variant activated.
+    - The `selectVariant` method is still there, but it may go deprecated in the future
+- New setting, "Damage roll confirms hit"
+    - When selected, the GM rolling attacks for NPCs is also shown the damage buttons when the result of the attack is prompted. Clicking a damage button automatically calls the attack a hit and rolls damage, saving the GM a click. This will only happen if the application flow is the usual attack style flow, and won't have any effect for custom flows that do something else or attacks that don't have damage (like Ray of Enfeeblement).
+- Sometimes you need to Lightning Bolt that corridor just in case. You can now confirm targeting with no targets selected. You'll be prompted to make sure it wasn't a mistake.
+- Template handling changes
+    - Circular templates with a range of Self (that will get attached to the casting token) now get their size calculated by taking into account the token size and extending out from the edge of the squares occupied by the token. For example, Spirit Guardians will extend 15' from the edge of the token, meaning that the template will be 7 squares at its widest point for a human cleric and 9 squares for a Cloud Giant cleric.
+    - Removed the "Place measured template" selection option from the ability use dialog, because many abilities set up with WIRE that expect a template don't work properly without one.
+    - Added the script method `skipTemplatePlacement` to provide an option to not place a template immediately
+    - Added an activation flow step `placeTemplate` to allow the template to be placed later in the flow.
+    - Added an activation flow step `removeSelfTarget` that untargets the caster if it is currently targeted. This is useful with template based items that originate from the caster or should not affect the caster.
+- A focus on passive abilities
+    - To make more powerful passive abilities possible, items show the Range and Target fields even when Activation is empty.
+        - This only happens if the item has conditions or at least one effect with transfer enabled.
+        - This is especially handy in a custom application flow with transfer effects. For example, this could automatically create a template (using the target size) centered on the character and apply damage and effects, making it possible to do things like monster auras that do damage to characters nearby.
+    - Items that have active effects that are marked transferable ("Transfer effect to actor" or "Transfer to actor on item equip" with DAE) now support most relevant conditions when active.
+    - A new condition is available for transfer effects: "The effect is created". This makes it possible to start all kinds of things automatically, like attaching a template to a monster when it is placed in the scene.
+        - The transfer effects will be disabled if the token is dropped hidden (alt pressed) to not create templates and such. Enable the effect to trigger the creation condition.
+    - The template handling changes mentioned above are quite powerful when combined with the rest of the passive ability changes. They make it possible to create templates from passives. For example:
+        - Create a template at the start of the monster's turn, damaging everything around it
+        - Create a template when the monster token is placed on the map, causing damage or effects on any token entering the template area
+        - Some concrete examples:
+            - The Ghast's Stench
+            - The Ice Mephit's Death Burst
+            - The Balor's Fire Aura
+    - Samples of these will be available in the content modules in the near future.
+- Made condition triggered cards a little less spammy. The card will only show up if and when there is something to interact with.
+- Added two API functions to help other modules import compendium items:
+    - `game.wire.getAvailablePackImports(actor)`
+        - Takes an actor instance as a parameter
+        - Returns an object with two keys, `upgradeableItems` and `replaceableItems`. Both contain an array of objects with the keys `actorItem` and `packItem`, representing pairs of items, one that is on the actor and the item in the packs that can be imported to replace it.
+        - Upgradeable items are ones that have previously been imported and now have a new version available, while replaceable items are ones that never were but have a match with a similar name and item type in one of the packs.
+        - Note that actor items may appear more than once in this list, if a match is found in multiple compendiums.
+    - `game.wire.importPackItems(actor, entries)`
+        - Takes an actor instance and an array of importable entries (see above) as parameters.
+        - Use the entries from `getAvailablePackImports` to get relevant entries and filter and flatten to a single array as necessary
+- Item macro API additions
+    - Custom application flow steps can now call `activation.stop()` to stop processing and skip all future steps.
+    - `this.defaultFlow()` is useful for applying the regular processing after some initial custom steps. Added some similar prepackaged flows that skip a part of the whole tree and are guaranteed to do one thing while still avoiding the need to write down several steps that are usually executed together. I would love to hear any feedback about things like this.
+        - `this.areaEffectFlow()` places a template if one has not yet been created, applies targets, does saves and damage rolls and finally applies effects and damage
+        - `this.singleTargetFlow()` does an attack or save, rolls damage if necessary and applies effects and damage
+
+Fixes
+
+- The item details tab incorrectly offered a "Start of caster's turn" condition. It now offers the "Start of target's turn" condition instead.
+    - The "Start of caster's turn" condition applies to things happening to characters other than the caster on the caster's turn
+    - The "target" of conditions on the details page should be visualized as the target of the concentration effect (or similar), i.e. the original caster
+- Concentration saves now properly apply advantage and disadvantage from concentration flags.
+- NPC sheets now have access to the WIRE compendium importer tool
+- For players, the compendium importer tool only lists items from compendia the GM has set visibile
+- Corrected a bug in the aura radius calculation
+- Auras affecting enemies no longer affect the aura bearer
+- When a token with an active spell is removed, the effects of the spell are removed from the scene
+- Fixed a v10 regression issue preventing the item Target value field from accepting a formula with variables
+- Item Macro is an essential tool for setting up WIRE items, but a couple of the execution options it offers directly conflict with WIRE. A warning dialog now appears if starting with these settings enabled and offers to remedy the situation.
+- The best intentions sometimes are no substitute for proper testing. Previously existing Midi-QOL flags on effects with a similar scheme in WIRE should now work better.
+
 ### 0.10.3
 
 Fixes

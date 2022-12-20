@@ -1,12 +1,15 @@
+import { areaEffectFlow } from "./flows/area-effect.js";
 import { itemRollFlow } from "./flows/item-roll.js";
+import { singleTargetFlow } from "./flows/single-target.js";
 import { hasConcentration, hasDamageOfType, hasDuration, hasEffectsOfType, hasSaveableApplicationsOfType, isAttack, isSave, isSelfTarget, isTokenTargetable } from "./item-properties.js";
 import { handleError } from "./utils.js";
 
 export class Flow {
-    constructor(item, applicationType, evaluator, { allowMacro = true, isConditionTriggered = false } = {}) {
+    constructor(item, applicationType, evaluator, { variant = null, allowMacro = true, isConditionTriggered = false } = {}) {
         this.item = item;
         this.applicationType = applicationType;
         this.evaluator = evaluator;
+        this.variant = variant;
         this.allowMacro = allowMacro;
         this.isConditionTrigger = isConditionTriggered;
 
@@ -181,6 +184,12 @@ export class Flow {
         }
     }
 
+    isVariant(variant) {
+        if (this.variant === variant) {
+            return this.pick(...arguments);
+        }
+    }
+
     // Operations
 
     applyConcentration() {
@@ -255,6 +264,14 @@ export class Flow {
         return ["performSavingThrow", ...this.chain(this.pick(...arguments))];
     }
 
+    placeTemplate() {
+        return ["placeTemplate", ...this.chain(this.pick(...arguments))];
+    }
+
+    removeSelfTarget() {
+        return ["removeSelfTarget", ...this.chain(this.pick(...arguments))];
+    }
+
     removeTemplate() {
         return ["removeTemplate", ...this.chain(this.pick(...arguments))];
     }
@@ -263,10 +280,18 @@ export class Flow {
         return ["triggerAction", ...this.chain(this.pick(...arguments))];
     }
 
-    // Default flows
+    // Prepared flows
 
     defaultFlow() {
         return itemRollFlow.apply(this);
+    }
+
+    areaEffectFlow(options = {}) {
+        return areaEffectFlow.apply(this, [options]);
+    }
+
+    singleTargetFlow() {
+        return singleTargetFlow.apply(this);
     }
 
     // Pre-roll options
@@ -281,6 +306,10 @@ export class Flow {
 
     skipConfigurationDialog() {
         this.preRollOptions["skipConfigurationDialog"] = true;
+    }
+
+    skipTemplatePlacement() {
+        this.preRollOptions["skipTemplatePlacement"] = true;
     }
 
     setTemplateTargetSelection(state) {

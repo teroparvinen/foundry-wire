@@ -1,5 +1,4 @@
 import { runInQueue } from "../action-queue.js";
-import { isAttackMagical } from "../item-properties.js";
 import { addTokenFX, deleteTokenFX, fromUuid, getActorToken, isActorEffect, isEffectEnabled, triggerConditions } from "../utils.js";
 
 export function getWireFlags() {
@@ -137,7 +136,7 @@ const flagInitialValues = {
 
 export function getEffectFlags(actor) {
     return foundry.utils.mergeObject(
-        actor?.flags["midi-qol"] || {},
+        actor?.flags.wire?.["midi-qol"] || {},
         actor?.flags.wire || {}
     );
 }
@@ -237,9 +236,11 @@ export function getDamageReduction(actor) {
     return entries;
 }
 
-export function getSaveOptions(actor, abilityId) {
-    const succeedFlags = getEffectFlags(actor)?.succeed || {};
-    const failFlags = getEffectFlags(actor)?.fail || {};
+export function getSaveOptions(actor, abilityId, isConcentration) {
+    const flags = getEffectFlags(actor);
+
+    const succeedFlags = flags?.succeed || {};
+    const failFlags = flags?.fail || {};
 
     const isSuccess = succeedFlags.ability?.all || succeedFlags.ability?.save?.all || (succeedFlags.ability?.save && succeedFlags.ability.save[abilityId]);
     const isFailure = failFlags.ability?.all || failFlags.ability?.save?.all || (failFlags.ability?.save && failFlags.ability.save[abilityId]);
@@ -247,11 +248,11 @@ export function getSaveOptions(actor, abilityId) {
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
 
-    const advFlags = getEffectFlags(actor)?.advantage?.ability || {};
-    const disFlags = getEffectFlags(actor)?.disadvantage?.ability || {};
+    const advFlags = flags?.advantage?.ability || {};
+    const disFlags = flags?.disadvantage?.ability || {};
 
-    const isAdvantage = advFlags.all || advFlags.save?.all || (advFlags.save && advFlags.save[abilityId]);
-    const isDisdvantage = disFlags.all || disFlags.save?.all || (disFlags.save && disFlags.save[abilityId]);
+    const isAdvantage = flags?.advantage?.all || advFlags.all || advFlags.save?.all || (advFlags.save && advFlags.save[abilityId]) || (isConcentration && flags?.advantage?.concentration);
+    const isDisdvantage = flags?.disadvantage?.all || disFlags.all || disFlags.save?.all || (disFlags.save && disFlags.save[abilityId]) || (isConcentration && flags?.disadvantage?.concentration);
 
     const advantage = isAdvantage && !isDisdvantage;
     const disadvantage = isDisdvantage && !isAdvantage;
@@ -260,8 +261,10 @@ export function getSaveOptions(actor, abilityId) {
 }
 
 export function getAbilityCheckOptions(actor, abilityId) {
-    const succeedFlags = getEffectFlags(actor)?.succeed || {};
-    const failFlags = getEffectFlags(actor)?.fail || {};
+    const flags = getEffectFlags(actor);
+
+    const succeedFlags = flags?.succeed || {};
+    const failFlags = flags?.fail || {};
 
     const isSuccess = succeedFlags.ability?.all || succeedFlags.ability?.check?.all || (succeedFlags.ability?.check && succeedFlags.ability.check[abilityId]);
     const isFailure = failFlags.ability?.all || failFlags.ability?.check?.all || (failFlags.ability?.check && failFlags.ability.check[abilityId]);
@@ -269,11 +272,11 @@ export function getAbilityCheckOptions(actor, abilityId) {
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
 
-    const advFlags = getEffectFlags(actor)?.advantage?.ability || {};
-    const disFlags = getEffectFlags(actor)?.disadvantage?.ability || {};
+    const advFlags = flags?.advantage?.ability || {};
+    const disFlags = flags?.disadvantage?.ability || {};
 
-    const isAdvantage = advFlags.all || advFlags.check?.all || (advFlags.check && advFlags.check[abilityId]);
-    const isDisdvantage = disFlags.all || disFlags.check?.all || (disFlags.check && disFlags.check[abilityId]);
+    const isAdvantage = flags?.advantage?.all || advFlags.all || advFlags.check?.all || (advFlags.check && advFlags.check[abilityId]);
+    const isDisdvantage = flags?.disadvantage?.all || disFlags.all || disFlags.check?.all || (disFlags.check && disFlags.check[abilityId]);
 
     const advantage = isAdvantage && !isDisdvantage;
     const disadvantage = isDisdvantage && !isAdvantage;
@@ -435,6 +438,10 @@ export function setupRollFlagWrappers() {
 // }
 
 function onActiveEffectApply(wrapped, actor, change) {
+    if (change.effect.flags.wire?.auraTargets === "enemy" && fromUuid(change.effect.origin).actor === actor) {
+        return;
+    }
+
     if (change.key.startsWith("flags.wire.")) {
         const current = foundry.utils.getProperty(actor, change.key) ?? null;
 
@@ -451,6 +458,15 @@ function onActiveEffectApply(wrapped, actor, change) {
                 foundry.utils.setProperty(actor, change.key, initialValue);
             }
         }
+    }
+
+    if (change.key.startsWith("flags.midi-qol.")) {
+        const wireKey = "flags.wire.midi-qol." + change.key.substring("flags.midi-qol.".length);
+        const copy = duplicate(change);
+        copy.key = wireKey;
+        copy.mode = CONST.ACTIVE_EFFECT_MODES.OVERRIDE;
+        copy.value = true;
+        return wrapped.apply(this, [actor, copy]);
     }
 
     return wrapped.apply(this, [actor, change]);
@@ -504,7 +520,7 @@ async function onActorRollAbilityTest(wrapped, abilityId, options) {
 async function onActorRollAbilitySave(wrapped, abilityId, options) {
     const bonus = await triggerConditions(this, "prepare-ability-save");
 
-    const saveOptions = getSaveOptions(this, abilityId);
+    const saveOptions = getSaveOptions(this, abilityId, options?.isConcentration);
     const advantage = options.advantage || (saveOptions.advantage && !options.disadvantage && !options.normal);
     const disadvantage = options.disadvantage || (saveOptions.disadvantage && !options.advantage && !options.normal);
 

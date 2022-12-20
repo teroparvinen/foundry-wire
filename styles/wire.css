@@ -14,6 +14,10 @@
     display: none;
 }
 
+.chat-message.wire-hidden-condition-card {
+    display: none;
+}
+
 
 .clickable-token {
     cursor: pointer;
@@ -234,6 +238,13 @@
     line-height: 20px;
     color: rgba(0, 0, 0, 0.5);
     padding: 8px 0;
+}
+
+.item-card .saving-throws-no-target {
+    text-align: center;
+    padding: 0 10px 10px 10px;
+    font-size: 14px;
+    opacity: 0.5;
 }
 
 .item-card .saving-throw-target {
@@ -461,7 +472,7 @@
     padding-bottom: 20px !important;
 }
 
-.sheet .condition-control {
+.sheet .condition-control, .sheet .variant-control {
     width: 18px;
     flex: 0 0 18px;
     line-height: 24px;
@@ -470,7 +481,7 @@
     color: #7a7971;
 }
 
-.sheet .condition-header {
+.sheet .condition-header, .sheet .variant-header {
     margin: 0;
     padding: 0;
     font-weight: bold;
@@ -478,13 +489,13 @@
     color: #4b4a44;
 }
 
-.sheet .condition-parts {
+.sheet .condition-parts, .sheet .variant-rows {
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-.sheet .condition-parts .condition-part {
+.sheet .condition-parts .condition-part, .sheet .variant-rows .variant-row {
     flex: 0 0 100%;
     padding: 0;
 }
@@ -496,6 +507,16 @@
 
 .sheet .condition-parts .condition-part select:first-of-type {
     margin-left: 0;
+}
+
+
+.sheet .variant-rows {
+    margin-bottom: 5px;
+}
+
+.sheet .variant-rows .variant-row input {
+    flex: 1;
+    margin-bottom: 3px;
 }
 
 

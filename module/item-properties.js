@@ -1,6 +1,6 @@
 import { compositeDamageParts, damagePartMatchesVariant, isEffectEnabled } from "./utils.js";
 
-const durationUnits = ["day", "hour", "minute", "month", "round", "turn", "year"];
+const durationUnits = ["day", "hour", "minute", "month", "round", "turn", "year", "perm"];
 const attackTypes = ["msak", "mwak", "rsak", "rwak"];
 const tokenTargetables = ["ally", "creature", "enemy", ""];
 
@@ -39,6 +39,10 @@ export function isSelfTarget(item) {
 
 export function isSelfRange(item) {
     return item.system.range.units === "self";
+}
+
+export function hasSelfAttachableAreaTarget(item) {
+    return isSelfRange(item) && item.hasAreaTarget && (item.system.target.type === "sphere" || item.system.target.type === "radius");
 }
 
 export function hasDamageOfType(item, applicationType, variant) {

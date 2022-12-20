@@ -27,6 +27,7 @@ export class Activation {
         messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
         messageData.speaker = getSpeaker((speakerIsEffectOwner && effect) ? effect.parent : item.actor);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", effect?.flags.wire?.originatorUserId || game.user.id);
+        foundry.utils.setProperty(messageData, "flags.wire.isConditionCard", true);
         if (revealToPlayers) { messageData.whisper = null; }
         else if (game.user.isGM) { messageData.whisper = [game.user.id]; }
         const message = await ChatMessage.create(messageData);
@@ -35,7 +36,7 @@ export class Activation {
             const activation = new Activation(message);
 
             if (item.hasPlayerOwner && !revealToPlayers && !suppressPlayerMessage) {
-                activation._createPlayerMessage();
+                await activation._createPlayerMessage();
             }
 
             await activation._initialize(item, flow, { condition, sourceEffect: effect, externalEffectTarget: externalTargetActor });
@@ -177,6 +178,7 @@ export class Activation {
 
         return {
             state: this.state,
+            nextState: this.flowSteps.length ? this.flowSteps[0] : null,
             attack: {
                 roll: attackRoll,
                 tooltip: attackRollTooltip,
@@ -311,7 +313,7 @@ export class Activation {
         }
     }
 
-    async _createPlayerMessage() {
+    async _createPlayerMessage(markUpdated) {
         if (!this.message.flags.wire?.playerMessageUuid) {
             const playerMessageData = {
                 content: await ItemCard.renderHtml(this.item, this, { isPlayerView: true }),
@@ -319,14 +321,16 @@ export class Activation {
                     wire: {
                         masterMessageUuid: this.message.uuid,
                         originatorUserId: this.message.flags.wire?.originatorUserId,
-                        isPlayerView: true
+                        isPlayerView: true,
+                        isConditionCard: this.message.flags.wire?.isConditionCard,
+                        wasUpdated: markUpdated
                     }
                 },
                 speaker: this.message.speaker,
                 user: game.user.id
             };
             const playerMessage = await ChatMessage.create(playerMessageData);
-            this.message.setFlag("wire", "playerMessageUuid", playerMessage.uuid);
+            await this.message.setFlag("wire", "playerMessageUuid", playerMessage.uuid);
         }
 
         ui.chat.scrollBottom();
@@ -361,6 +365,11 @@ export class Activation {
         await this._update();
     }
 
+    async stop() {
+        foundry.utils.setProperty(this.data, 'flowSteps', []);
+        await this._update();
+    }
+
     async _setPublic(state) {
         foundry.utils.setProperty(this.data, 'isPublic', state);
         await this._update();
@@ -379,6 +388,14 @@ export class Activation {
 
         foundry.utils.setProperty(this.data, "templateUuid", this.templateProxy.uuid);
         await this._update();
+
+        if (this.masterEffectProxy) {
+            await this.masterEffectProxy.setFlag("wire", "templateUuid", this.templateUuid);
+            await this.templateProxy.setFlag("wire", "masterEffectUuid", this.masterEffectUuid);
+        } else if (this.masterEffect) {
+            await this.masterEffect.setFlag("wire", "templateUuid", this.templateUuid);
+            await this.templateProxy.setFlag("wire", "masterEffectUuid", this.masterEffectUuid);
+        }
     }
 
     async _assignMasterEffectData(effectData) {
@@ -453,12 +470,14 @@ export class Activation {
         await this._update();
     }
 
-    async applyState(state) {
+    async applyState(state, updateCard = false) {
         console.log("STATE", state, "for message", this.message.id);
         foundry.utils.setProperty(this.data, "state", state || null);
         await this._update();
-        await this._updateCard();
-        await wireSocket.executeForOthers("refreshActivation", this.message.uuid, this.data);
+        if (updateCard) {
+            await this._updateCard();
+        }
+        await wireSocket.executeForOthers("refreshActivation", this.message.uuid, this.data, updateCard);
     }
 
     async wait() {

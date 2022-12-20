@@ -4,8 +4,9 @@ import { applyTargetEffects } from "./game/active-effects.js";
 import { DamageParts } from "./game/damage-parts.js";
 import { getAttackOptions } from "./game/effect-flags.js";
 import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableEffectsOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
+import { createTemplate } from "./templates.js";
 import { makeUpdater } from "./updater-utility.js";
-import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, fromUuid, getActorToken, getAttackRollResultType, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
+import { effectDurationFromItemDuration, fromUuid, getActorToken, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
     constructor(activation) {
@@ -125,6 +126,14 @@ export class Resolver {
             await this.activation.applyState("idle");
             await this.step(n);
 
+        } else if (isOriginator && this.activation.state === "removeSelfTarget") {
+            const token = getActorToken(item.actor);
+            if (token && token.isTargeted) {
+                token.setTarget(false, { releaseOthers: false });
+            }
+            await this.activation.applyState("idle");
+            await this.step(n);
+
         } else if (isOriginator && this.activation.state === "performAttackRoll") {
             const preparationResult = await triggerConditions(item.actor, "prepare-attack-roll");
             const config = duplicate(this.activation.config);
@@ -175,37 +184,55 @@ export class Resolver {
             await this.activation.applyAttackTarget(this.activation.singleTarget.actor);
             await this.activation.applyAttackRoll(roll);
             await this.activation.registerAttackOptions(options);
-            await this.activation.applyState("waiting-for-attack-result");
+            await this.activation.applyState("waiting-for-attack-result", true);
         } else if (isGM && this.activation.state === "waiting-for-attack-result") {
             if (this.activation.attackResult == "hit") {
                 await this.activation.applyEffectiveTargets([this.activation.singleTarget.actor]);
-                await this.activation.applyState("idle");
+                await this.activation.applyState("idle", true);
                 await this.step(n);
             } else if (this.activation.attackResult == "miss") {
-                await this.activation.applyState("idle");
+                await this.activation.applyState("idle", true);
                 await this.step(n);
             }
 
         } else if (isAuthor && this.activation.state === "confirmTargets") {
             if (hasApplicationsOfType(item, this.activation.applicationType, this.activation.variant)) {
-                await this.activation.applyState("waiting-for-target-confirmation");
+                await this.activation.applyState("waiting-for-target-confirmation", true);
             } else {
                 await this.activation.applyState("targets-confirmed");
                 await this.step(n);
             }
         } else if (isOriginator && this.activation.state === "targets-confirmed") {
+            let doContinue = true;
             if (game.user.targets.size === 0) {
-                localizedWarning("wire.warn.select-targets-for-effect");
-                await this.activation.applyState("waiting-for-target-confirmation");
-            } else {
+                doContinue = false;
+                await Dialog.confirm({
+                    title: game.i18n.localize("wire.ui.confirm-no-targets-title"),
+                    content: game.i18n.localize("wire.ui.confirm-no-targets-content"),
+                    yes: () => { doContinue = true },
+                    no: () => {},
+                    defaultYes: true
+                });
+            }
+            if (doContinue) {
                 await this.activation.assignTargets([...game.user.targets].map(t => t.actor));
                 if (isInstantaneous(item)) {
                     await this.activation.template?.delete();
                 }
-                await this.activation.applyState("idle");
+                await this.activation.applyState("idle", true);
                 await this.step(n);
+            } else {
+                await this.activation.applyState("waiting-for-target-confirmation", true);
             }
 
+        } else if (isOriginator && this.activation.state === "placeTemplate") {
+            const token = getActorToken(item.actor);
+            if (token && !this.activation.templateUuid) {
+                const templateData = await createTemplate(item, this.activation.config, this.activation.applicationType, { disableTargetSelection: false, preventCancel: true });
+                await this.activation._assignTemplateData(templateData);
+            }    
+            await this.activation.applyState("idle");
+            await this.step(n);
         } else if (isOriginator && this.activation.state === "removeTemplate") {
             await this.activation.template?.delete();
             await this.activation.applyState("idle");
@@ -213,37 +240,37 @@ export class Resolver {
 
         } else if (isAuthor && this.activation.state === "performAttackDamageRoll") {
             if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType, this.activation.variant)) || hasUnavoidableDamageOfType(item, applicationType, this.activation.variant)) {
-                await this.activation.applyState("waiting-for-attack-damage-roll");
+                await this.activation.applyState("waiting-for-attack-damage-roll", true);
                 await this.step(n);
             } else {
                 await this.activation.applyState("idle");
                 await this.step(n);
             }
         } else if (isOriginator && this.activation.state === "rolling-attack-damage") {
-            await this.activation.applyState("waiting-for-attack-damage");
+            await this.activation.applyState("waiting-for-attack-damage", true);
 
             const damageParts = await DamageParts.roll(this.activation, true);
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
-            await this.activation.applyState("idle");
+            await this.activation.applyState("idle", true);
             await this.step(n);
 
         } else if (isAuthor && this.activation.state === "performSaveDamageRoll") {
             if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType, this.activation.variant)) || hasUnavoidableDamageOfType(item, applicationType, this.activation.variant)) {
-                await this.activation.applyState("waiting-for-save-damage-roll");
+                await this.activation.applyState("waiting-for-save-damage-roll", true);
             } else {
                 await this.activation.applyState("idle");
                 await this.step(n);
             }
         } else if (isOriginator && this.activation.state === "rolling-save-damage") {
-            await this.activation.applyState("waiting-for-save-damage");
+            await this.activation.applyState("waiting-for-save-damage", true);
 
             const damageParts = await DamageParts.roll(this.activation, false);
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
-            await this.activation.applyState("idle");
+            await this.activation.applyState("idle", true);
             await this.step(n);
 
         } else if (isGM && this.activation.state === "performSavingThrow") {
@@ -253,9 +280,9 @@ export class Resolver {
                 await this.step(n);
             } else {
                 if (this.activation.message.user === game.user && this.activation.pcTargets.length) {
-                    this.activation._createPlayerMessage();
+                    this.activation._createPlayerMessage(true);
                 }
-                await this.activation.applyState("waiting-for-saves");
+                await this.activation.applyState("waiting-for-saves", true);
             }
         } else if (isGM && this.activation.state === "waiting-for-saves") {
             if (this.activation.saveResults?.length === this.activation.allTargets.length) {
@@ -263,7 +290,7 @@ export class Resolver {
                 const failedActors = this.activation.saveResults.filter(r => r.roll.total < dc).map(r => r.actor);
                 playAutoAnimation(getActorToken(item.actor), failedActors.map(a => getActorToken(a)), item);
                 await this.activation.applyEffectiveTargets(failedActors);
-                await this.activation.applyState("idle");
+                await this.activation.applyState("idle", true);
                 await this.step(n);
             }
 
@@ -293,7 +320,7 @@ export class Resolver {
             await this.step(n);
 
         } else if (isGM && this.activation.state === "triggerAction") {
-            await this.activation.applyState("waiting-for-action-trigger");
+            await this.activation.applyState("waiting-for-action-trigger", true);
         } else if (isGM && this.activation.state === "action-trigger-activated") {
             const sourceEffect = this.activation.sourceEffect;
             if (sourceEffect) {
@@ -303,7 +330,7 @@ export class Resolver {
             }
 
             this.activation.message.setFlag("wire", "isHidden", true);
-            await this.activation.applyState("idle");
+            await this.activation.applyState("idle", true);
 
         } else if (isAuthor && this.activation.state === "idle") {
             const flow = this.activation.flowSteps;
@@ -318,7 +345,7 @@ export class Resolver {
             const handler = handlers[this.activation.state];
             if (handler) {
                 if ((handler.runAsRoller && isOriginator) || (!handler.runAsRoller && isGM)) {
-                    await runAndAwait(handler.fn, this.activation);
+                    await runAndAwait(handler.fn, this.activation, this.activation.condition.details);
                     if (this.activation.state !== "wait") {
                         await this.activation.applyState("idle");
                         await this.step(n);

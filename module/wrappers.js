@@ -4,7 +4,7 @@ import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
 import { preRollCheck, preRollConfig } from "./preroll.js";
-import { fromUuid, i18n, triggerConditions } from "./utils.js";
+import { fromUuid, i18n, isItemActorOnCanvas, triggerConditions } from "./utils.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.use", onItemUse, "MIXED");
@@ -23,7 +23,7 @@ async function onItemUse(wrapped, options, event) {
 
     const item = this;
 
-    if (!Object.values(game.canvas.tokens.objects.children).map(t => t.actor).includes(item.actor)) {
+    if (!isItemActorOnCanvas(item)) {
         wrapped(options, event);
         return;
     }
@@ -45,10 +45,16 @@ async function onItemUse(wrapped, options, event) {
         return;
     }
 
-    const flow = new Flow(item, "immediate", itemRollFlow);
+    let variant;
+    if (item.flags.wire?.variants) {
+        variant = await new game.wire.SelectVariantDialog(item, item.flags.wire.variants).render(true);
+    }
+
+    const flow = new Flow(item, "immediate", itemRollFlow, { variant });
     flow.evaluate();
 
-    const result = await preRollConfig(item, flow.preRollOptions, event);
+    const preRollOptions = foundry.utils.mergeObject(flow.preRollOptions, { variant });
+    const result = await preRollConfig(item, preRollOptions, event);
 
     if (result) {
         const { messageData, config, templateData } = result;
@@ -140,7 +146,9 @@ async function onActorPreUpdate(wrapped, change, options, user) {
 
     if (hpUpdate !== undefined || tempUpdate !== undefined) {
         const current = actor.system.attributes.hp;
-        const damage = (current.value - (hpUpdate || current.value)) + (current.temp - (tempUpdate || current.temp));
+        const effectiveHp = hpUpdate !== undefined ? hpUpdate : current.value;
+        const effectiveTempHp = tempUpdate !== undefined ? tempUpdate : current.temp;
+        const damage = (current.value - effectiveHp) + (current.temp - effectiveTempHp);
 
         if (damage > 0) {
             // Concentration check
@@ -151,7 +159,7 @@ async function onActorPreUpdate(wrapped, change, options, user) {
             }
 
             // Damage taken condition
-            triggerConditions(actor, "takes-damage", { details: { damageAmount: damage } });
+            triggerConditions(actor, "takes-damage", { details: { damageAmount: damage, hp: effectiveHp, tempHp: effectiveTempHp } });
         }
     }
 }

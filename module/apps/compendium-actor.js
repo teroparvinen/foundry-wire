@@ -1,3 +1,4 @@
+import { getAvailablePackImports, getAvailablePacks, importPackItems } from "../compendiums.js";
 import { i18n } from "../utils.js";
 
 export class ActorCompendiumUpgrade extends FormApplication {
@@ -8,45 +9,8 @@ export class ActorCompendiumUpgrade extends FormApplication {
         this.object = actor;
 
         (async () => {
-            const packItems = await this.getAvailablePackItems();
+            const { upgradeableItems, replaceableItems } = await getAvailablePackImports(actor);
 
-            const upgradeableItems = [];
-            const replaceableItems = [];
-
-            actor.items.forEach(actorItem => {
-                const itemPack = actorItem.flags.wire?.compendiumSource;
-                const itemVersion = actorItem.flags.wire?.compendiumVersion;
-
-                if (itemPack) {
-                    const packItem = packItems
-                        .find(pi => pi.pack.metadata.id === itemPack).documents
-                        .find(packItem =>
-                            packItem.flags.wire?.compendiumVersion &&
-                            packItem.name === actorItem.name && 
-                            (!itemVersion || 
-                             foundry.utils.isNewerVersion(packItem.flags.wire.compendiumVersion, itemVersion))
-                        );
-
-                    if (packItem) {
-                        upgradeableItems.push({
-                            actorItem, packItem
-                        });
-                    }
-                } else {
-                    const items = packItems
-                        .flatMap(pi => pi.documents)
-                        .filter(packItem =>
-                            packItem.name === actorItem.name &&
-                            packItem.type === actorItem.type
-                        );
-                    if (items.length) {
-                        replaceableItems.push(...items.map(packItem => ({ actorItem, packItem })));
-                    }
-                }
-
-            });
-
-            this.packItems = packItems;
             this.upgradeableItems = upgradeableItems;
             this.replaceableItems = replaceableItems;
             
@@ -70,31 +34,21 @@ export class ActorCompendiumUpgrade extends FormApplication {
     }
 
     get availablePacks() {
-        return game.packs.contents
-            .filter(p => p.metadata.type === "Item")
-            .filter(p => p.metadata.flags.wireImport);
+        return getAvailablePacks();
     }
 
     get availablePackOptions() {
         return this.availablePacks.reduce((a, p) => { a[p.metadata.id] = p.metadata.label; return a; }, {});
     }
 
-    async getAvailablePackItems() {
-        return Promise.all(this.availablePacks.map(async pack => {
-            const documents = await pack.getDocuments();
-            return { pack, documents };
-        }));
-    }
-
     getData(opts) {
         const actor = this.object;
         const availablePackOptions = this.availablePackOptions;
-        const packItems = this.packItems;
         const upgradeableItems = this.upgradeableItems;
         const replaceableItems = this.replaceableItems;
 
         return {
-            actor, availablePackOptions, packItems, upgradeableItems, replaceableItems
+            actor, availablePackOptions, upgradeableItems, replaceableItems
         };
     }
 
@@ -124,29 +78,8 @@ export class ActorCompendiumUpgrade extends FormApplication {
         (async () => {
             const entryMatches = (r => actorItemUuids.includes(r.actorItem.uuid));
             const importedEntries = [...this.upgradeableItems.filter(entryMatches), ...this.replaceableItems.filter(entryMatches)];
-    
-            const toDelete = [];
-            const toCreate = [];
-    
-            for (const entry of importedEntries) {
-                const incoming = entry.packItem.toObject();
-                const outgoing = entry.actorItem.toObject();
-    
-                const { sort, img } = outgoing;
-                const { preparation, uses, description } = outgoing.system;
-    
-                Object.assign(incoming.system, { preparation, uses });
-                Object.assign(incoming, { sort });
 
-                if (!incoming.system.description.value) { Object.assign(incoming.system, { description }); };
-                if (!incoming.img) { Object.assign(incoming, { img }); };
-    
-                toDelete.push(entry.actorItem.id);
-                toCreate.push(incoming);
-            }
-    
-            await this.object.deleteEmbeddedDocuments("Item", toDelete);
-            await this.object.createEmbeddedDocuments("Item", toCreate);
+            await importPackItems(this.object, importedEntries);
         })();
     }
 

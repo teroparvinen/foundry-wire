@@ -20,6 +20,10 @@ export function fromUuid(uuid) {
     return doc || null;
 }
 
+export function isItemActorOnCanvas(item) {
+    return Object.values(game.canvas.tokens.objects.children).map(t => t.actor).includes(item.actor)
+}
+
 export function isInCombat(actor) {
     return (game.combat?.turns.some(combatant => combatant.actor?.id === actor.id));
 }
@@ -47,7 +51,7 @@ export function effectDurationFromItemDuration(itemDuration, inActorInCombat) {
 
     const seconds = timeMultipliers[itemDuration.units] * itemDuration.value;
     const rounds = itemDuration.units === "round" ? itemDuration.value : 0;
-    const turns = itemDuration.units === "turn" ? itemDurationValue : 0;
+    const turns = itemDuration.units === "turn" ? itemDuration.value : 0;
     const startTime = game.time.worldTime;
     const startRound = game.combat?.round;
     const startTurn = game.combat?.turn;
@@ -178,6 +182,19 @@ export function i18n(...args) {
         return game.i18n.format(...args);
     }
     return game.i18n.localize(...args);
+}
+
+export function evaluateFormula(formula, rollData) {
+    if (typeof formula === "string") {
+        const targetFormula = Roll.replaceFormulaData(formula, rollData);
+        return Roll.safeEval(targetFormula);
+    } else {
+        return formula;
+    }
+}
+
+export function getTokenSceneUnitSize(token) {
+    return Math.max(token.document.height, token.document.width) * canvas.dimensions.distance;
 }
 
 export function getTokenSquarePositions(token) {

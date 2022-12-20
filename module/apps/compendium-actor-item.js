@@ -23,6 +23,7 @@ export class ActorItemCompendiumConfig extends FormApplication {
 
     get availablePacks() {
         return game.packs.contents
+            .filter(p => game.user.isGM || !p.private)
             .filter(p => p.metadata.flags.wireImport)
             .reduce((a, p) => { a[p.metadata.id] = p.metadata.label; return a; }, {});
     }

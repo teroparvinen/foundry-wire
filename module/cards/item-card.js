@@ -18,7 +18,7 @@ export class ItemCard {
                 isGMActorPlayerView: isPlayerView && !actor.hasPlayerOwner && !activation.isPublic,
                 hasPlayerOwner: item.hasPlayerOwner,
                 actor: actor,
-                tokenId: token?.uuid || null,
+                tokenId: token?.document.uuid || null,
                 item: item,
                 data: await item.getChatData(),
                 isVersatile: item.isVersatile,
@@ -28,7 +28,8 @@ export class ItemCard {
                 isSecondary,
                 settings: {
                     revealSaveDc: game.settings.get("wire", "reveal-save-dc"),
-                    hideNpcSaveResults: game.settings.get("wire", "hide-npc-save-results")
+                    hideNpcSaveResults: game.settings.get("wire", "hide-npc-save-results"),
+                    damageRollConfirmsHit: game.settings.get("wire", "damage-roll-confirms-hit")
                 }
             };
             return await renderTemplate(this.templateName, templateData);
@@ -43,7 +44,7 @@ export class ItemCard {
     async updateContent(options) {
         const activation = this.activation ?? new Activation(this.message);
         const html = await ItemCard.renderHtml(activation.item, activation, options);
-        await this.message.update({ content: html });
+        await this.message.update({ content: html, "flags.wire.wasUpdated": true });
 
         ui.chat.scrollBottom();
     }
@@ -78,6 +79,12 @@ export class ItemCard {
         const activation = new Activation(message);
         const action = button.dataset.action;
 
+        async function confirmHitIfNecessary() {
+            if (activation.attackResult === undefined) {
+                await activation.applyAttackResult(true);
+            }
+        }
+
         switch (action) {
             case "removeTemplate":
                 const template = await activation.template;
@@ -90,15 +97,19 @@ export class ItemCard {
                 activation.applyAttackResult(false);
                 break;
             case "wire-damage":
+                await confirmHitIfNecessary();
                 activation._rollDamage();
                 break;
             case "wire-damage-offhand":
+                await confirmHitIfNecessary();
                 activation._rollDamage({ damageOffhand: true });
                 break;
             case "wire-damage-versatile":
+                await confirmHitIfNecessary();
                 activation._rollDamage({ damageVersatile: true });
                 break;
             case "wire-damage-configure":
+                await confirmHitIfNecessary();
                 const options = {
                     top: event ? event.clientY - 80 : null,
                     left: window.innerWidth - 610
@@ -142,7 +153,7 @@ export class ItemCard {
                 if (game.user.isGM) {
                     const actors = [...event.target
                         .closest('.phase-saving-throws')
-                        .querySelectorAll('.saving-throw-target')
+                        .querySelectorAll('.saving-throw-target.needs-roll')
                         .values()]
                         .map(e => e.dataset.actorId)
                         .map(i => fudgeToActor(fromUuid(i)))

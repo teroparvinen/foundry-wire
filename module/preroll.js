@@ -1,5 +1,6 @@
-import { hasApplicationsOfType, hasSaveableApplicationsOfType, isAttack, isSelfRange, isSelfTarget, targetsSingleToken } from "./item-properties.js";
-import { getActorToken, localizedWarning, runAndAwait, setTemplateTargeting } from "./utils.js";
+import { hasSaveableApplicationsOfType, isAttack, isSelfTarget } from "./item-properties.js";
+import { createTemplate } from "./templates.js";
+import { localizedWarning, runAndAwait } from "./utils.js";
 
 export function preRollCheck(item) {
     if (isAttack(item) && !item.hasAreaTarget && game.user.targets.size != 1) {
@@ -27,7 +28,7 @@ export async function preRollConfig(item, options = {}, event) {
     const requireSpellSlot = isSpell && (id.level > 0) && CONFIG.DND5E.spellUpcastModes.includes(id.preparation.mode);
 
     // Define follow-up actions resulting from the item usage
-    let doCreateMeasuredTemplate = hasArea;       // Trigger a template creation
+    let doCreateMeasuredTemplate = hasArea && !options.skipTemplatePlacement;       // Trigger a template creation
     let doConsumeRecharge = !!recharge.value;     // Consume recharge
     let doConsumeResource = !!resource.target && (!item.hasAttack || (resource.type !== "ammo")); // Consume a linked (non-ammo) resource
     let doConsumeSpellSlot = requireSpellSlot;    // Consume a spell slot
@@ -36,12 +37,14 @@ export async function preRollConfig(item, options = {}, event) {
     let consumedSpellLevel = null;               // Consume a specific category of spell slot
     if (requireSpellSlot) consumedSpellLevel = id.preparation.mode === "pact" ? "pact" : `spell${id.level}`;
 
-    if (options.variantOptions) {
+    if (options.variantOptions && !options.variant) {
         const variant = await new game.wire.SelectVariantDialog(item, options.variantOptions).render(true);
         if (!variant) {
             return;
         }
         activationConfig.variant = variant;
+    } else {
+        activationConfig.variant = options.variant;
     }
 
     const skipDefaultDialog = false;
@@ -69,7 +72,7 @@ export async function preRollConfig(item, options = {}, event) {
         if (!configuration) return;
 
         // Determine consumption preferences
-        useConfig.doCreateMeasuredTemplate = Boolean(configuration.placeTemplate);
+        // doCreateMeasuredTemplate = Boolean(configuration.createMeasuredTemplate);
         useConfig.consumedUsageCount = Boolean(configuration.consumeUsage) ? 1 : 0;
         useConfig.doConsumeRecharge = Boolean(configuration.consumeRecharge);
         useConfig.doConsumeResource = Boolean(configuration.consumeResource);
@@ -103,7 +106,7 @@ export async function preRollConfig(item, options = {}, event) {
     // Initiate measured template creation
     let templateData;
     if (doCreateMeasuredTemplate) {
-        templateData = await createTemplate(item, options.disableTemplateTargetSelection, activationConfig);
+        templateData = await createTemplate(item, activationConfig, "immediate", options);
         if (!templateData) { return; }
     }
 
@@ -115,129 +118,6 @@ export async function preRollConfig(item, options = {}, event) {
         config: activationConfig,
         templateData
     };
-}
-
-async function evaluateTemplateFormulas(item, templateData, config) {
-    const rollData = foundry.utils.mergeObject(item.getRollData(), config);
-
-    const targetValue = getProperty(item, "flags.wire.override.target.value") || getProperty(item, "system.target.value");
-    if (targetValue) {
-        const targetFormula = Roll.replaceFormulaData(targetValue, rollData);
-        let distance = Roll.safeEval(targetFormula);
-        if (templateData.t == "rect") {
-            distance = Math.hypot(distance, distance);
-        }
-        await templateData.updateSource({ distance });
-    }
-}
-
-export async function createTemplate(item, disableTargetSelection, config) {
-    if (isSelfRange(item) && item.hasAreaTarget && (item.system.target.type === "sphere" || item.system.target.type === "radius")) {
-        const token = getActorToken(item.actor);
-        if (token) {
-            const destination = canvas.grid.getSnappedPosition(token.x, token.y, 2);
-            destination.x = destination.x + token.w / 2;
-            destination.y = destination.y + token.h / 2;
-            const preTemplate = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
-            evaluateTemplateFormulas(item, preTemplate.document);
-            await preTemplate.document.updateSource(destination);
-
-            return foundry.utils.mergeObject(preTemplate.document.toObject(), { "flags.wire.attachedTokenId": token.id });
-        }
-    } else {
-        const selectTargets = !disableTargetSelection && hasApplicationsOfType(item, "immediate", config.variant);
-        return await placeTemplate(item, config, { selectTargets });
-    }
-}
-
-export async function placeTemplate(item, config, { selectTargets = true } = {}) {
-    let template;
-    if (item instanceof CONFIG.Item.documentClass) {
-        template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
-        await evaluateTemplateFormulas(item, template.document, config);
-    } else {
-        const cls = CONFIG.MeasuredTemplate.documentClass;
-        const templateObject = new cls(item, {parent: canvas.scene});
-        template = new game.dnd5e.canvas.AbilityTemplate(templateObject);
-    }
-
-    if (template) {
-        const initialLayer = canvas.activeLayer;
-
-        await setTemplateTargeting(false);
-
-        // Draw the template and switch to the template layer
-        await template.draw();
-        template.layer.activate();
-        template.layer.preview.addChild(template);
-    
-        // Hide the sheet that originated the preview
-        template.actorSheet?.minimize();
-
-        // Activate interactivity
-        return new Promise(async (resolve, reject) => {
-            const handlers = {};
-            let moveTime = 0;
-
-            const dismiss = async (event) => {
-                await setTemplateTargeting(false);
-                template.layer._onDragLeftCancel(event);
-                canvas.stage.off("mousemove", handlers.mm);
-                canvas.stage.off("mousedown", handlers.lc);
-                canvas.app.view.oncontextmenu = null;
-                canvas.app.view.onwheel = null;
-                initialLayer.activate();
-                template.actorSheet?.maximize();
-            }
-    
-            // Update placement (mouse-move)
-            handlers.mm = async event => {
-                event.stopPropagation();
-                await setTemplateTargeting(selectTargets);
-                let now = Date.now(); // Apply a 20ms throttle
-                if (now - moveTime <= 20) return;
-                const center = event.data.getLocalPosition(template.layer);
-                const snapped = canvas.grid.getSnappedPosition(center.x, center.y, 2);
-                template.document.updateSource({ x: snapped.x, y: snapped.y });
-                template.refresh();
-                moveTime = now;
-            };
-    
-            // Cancel the workflow (right-click)
-            handlers.rc = async event => {
-                await dismiss(event);
-                resolve(null);
-            };
-    
-            // Confirm the workflow (left-click)
-            handlers.lc = async event => {
-                await dismiss(event);
-                const destination = canvas.grid.getSnappedPosition(template.document.x, template.document.y, 2);
-                await template.document.updateSource(destination);
-                await setTemplateTargeting(false);
-                resolve(template.document.toObject());
-            };
-    
-            // Rotate the template by 3 degree increments (mouse-wheel)
-            handlers.mw = event => {
-                if (event.ctrlKey) event.preventDefault(); // Avoid zooming the browser window
-                event.stopPropagation();
-                let delta = canvas.grid.type > CONST.GRID_TYPES.SQUARE ? 30 : 15;
-                let snap = event.shiftKey ? delta : (event.altKey ? 0.5 : 5);
-                const update = { direction: template.document.direction + (snap * Math.sign(event.deltaY)) };
-                template.document.updateSource(update);
-                template.refresh();
-            };
-    
-            // Activate listeners
-            canvas.stage.on("mousemove", handlers.mm);
-            canvas.stage.on("mousedown", handlers.lc);
-            canvas.app.view.oncontextmenu = handlers.rc;
-            canvas.app.view.onwheel = handlers.mw;
-
-            template.refresh();
-        });
-    }
 }
 
 function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedSpellLevel, consumedUsageCount, consumedItemQuantity }) {

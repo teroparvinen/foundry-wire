@@ -52,7 +52,7 @@ async function activationTemplateCreated(templateUuid) {
     }
 }
 
-async function refreshActivation(messageUuid, data) {
+async function refreshActivation(messageUuid, data, updateCard) {
     const message = fromUuid(messageUuid);
 
     if (message) {
@@ -67,7 +67,7 @@ async function refreshActivation(messageUuid, data) {
                 }
             } else if (message.isAuthor || originatorUserId === game.user.id) {
                 const activation = new Activation(message, data);
-                await activation._updateCard();
+                if (updateCard) await activation._updateCard();
             }
         }
     }

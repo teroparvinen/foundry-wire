@@ -89,4 +89,17 @@ export function initSettings() {
             default: false    
         }
     );
+
+    game.settings.register(
+        "wire",
+        "damage-roll-confirms-hit",
+        {
+            name: "wire.settings.damage-roll-confirms-hit",
+            hint: "wire.settings.damage-roll-confirms-hit-hint",
+            scope: "world",
+            config: true,
+            type: Boolean,
+            default: false    
+        }
+    );
 }

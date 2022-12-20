@@ -20,10 +20,10 @@ const conditionList = [
     ["area-reveals-creature", "all"],
     ["area-reveals-ally", "all"],
     ["area-reveals-enemy", "all"],
-    ["start-of-turn-caster", "all"],
-    ["end-of-turn-caster", "all"],
-    ["start-of-turn-target", "effect"],
-    ["end-of-turn-target", "effect"],
+    ["start-of-turn-caster", "effect"],
+    ["end-of-turn-caster", "effect"],
+    ["start-of-turn-target", "all"],
+    ["end-of-turn-target", "all"],
     ["change-of-turn", "effect"],
     ["take-an-action", "all"],
     ["this-attack-hits", "item"],
@@ -55,7 +55,8 @@ const conditionList = [
     ["prepare-ability-check", "all"],
     ["prepare-ability-save", "all"],
     ["prepare-attack-roll", "all"],
-    ["prepare-damage-roll", "all"]
+    ["prepare-damage-roll", "all"],
+    ["effect-created", "effect"]
 ];
 
 const updateList = [

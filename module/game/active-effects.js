@@ -10,7 +10,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
 
     const effects = item.effects
         .filter(e => isEffectEnabled(e) && !e.transfer && (e.getFlag("wire", "applicationType") || "immediate") === applicationType)
-        .filter(e => !config.variant || effectMatchesVariant(e, config.variant));
+        .filter(e => !config?.variant || effectMatchesVariant(e, config?.variant));
     const allTargetsEffects = effects.filter(e => e.getFlag("wire", "applyOnSaveOrMiss"));
     const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
 
