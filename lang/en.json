@@ -1,6 +1,7 @@
 {
     "wire": {
         "concentrating": "Concentrating",
+        "effect-immunity": "Immune to {itemName}",
         "button": {
             "remove-template": "Remove Measured Template"
         },
@@ -39,6 +40,7 @@
             "turn": "{name}'s turn",
             "ability-check": "Ability Check",
             "use-save-for-check": "Match save",
+            "successful-save-immunity": "Successful save gives immunity",
             "confirm-no-targets-title": "Confirm Targets",
             "confirm-no-targets-content": "<p>You did not select any targets. Do you want to continue?</p>",
             "no-targets": "No targets"

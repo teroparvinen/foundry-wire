@@ -129,7 +129,7 @@ export function initItemSheetHooks() {
             if ($(this).text() === "Healing (Temporary)") $(this).text("Healing (Temp)");
         });
 
-        // Checked ability
+        // Checked ability and save immunity
         const checkedAbility = item.flags.wire?.checkedAbility;
         const abilityOptions = Object.entries(CONFIG.DND5E.abilities).map(a => `<option value="${a[0]}" ${selected(checkedAbility, a[0])}>${a[1]}</option>`)
         html.find('.damage-parts').nextAll('.input-select').first().after(`
@@ -142,6 +142,10 @@ export function initItemSheetHooks() {
                     </select>
                     <div style="flex: 4"></div>
                 </div>
+            </div>
+            <div class="form-group">
+                <label>${i18n("wire.ui.successful-save-immunity")}</label>
+                <input type="checkbox" name="flags.wire.saveImmunity" ${item.flags.wire?.saveImmunity ? 'checked' : ''} />
             </div>
         `);
 

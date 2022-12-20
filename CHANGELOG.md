@@ -32,6 +32,10 @@ Changes
             - The Ice Mephit's Death Burst
             - The Balor's Fire Aura
     - Samples of these will be available in the content modules in the near future.
+- Items that have saves can be set to grant immunity on a successful save
+    - This will activate an immunity effect on the character making the successful save
+    - The immunity will be per item per actor, meaning that saving against one Harpy's Luring Song will not grant immunity against another's
+    - The immunity effect does not have a duration set by WIRE, as most of the time the effect is so long it is better tracked outside of individual scene management.
 - Made condition triggered cards a little less spammy. The card will only show up if and when there is something to interact with.
 - Added two API functions to help other modules import compendium items:
     - `game.wire.getAvailablePackImports(actor)`

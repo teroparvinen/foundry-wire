@@ -275,8 +275,10 @@ export async function triggerConditions(actor, condition, { externalTargetActor 
         const conditions = effect.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
         for (let condition of conditions) {
             const item = fromUuid(effect.origin);
-            const updater = makeUpdater(condition, effect, item, externalTargetActor, details);
-            result = await updater?.process();
+            if (!isActorImmune(actor, item)) {
+                const updater = makeUpdater(condition, effect, item, externalTargetActor, details);
+                result = await updater?.process();
+            }
         }
     }
     return result;
@@ -424,4 +426,8 @@ export function handleError(error) {
     const msg = `A technical error occurred. Please check the console error log and notify the GM.`;
     ui.notifications.error(msg);
     console.error(msg, error);
+}
+
+export function isActorImmune(actor, item) {
+    return !!actor.effects.find(e => e.flags.wire?.immuneItemUuid === item.uuid);
 }

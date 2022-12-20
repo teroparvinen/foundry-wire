@@ -6,7 +6,7 @@ import { getAttackOptions } from "./game/effect-flags.js";
 import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableEffectsOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
 import { createTemplate } from "./templates.js";
 import { makeUpdater } from "./updater-utility.js";
-import { effectDurationFromItemDuration, fromUuid, getActorToken, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
+import { effectDurationFromItemDuration, fromUuid, getActorToken, i18n, isActorImmune, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
     constructor(activation) {
@@ -287,9 +287,20 @@ export class Resolver {
         } else if (isGM && this.activation.state === "waiting-for-saves") {
             if (this.activation.saveResults?.length === this.activation.allTargets.length) {
                 const dc = item.system.save.dc;
+
                 const failedActors = this.activation.saveResults.filter(r => r.roll.total < dc).map(r => r.actor);
                 playAutoAnimation(getActorToken(item.actor), failedActors.map(a => getActorToken(a)), item);
                 await this.activation.applyEffectiveTargets(failedActors);
+
+                if (item.flags.wire?.saveImmunity) {
+                    const successActors = this.activation.saveResults.filter(r => r.roll.total >= dc).map(r => r.actor);
+                    for (const actor of successActors) {
+                        if (!isActorImmune(actor, item)) {
+                            await this._applyImmunityEffect(actor);
+                        }
+                    }
+                }
+
                 await this.activation.applyState("idle", true);
                 await this.step(n);
             }
@@ -476,6 +487,26 @@ export class Resolver {
         };
 
         await this.activation._assignMasterEffectData(effectData);
+    }
+
+    async _applyImmunityEffect(actor) {
+        const item = this.activation.item;
+        const label = i18n("wire.effect-immunity", { itemName: item.name });
+        await actor.createEmbeddedDocuments("ActiveEffect", [{
+            changes: [],
+            origin: item.uuid,
+            disabled: false,
+            icon: "modules/wire/icons/effect-immunity.svg",
+            label: label,
+            flags: {
+                wire: {
+                    immuneItemUuid: item.uuid
+                },
+                core: {
+                    statusId: " "
+                }
+            }
+        }]);
     }
 
     async _applyTargetEffects(applicationType) {

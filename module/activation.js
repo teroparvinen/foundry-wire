@@ -10,7 +10,7 @@ import { isSelfTarget } from "./item-properties.js";
 import { Resolver } from "./resolver.js";
 import { wireSocket } from "./socket.js";
 import { determineUpdateTargets } from "./updater-utility.js";
-import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, handleError, i18n, isActorDefeated, triggerConditions } from "./utils.js";
+import { fromUuid, fudgeToActor, getActorToken, getAttackRollResultType, getSpeaker, handleError, i18n, isActorDefeated, isActorImmune, triggerConditions } from "./utils.js";
 
 export class Activation {
     static async _initializeGmMessage(gmMessage, masterMessage) {
@@ -424,7 +424,7 @@ export class Activation {
     }
 
     async assignTargets(targets) {
-        foundry.utils.setProperty(this.data, "targetUuids", targets.filter(a => !isActorDefeated(a)).map(t => t.uuid));
+        foundry.utils.setProperty(this.data, "targetUuids", targets.filter(a => !isActorDefeated(a) && !isActorImmune(a, this.item)).map(t => t.uuid));
         await this._update();
     }
 
@@ -466,7 +466,7 @@ export class Activation {
     }
 
     async applyEffectiveTargets(targets) {
-        foundry.utils.setProperty(this.data, "effectiveTargetUuids", targets.filter(a => !isActorDefeated(a)).map(t => t.uuid));
+        foundry.utils.setProperty(this.data, "effectiveTargetUuids", targets.filter(a => !isActorDefeated(a) && !isActorImmune(a, this.item)).map(t => t.uuid));
         await this._update();
     }
 

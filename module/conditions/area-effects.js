@@ -1,5 +1,5 @@
 import { makeUpdater } from "../updater-utility.js";
-import { areAllied, areAreaConditionsBlockedForActor, areEnemies, fromUuid, getTemplateTokens, getTemplateTokenUuids, getTokenTemplateIds, isEffectEnabled, triggerConditions } from "../utils.js";
+import { areAllied, areAreaConditionsBlockedForActor, areEnemies, fromUuid, getTemplateTokens, getTemplateTokenUuids, getTokenTemplateIds, isActorImmune, isEffectEnabled, triggerConditions } from "../utils.js";
 
 export function initAreaConditionHooks() {
     Hooks.on("updateToken", async (tokenDoc, change, update, userId) => {
@@ -19,7 +19,7 @@ export function initAreaConditionHooks() {
                     const effect = fromUuid(effectUuid);
                     const item = fromUuid(effect.origin);
 
-                    if (effect && isEffectEnabled(effect) && !areAreaConditionsBlockedForActor(item, actor)) {
+                    if (effect && isEffectEnabled(effect) && !areAreaConditionsBlockedForActor(item, actor) && !isActorImmune(actor, item)) {
                         const conditions = effect.flags.wire?.conditions?.filter(c => c.condition.endsWith("enters-area")) ?? [];
                         for (let condition of conditions) {
                             let dispositionCheck = false;
@@ -61,7 +61,7 @@ export function initAreaConditionHooks() {
                 .filter(e => e);
             for (let effect of areaEffects) {
                 const item = fromUuid(effect.origin);
-                if (!areAreaConditionsBlockedForActor(item, actor)) {
+                if (!areAreaConditionsBlockedForActor(item, actor) && !isActorImmune(actor, item)) {
                     const conditions = effect.flags.wire?.conditions?.filter(c => c.condition.endsWith("moves-within-area")) ?? [];
                     for (let condition of conditions) {
                         let dispositionCheck = false;
@@ -149,7 +149,7 @@ async function checkTemplateEnvelopment(templateDoc) {
 
         // Enter
         for (let actor of [...enteredSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a)) {
-            if (!areAreaConditionsBlockedForActor(item, actor)) {
+            if (!areAreaConditionsBlockedForActor(item, actor) && !isActorImmune(actor, item)) {
                 const conditions = effect.flags.wire?.conditions?.filter(c => c.condition.startsWith("area-envelops")) ?? [];
                 for (let condition of conditions) {
                     let dispositionCheck = false;
@@ -167,7 +167,7 @@ async function checkTemplateEnvelopment(templateDoc) {
 
         // Exit
         for (let actor of [...exitedSet].map(uuid => fromUuid(uuid)?.actor).filter(a => a)) {
-            if (!areAreaConditionsBlockedForActor(item, actor)) {
+            if (!areAreaConditionsBlockedForActor(item, actor) && !isActorImmune(actor, item)) {
                 const conditions = effect.flags.wire?.conditions?.filter(c => c.condition.startsWith("area-reveals")) ?? [];
                 for (let condition of conditions) {
                     const effects = actor.effects.filter(e => {

@@ -32,9 +32,9 @@ Dependencies required for operation. Nothing special here.
 
 The more advanced customization of the item rolls is controlled using a script macro on the item provided by this module. You can get by without it if you only use the UI components or an item library that has everything already built, but I strongly recommend installing this mod.
 
-### DFreds Effects Panel
+### Visual Active Effects / DFreds Effects Panel
 
-Managing and viewing concentration and temporary active effects is quite important when using WIRE. This module makes it really easy to see the effects and to click them off when required. Highly recommended with WIRE.
+Managing and viewing concentration and temporary active effects is quite important when using WIRE. These modules make it really easy to see the effects and to click them off when required. Highly recommended you use one of these with WIRE.
 
 ### Action Pack
 
