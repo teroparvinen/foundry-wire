@@ -61,7 +61,9 @@ export class Resolver {
         "performAttackDamageRoll",
         "performAttackRoll", 
         "performSaveDamageRoll", 
-        "performSavingThrow", 
+        "performSavingThrow",
+        "placeTemplate",
+        "removeSelfTarget",
         "rolling-attack-damage", 
         "rolling-save-damage", 
         "targets-confirmed",
@@ -111,15 +113,15 @@ export class Resolver {
             await this.step(n);
 
         } else if (isAuthor && this.activation.state === "applyTargetFromCondition") {
-            const conditionDetails = this.activation.condition.details;
-            const targetActor = fromUuid(conditionDetails.attackTargetUuid) || fromUuid(conditionDetails.attackerUuid);
+            const conditionDetails = this.activation.condition?.details;
+            const targetActor = fromUuid(conditionDetails?.attackTargetUuid) || fromUuid(conditionDetails?.attackerUuid);
             const targetActors = targetActor ? [targetActor] : [];
             await this.activation.assignTargets(targetActors);
             await this.activation.applyState("idle");
             await this.step(n);
         } else if (isAuthor && this.activation.state === "applyTargetFromConditionAsEffective") {
-            const conditionDetails = this.activation.condition.details;
-            const targetActor = fromUuid(conditionDetails.attackTargetUuid) || fromUuid(conditionDetails.attackerUuid);
+            const conditionDetails = this.activation.condition?.details;
+            const targetActor = fromUuid(conditionDetails?.attackTargetUuid) || fromUuid(conditionDetails?.attackerUuid);
             const targetActors = targetActor ? [targetActor] : [];
             await this.activation.assignTargets(targetActors);
             await this.activation.applyEffectiveTargets(targetActors);
@@ -356,7 +358,10 @@ export class Resolver {
             const handler = handlers[this.activation.state];
             if (handler) {
                 if ((handler.runAsRoller && isOriginator) || (!handler.runAsRoller && isGM)) {
-                    await runAndAwait(handler.fn, this.activation, this.activation.condition.details);
+                    const ret = await runAndAwait(handler.fn, this.activation, this.activation.condition?.details);
+                    if (ret === false) {
+                        await this.activation.stop();
+                    }
                     if (this.activation.state !== "wait") {
                         await this.activation.applyState("idle");
                         await this.step(n);

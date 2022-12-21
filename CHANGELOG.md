@@ -47,7 +47,7 @@ Changes
         - Takes an actor instance and an array of importable entries (see above) as parameters.
         - Use the entries from `getAvailablePackImports` to get relevant entries and filter and flatten to a single array as necessary
 - Item macro API additions
-    - Custom application flow steps can now call `activation.stop()` to stop processing and skip all future steps.
+    - Custom application flow steps can now call `activation.stop()` or `return false` to stop processing and skip all future steps.
     - `this.defaultFlow()` is useful for applying the regular processing after some initial custom steps. Added some similar prepackaged flows that skip a part of the whole tree and are guaranteed to do one thing while still avoiding the need to write down several steps that are usually executed together. I would love to hear any feedback about things like this.
         - `this.areaEffectFlow()` places a template if one has not yet been created, applies targets, does saves and damage rolls and finally applies effects and damage
         - `this.singleTargetFlow()` does an attack or save, rolls damage if necessary and applies effects and damage

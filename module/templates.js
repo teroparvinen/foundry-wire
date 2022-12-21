@@ -50,8 +50,8 @@ async function evaluateTemplateFormulas(item, templateData, config, { distanceOf
     }
 }
 
-export async function createTemplate(item, config, applicationType, { disableTargetSelection = false, preventCancel = false }) {
-    const selectTargets = !disableTargetSelection && hasApplicationsOfType(item, applicationType, config?.variant);
+export async function createTemplate(item, config, applicationType, { disableTemplateTargetSelection = false, preventCancel = false }) {
+    const selectTargets = !disableTemplateTargetSelection && hasApplicationsOfType(item, applicationType, config?.variant);
     
     if (hasSelfAttachableAreaTarget(item)) {
         await setTemplateTargeting(selectTargets);

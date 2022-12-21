@@ -16,7 +16,7 @@ export function initItemSheetHooks() {
 
         const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
 
-        const usageInsertPoint = html.find('.tab.details select[name="system.activation.type"]').closest('.form-group').next('h3');
+        const usageInsertPoint = html.find('.tab.details select[name="system.activation.type"]').closest('.form-group').nextAll('h3:first');
 
         if (item.system.activation.type) {
             // Variants

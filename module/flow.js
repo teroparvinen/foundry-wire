@@ -57,7 +57,7 @@ export class Flow {
     }
 
     registerFlowStep(name, runAsRoller, fn) {
-        this.customSteps[name] = {
+        this.customSteps[`custom:${name}`] = {
             runAsRoller,
             fn
         };
@@ -89,7 +89,7 @@ export class Flow {
     }
 
     performCustomStep(name, ...args) {
-        return [name, ...this.chain(this.pick(...args))];
+        return [`custom:${name}`, ...this.chain(this.pick(...args))];
     }
 
     // Item information
