@@ -33,7 +33,7 @@ export class ConfigureAttack extends Application {
             disadvantage: "wire.roll-component.disadvantage",
         };
         const target = game.user.targets.first()?.actor;
-        const options = getStaticAttackOptions(item, target, this.config.attack);
+        const options = getStaticAttackOptions(item, target, this.config);
 
         const advantage = !this.config.attack?.disadvantage && (options.advantage || this.config.attack?.advantage);
         const disadvantage = !this.config.attack?.advantage && (options.disadvantage || this.config.attack?.disadvantage);

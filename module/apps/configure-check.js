@@ -26,7 +26,7 @@ export class ConfigureCheck extends Application {
             normal: "wire.roll-component.normal",
             disadvantage: "wire.roll-component.disadvantage",
         };
-        const options = getAbilityCheckOptions(this.actor, this.ability);
+        const options = getAbilityCheckOptions(this.actor, this.ability, this.config);
 
         const advantage = !this.config.check?.disadvantage && (options.advantage || this.config.check?.advantage);
         const disadvantage = !this.config.check?.advantage && (options.disadvantage || this.config.check?.disadvantage);

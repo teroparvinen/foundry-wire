@@ -46,7 +46,7 @@ async function onItemUse(wrapped, options, event) {
     }
 
     let variant;
-    if (item.flags.wire?.variants) {
+    if (item.flags.wire?.variants?.length) {
         variant = await new game.wire.SelectVariantDialog(item, item.flags.wire.variants).render(true);
     }
 
@@ -76,6 +76,7 @@ async function onItemUse(wrapped, options, event) {
             isPublicRoll = true;
             messageData.whisper.push(game.user.id);
         }
+        foundry.utils.setProperty(messageData, "flags.wire.isPrimaryRoll", true);
         foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", game.user.id);
         const message = await ChatMessage.create(messageData);
     
@@ -108,7 +109,7 @@ async function onActorPreUpdate(wrapped, change, options, user) {
     const maxHpUpdate = getProperty(change, "system.attributes.hp.max");
     const tempUpdate = getProperty(change, "system.attributes.hp.temp");
 
-    if ((hpUpdate !== undefined || maxHpUpdate !== undefined) && !this.hasPlayerOwner) {
+    if (hpUpdate !== undefined || maxHpUpdate !== undefined) {
         const hp = hpUpdate === undefined ? actor.system.attributes.hp.value : hpUpdate;
         const maxHp = maxHpUpdate === undefined ? actor.system.attributes.hp.max : maxHpUpdate;
         const woundedThreshold = Math.floor(game.settings.get("wire", "wounded-threshold") * maxHp / 100);
@@ -117,8 +118,8 @@ async function onActorPreUpdate(wrapped, change, options, user) {
         const isWounded = hp <= woundedThreshold;
         const isAtZero = hp == 0;
 
-        const needsDamaged = isDamaged && !isAtZero && !isWounded;
-        const needsWounded = isWounded && !isAtZero;
+        const needsDamaged = isDamaged && !isAtZero && !isWounded && !actor.hasPlayerOwner;
+        const needsWounded = isWounded && !isAtZero && !actor.hasPlayerOwner;
         const needsUnconscious = actor.hasPlayerOwner && isAtZero;
         const needsDead = !actor.hasPlayerOwner && isAtZero;
 
@@ -151,11 +152,15 @@ async function onActorPreUpdate(wrapped, change, options, user) {
         const damage = (current.value - effectiveHp) + (current.temp - effectiveTempHp);
 
         if (damage > 0) {
-            // Concentration check
             const concentrationEffect = actor.effects.find(e => e.flags.wire?.isConcentration);
-            if (concentrationEffect) {
-                const concentrationCard = new ConcentrationCard(actor, concentrationEffect, damage);
-                await concentrationCard.make();
+            if (effectiveHp > 0 || !game.settings.get("wire", "auto-drop-concentration")) {
+                // Concentration check
+                if (concentrationEffect) {
+                    const concentrationCard = new ConcentrationCard(actor, concentrationEffect, damage);
+                    await concentrationCard.make();
+                }
+            } else {
+                concentrationEffect?.delete();
             }
 
             // Damage taken condition

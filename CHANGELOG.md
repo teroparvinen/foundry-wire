@@ -1,5 +1,58 @@
 # Changes by version number
 
+### 0.10.5
+
+Breaking changes
+
+- Item duration specified in turns was previously counted as individual actors' turns. It is now considered to mean the specified number of the caster's turns, making it effectively the same as a duration in rounds but lasting until the end of that caster's turn. A duration of 1 turn therefore effectively means "until the end of this turn" and 2 turns means "until the end of your next round". Several spells use the latter and nothing in 5e uses how it currently works so hopefully not a very impactful breaking change.
+
+Changes
+
+- Added damage multipliers for damage types through `flags.wire.damage.multiplier.type.*` (including `healing` and `temphp`).
+- Added multipliers for received damage through `flags.wire.grants.damage.multiplier.*` (otherwise similar to the delivering flags).
+- Adding condition immunity to an actor now also removes all effects currently providing the condition
+- Effects that get applied as a result of an item with an instantaneous duration are automatically removed after the activation completes. This sounds useless at first, but can be used to leverage the immunity condition removal above to heal conditions as part of heal spells and possibly to do some other stuff in the future.
+- Two new settings for what happens when an NPC's turn begins
+    - Disable the pan to the token
+    - Disable token selection
+- Logic functions are available for rolls. These can be used anywhere roll formulas are used, but the best application for them is in effect flags (see below). (I also released this as a stand alone module Logic Rolls.)
+    - Test for equality or lack thereof using `eq`, `ne` (not equal) or `not`
+    - Number comparisons `gt` (greater than), `gte` (greater than or equal), `lt`, `lte`
+    - `and` and `or` for any number of arguments
+    - If-then-else like functionality using `pick` and `unless` (if is a reserved word in javascript so it couldn't be used)
+    - WIRE also contains an extension to roll parameter replacement that handles strings properly.
+- Damage formulas now have access to activation configuration data (settable through macros) via `@config`.
+- Changed the way some effect flags that simply enable something are handled. Currently this is implemented for advantage/disadvantage flags, but will be added to additional flags in the future.
+    - Earlier the SRD module convention was to flag every advantage/disadvantage using the ADD mode with a value of 1. This will still work.
+    - For flags that have this treatment, the change mode is effectively ignored. If multiple instances of the same flag are present (from multiple effects), it is enough for one of them to evaluate to be effective.
+    - What is new is that the value field is treated as a number. Any value that is greater than zero will mean the flag is enabled, anything zero or below will be disabled. The powerful bit is using this in conjunction with roll data (variables) that are passed along and the logic functions (see above).
+    - The variables currently supported are
+        - For attack roll advantage/disadvantage
+            - `attacker` for the attacker's properties (e.g. `eq(@attacker.details.type.value, undead)`)
+            - `defender` for the defender's properties
+            - `originator.isAttacker` is 1 if the originator (i.e. caster for spells) of the effect applying the flag is the attacker, 0 otherwise
+            - `originator.isDefender` similar but the other way around
+            - `config` is the activation configuration object for the hard core
+        - For non-attack roll advantage/disadvantage
+            - `actor` is the actor doing the roll
+            - `config` is the activation configuration object if available (it is not available for basic rolls from the character sheet, for example)
+    - An example of what this is good for is Chill Touch that makes undead targets do attacks at a disadvantage against the caster. In this case (will be available from the SRD in the future) set the flag `flags.wire.disadvantage.attack.all` to the value `and(@originator.isDefender, eq(@attacker.details.type.value, undead))`.
+- PCs will be shown a variant of the concentration card when they hit 0 hp that will have a button to drop concentration. Accidentally dropping concentration can lead to a huge hassle with effects dropping, templates being deleted and duration tracking getting interrupted, so having a middle ground with a notification but no accidental drops is available here.
+    - Added a setting for those who just dont care. It makes concentration drop immediately at 0 hp.
+- New condition: "Target casts a spell". This will be triggered whenever an activation flow triggered from an item that is a spell reaches its end.
+- Deprecated the activation flow step `attackCompleted`. The conditions triggered by it will now be automatically triggered whenever a flow containing the `performAttackRoll` step is completed.
+- New application flow step option `applySelectedTargetsAsEffective`. This allows setting up items that always land, omitting attack rolls or saves.
+
+Fixes
+
+- Consumables were deleted a bit too early in the item roll process. Should now work better in all cases.
+- Fixed some issues with damage multipliers
+- Spell damage scaling now correctly multiplies numeric terms
+- Fixed an issue with chat cards generated from conditions having buttons showing for players. This may have some side effects I missed in testing, let me know if your players are missing buttons.
+- PCs now automatically go Unconscious at 0 hp
+- Status effects from `wire.custom.statusEffect` and `wire.custom.persistentStatusEffect` should no longer be applied multiple times.
+- Some miscellaneous bug fixes
+
 ### 0.10.4
 
 Changes

@@ -5,20 +5,20 @@ export class ConcentrationCard {
     static templateName = "modules/wire/templates/concentration-card.hbs";
 
     static activateListeners(html) {
-        html.on("click", ".concentration-card a", this._onConcentrationCardAction.bind(this));
+        html.on("click", ".concentration-card a, .concentration-card button", this._onConcentrationCardAction.bind(this));
     }
 
     static async _onConcentrationCardAction(event) {
         const button = event.currentTarget;
         button.disabled = true;
-        const card = button.closest(".chat-card");
-        const messageId = card.closest(".message").dataset.messageId;
+        const chatCard = button.closest(".chat-card");
+        const messageId = chatCard.closest(".message").dataset.messageId;
         const message = game.messages.get(messageId);
         const action = button.dataset.action;
+        const card = ConcentrationCard.fromMessage(message);
 
         switch (action) {
         case "concentration-save":
-            const card = ConcentrationCard.fromMessage(message);
             if (card.actor.isOwner) {
                 const roll = await card.actor.rollAbilitySave("con", { chatMessage: false, fastForward: true, isConcentration: true });
                 await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
@@ -30,6 +30,11 @@ export class ConcentrationCard {
                 if (roll.total < card.dc) {
                     await card.concentrationEffect.delete();
                 }
+            }
+            break;
+        case "concentration-drop":
+            if (card.actor.isOwner) {
+                await card.concentrationEffect.delete();
             }
             break;
         default:
@@ -85,7 +90,7 @@ export class ConcentrationCard {
             actor: this.actor,
             token: getActorToken(this.actor),
             damageAmount: this.damageAmount,
-            originName: fromUuid(this.concentrationEffect.origin).name,
+            item: fromUuid(this.concentrationEffect.origin),
             dc: this.dc,
             result: this.result
         };

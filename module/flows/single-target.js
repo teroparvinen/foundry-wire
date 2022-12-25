@@ -1,8 +1,8 @@
 import { nonAttack } from "./common.js";
 
-export function singleTargetFlow() {
+export function singleTargetFlow({ skipTargeting = false } = {}) {
     return this.sequence(
-        this.applySelectedTargets(),
+        !skipTargeting && this.applySelectedTargets(),
         this.pick(
             this.isAttack(
                 this.performAttackRoll(

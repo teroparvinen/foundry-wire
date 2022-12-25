@@ -47,6 +47,7 @@ const conditionList = [
     ["target-is-hit.rwak", "effect"],
     ["target-is-hit.msak", "effect"],
     ["target-is-hit.rsak", "effect"],
+    ["target-casts-spell", "effect"],
     ["takes-damage", "effect"],
     ["saving-throw-completed", "effect"],
     ["skill-check-completed", "effect"],

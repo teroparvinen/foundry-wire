@@ -1,6 +1,6 @@
 import { wireSocket } from "../socket.js";
 import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, effectMatchesVariant, fromUuid, isEffectEnabled, isInCombat, substituteEffectConfig } from "../utils.js";
-import { applyConditionImmunity } from "./effect-flags.js";
+import { checkConditionImmunity } from "./effect-flags.js";
 
 export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config, extraData) {
     const actor = item.actor;
@@ -55,7 +55,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
         if (existingEffects.length) {
             await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
         }
-        const checkedData = applyConditionImmunity(target, data);
+        const checkedData = checkConditionImmunity(target, data);
         if (checkedData.length) {
             const targetEffects = await target.createEmbeddedDocuments("ActiveEffect", checkedData);
             createdEffects.push(...targetEffects);
@@ -114,7 +114,7 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
         if (existingEffects.length) {
             await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
         }
-        const checkedData = applyConditionImmunity(target, data);
+        const checkedData = checkConditionImmunity(target, data);
         if (checkedData.length) {
             const targetEffects = await target.createEmbeddedDocuments("ActiveEffect", checkedData);
             createdEffects.push(...targetEffects);

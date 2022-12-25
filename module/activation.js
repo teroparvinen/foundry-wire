@@ -26,16 +26,21 @@ export class Activation {
         const messageData = await item.displayCard({ createMessage: false });
         messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
         messageData.speaker = getSpeaker((speakerIsEffectOwner && effect) ? effect.parent : item.actor);
-        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", effect?.flags.wire?.originatorUserId || game.user.id);
+
+        const originator = game.users.find(u => u.id === effect?.flags.wire?.originatorUserId) || game.user;
+        const isFromPlayer = !originator.isGM;
+
+        foundry.utils.setProperty(messageData, "flags.wire.originatorUserId", originator.id);
         foundry.utils.setProperty(messageData, "flags.wire.isConditionCard", true);
-        if (revealToPlayers) { messageData.whisper = null; }
+        foundry.utils.setProperty(messageData, "user", originator.id);
+        if (revealToPlayers || isFromPlayer) { messageData.whisper = null; }
         else if (game.user.isGM) { messageData.whisper = [game.user.id]; }
         const message = await ChatMessage.create(messageData);
 
         if (message) {
             const activation = new Activation(message);
 
-            if (item.hasPlayerOwner && !revealToPlayers && !suppressPlayerMessage) {
+            if (item.hasPlayerOwner && !(revealToPlayers || isFromPlayer) && !suppressPlayerMessage) {
                 await activation._createPlayerMessage();
             }
 
@@ -83,6 +88,7 @@ export class Activation {
 
         this.message = sourceMessage;
         this.data = data || sourceMessage.getFlag("wire", "activation") || {};
+        this.isPrimaryRoll = message.flags.wire?.isPrimaryRoll;
     }
 
     get itemUuid() { return this.data.itemUuid; }
@@ -470,6 +476,13 @@ export class Activation {
         await this._update();
     }
 
+    async removeTarget(actor) {
+        const uuid = actor.uuid;
+        foundry.utils.setProperty(this.data, "effectiveTargetUuids", this.data.effectiveTargetUuids?.filter(u => u !== uuid));
+        foundry.utils.setProperty(this.data, "targetUuids", this.data.targetUuids?.filter(u => u !== uuid));
+        await this._update();
+    }
+
     async applyState(state, updateCard = false) {
         console.log("STATE", state, "for message", this.message.id);
         foundry.utils.setProperty(this.data, "state", state || null);
@@ -580,7 +593,7 @@ export class Activation {
         const usedSave = this.item.system.save.ability;
         const usedCheck = this.abilityToCheckForSave;
 
-        const actorOptions = usedCheck ? getAbilityCheckOptions(actor, usedCheck) : getSaveOptions(actor, usedSave);
+        const actorOptions = usedCheck ? getAbilityCheckOptions(actor, usedCheck, this.config) : getSaveOptions(actor, usedSave, this.config);
         const rollOptions = foundry.utils.mergeObject(actorOptions, options);
 
         if (rollOptions.success || rollOptions.failure) {

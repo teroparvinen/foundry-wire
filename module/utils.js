@@ -49,9 +49,14 @@ export function effectDurationFromItemDuration(itemDuration, inActorInCombat) {
         return {};
     }
 
-    const seconds = timeMultipliers[itemDuration.units] * itemDuration.value;
-    const rounds = itemDuration.units === "round" ? itemDuration.value : 0;
-    const turns = itemDuration.units === "turn" ? itemDuration.value : 0;
+    let seconds = timeMultipliers[itemDuration.units] * itemDuration.value;
+    let rounds = itemDuration.units === "round" ? itemDuration.value : 0;
+    let turns = 0;
+    if (itemDuration.units === "turn") {
+        seconds = timeMultipliers.round * itemDuration.value;
+        rounds = itemDuration.value - 1;
+        turns = 1;
+    }
     const startTime = game.time.worldTime;
     const startRound = game.combat?.round;
     const startTurn = game.combat?.turn;
@@ -106,7 +111,8 @@ export function localizedWarning(key) {
 }
 
 export function getActorToken(actor) {
-    return actor.token ? actor.token.object : actor.getActiveTokens().find(t => t)
+    if (actor instanceof CONFIG.Token.documentClass) { return actor.object; }
+    return actor?.token ? actor?.token.object : actor?.getActiveTokens().find(t => t)
 }
 
 export function fudgeToActor(candidate) {
@@ -186,8 +192,13 @@ export function i18n(...args) {
 
 export function evaluateFormula(formula, rollData) {
     if (typeof formula === "string") {
-        const targetFormula = Roll.replaceFormulaData(formula, rollData);
-        return Roll.safeEval(targetFormula);
+        try {
+            const targetFormula = Roll.replaceFormulaData(formula, rollData);
+            return Roll.safeEval(targetFormula);
+        } catch (error) {
+            ui.notifications.error(error.message);
+            return undefined;
+        }
     } else {
         return formula;
     }
@@ -430,4 +441,22 @@ export function handleError(error) {
 
 export function isActorImmune(actor, item) {
     return !!actor.effects.find(e => e.flags.wire?.immuneItemUuid === item.uuid);
+}
+
+export function typeCheckedNumber(value, defaultValue) {
+    return typeof value === "number" ? value : defaultValue;
+}
+
+export function createScrollingText(token, text, floatUp = true) {
+    if (token && !token?.document.hidden) {
+        canvas.interface.createScrollingText(token.center, text, {
+            anchor: CONST.TEXT_ANCHOR_POINTS.CENTER,
+            direction: floatUp ? CONST.TEXT_ANCHOR_POINTS.TOP : CONST.TEXT_ANCHOR_POINTS.BOTTOM,
+            distance: (2 * token.h),
+            fontSize: 28,
+            stroke: 0x000000,
+            strokeThickness: 4,
+            jitter: 0.25
+          });
+    }
 }

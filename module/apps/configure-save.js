@@ -26,7 +26,7 @@ export class ConfigureSave extends Application {
             normal: "wire.roll-component.normal",
             disadvantage: "wire.roll-component.disadvantage",
         };
-        const options = getSaveOptions(this.actor, this.ability);
+        const options = getSaveOptions(this.actor, this.ability, this.config);
 
         const advantage = !this.config.save?.disadvantage && (options.advantage || this.config.save?.advantage);
         const disadvantage = !this.config.save?.advantage && (options.disadvantage || this.config.save?.disadvantage);

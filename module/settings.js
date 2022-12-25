@@ -23,7 +23,7 @@ export function initSettings() {
                 max: 99,
                 step: 1
             },
-            default: 50    
+            default: 50
         }
     );
 
@@ -35,7 +35,7 @@ export function initSettings() {
             scope: "world",
             config: true,
             type: Boolean,
-            default: true    
+            default: true
         }
     );
 
@@ -47,7 +47,7 @@ export function initSettings() {
             scope: "world",
             config: true,
             type: Boolean,
-            default: true    
+            default: true
         }
     );
 
@@ -60,7 +60,7 @@ export function initSettings() {
             scope: "world",
             config: true,
             type: Boolean,
-            default: false    
+            default: false
         }
     );
 
@@ -73,7 +73,7 @@ export function initSettings() {
             scope: "world",
             config: true,
             type: Boolean,
-            default: false    
+            default: false
         }
     );
 
@@ -86,7 +86,7 @@ export function initSettings() {
             scope: "world",
             config: true,
             type: Boolean,
-            default: false    
+            default: false
         }
     );
 
@@ -99,7 +99,44 @@ export function initSettings() {
             scope: "world",
             config: true,
             type: Boolean,
-            default: false    
+            default: false
+        }
+    );
+
+    game.settings.register(
+        "wire",
+        "change-turn-focus-npc",
+        {
+            name: "wire.settings.change-turn-focus-npc",
+            scope: "world",
+            config: true,
+            type: Boolean,
+            default: true
+        }
+    );
+
+    game.settings.register(
+        "wire",
+        "change-turn-control-npc",
+        {
+            name: "wire.settings.change-turn-control-npc",
+            scope: "world",
+            config: true,
+            type: Boolean,
+            default: true
+        }
+    );
+
+    game.settings.register(
+        "wire",
+        "auto-drop-concentration",
+        {
+            name: "wire.settings.auto-drop-concentration",
+            hint: "wire.settings.auto-drop-concentration-hint",
+            scope: "world",
+            config: true,
+            type: Boolean,
+            default: false
         }
     );
 }

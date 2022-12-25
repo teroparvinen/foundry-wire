@@ -540,9 +540,19 @@
     margin-left: 5px;
 }
 
+.concentration-card .card-header {
+    align-items: center;
+    gap: 10px;
+}
+
+.concentration-card hr {
+    margin-top: 0;
+}
+
 .concentration-card .concentration-row, .death-save-card .death-save-row {
     align-items: center;
     gap: 10px;
+    padding-bottom: 2px;
 }
 
 .concentration-card .actor-image, .death-save-card .actor-image {
@@ -551,8 +561,17 @@
     border: 0;
 }
 
+.concentration-card .item-image {
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--color-border-dark);
+    border-radius: 2px;
+    margin-left: 5px;
+}
+
 .concentration-card .actor-name, .death-save-card .actor-name {
-    font-size: 14px;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 .concentration-card .concentration-save, .death-save-card .death-save {

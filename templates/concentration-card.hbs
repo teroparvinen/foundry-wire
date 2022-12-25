@@ -1,17 +1,38 @@
 <div class="dnd5e chat-card concentration-card">
-    <header class="card-header flexrow">
-        <h3 class="item-name">{{localize "wire.ui.concentration-save-header" dc=dc}}</h3>
-    </header>
+    {{#if (lt damageAmount actor.system.attributes.hp.value)}}
+        <header class="card-header flexrow">
+            <img class="flex0 actor-image clickable-token" data-token-uuid="{{token.document.uuid}}" src="{{token.document.texture.src}}" />
+            <h3 class="item-name">{{localize "wire.ui.concentration-save-header" dc=dc}}</h3>
+        </header>
 
-    <div class="concentration-row flexrow">
-        <img class="flex0 actor-image clickable-token" data-token-uuid="{{token.document.uuid}}" src="{{token.document.texture.src}}" />
-        <div class="flex1 actor-name">{{originName}}</div>
-        {{#if this.result}}
-            <div class="flex0 concentration-save-result {{#if (gte result dc)}}success{{else}}fail{{/if}}">
-                {{result}}
-            </div>
-        {{else}}
-            <a data-action="concentration-save" class="flex0 concentration-save"></a>
-        {{/if}}
-    </div>
+        <hr />
+
+        <div class="concentration-row flexrow">
+            <img class="flex0 item-image" src="{{item.img}}" />
+            <div class="flex1 actor-name">{{item.name}}</div>
+            {{#if this.result}}
+                <div class="flex0 concentration-save-result {{#if (gte result dc)}}success{{else}}fail{{/if}}">
+                    {{result}}
+                </div>
+            {{else}}
+                <a data-action="concentration-save" class="flex0 concentration-save"></a>
+            {{/if}}
+        </div>
+    {{else}}
+        <header class="card-header flexrow">
+            <img class="flex0 actor-image clickable-token" data-token-uuid="{{token.document.uuid}}" src="{{token.document.texture.src}}" />
+            <h3 class="item-name">{{localize "wire.ui.concentration-drop-header"}}</h3>
+        </header>
+
+        <hr />
+
+        <div class="concentration-row flexrow">
+            <img class="flex0 item-image" src="{{item.img}}" />
+            <div class="flex1 actor-name">{{item.name}}</div>
+        </div>
+
+        <div class="card-buttons">
+            <button data-action="concentration-drop">{{localize "wire.ui.drop-concentration"}}</button>
+        </div>
+    {{/if}}
 </div>

@@ -1,6 +1,6 @@
 import { isAttackMagical } from "../item-properties.js";
-import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant } from "../utils.js";
-import { getDamageInflictingOptions, getDamageMultiplier, getDamageReceivingOptions, getDamageReduction, getEffectFlags } from "./effect-flags.js";
+import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant, typeCheckedNumber } from "../utils.js";
+import { getDamageInflictingMultiplier, getDamageInflictingOptions, getDamageReceivingOptions, getDamageReduction, getEffectFlags } from "./effect-flags.js";
 
 
 export class DamageParts {
@@ -67,6 +67,7 @@ export class DamageParts {
         // Get roll data
         const rollData = item.getRollData();
         if (spellLevel) rollData.item.level = spellLevel;
+        rollData.config = activation.config;
 
         // Add target info to roll data
         if (attackTarget) {
@@ -105,7 +106,7 @@ export class DamageParts {
             if (levelMultiplier > 0) {
                 const upcastInterval = item.flags.wire?.upcastInterval || 1;
                 const scalingMultiplier = upcastInterval ? Math.floor(levelMultiplier / upcastInterval) : levelMultiplier;
-                const s = new Roll(scalingFormula, rollData).alter(scalingMultiplier);
+                const s = new Roll(scalingFormula, rollData).alter(scalingMultiplier, 0, { multiplyNumeric: true });
                 if (s.formula) {
                     primaryModifiers.push(s.formula);
                 }
@@ -162,8 +163,7 @@ export class DamageParts {
         }
 
         // Effect damage multiplier
-        const effectFlagMultiplier = getDamageMultiplier(item, item.actor, attackTarget);
-        parts[0].multiplier = effectFlagMultiplier;
+        parts = parts.map( part => ({ ...part, multiplier: getDamageInflictingMultiplier(item, item.actor, attackTarget, part.type) }));
     
         // Factor in extra critical damage dice from the Barbarian's "Brutal Critical"
         const criticalBonusDice = itemData.actionType === "mwak" ? item.actor.getFlag("dnd5e", "meleeCriticalDamageDice") ?? 0 : 0;
@@ -306,18 +306,18 @@ export class DamageParts {
         }
 
         await Promise.all(this.result.map(async pr => {
-            const { maximize, minimize } = getDamageReceivingOptions(item, actor, pr.part.type);
+            const { maximize, minimize, multiplier } = getDamageReceivingOptions(item, actor, pr.part.type);
 
             let roll = pr.roll;
             if (maximize) { roll = await pr.roll.reroll({ maximize, async: true }); }
             if (minimize) { roll = await pr.roll.reroll({ minimize, async: true }); }
 
-            const mult = typeof pr.part.multiplier === "number" ? pr.part.multiplier : 1;
+            const mult = typeCheckedNumber(pr.part.multiplier, 1);
             const type = pr.part.type;
             const halving = pr.part.halving;
 
             const reduced = applyDamageReduction("all", applyDamageReduction(pr.part.type, applyDamageReduction(item.system.actionType, isMagical ? roll.total : applyDamageReduction("physical", roll.total))));
-            const points = Math.floor(reduced * mult);
+            const points = Math.floor(reduced * mult * multiplier);
             const caused = Math.floor(halvingFactor(halving, isEffective) * points);
 
             damageByType[type] = Math.max((damageByType[type] || 0) + caused, 0);

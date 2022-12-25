@@ -1,9 +1,10 @@
+import { runInQueue } from "./action-queue.js";
 import { ConfigureAttack } from "./apps/configure-attack.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { applyTargetEffects } from "./game/active-effects.js";
 import { DamageParts } from "./game/damage-parts.js";
 import { getAttackOptions } from "./game/effect-flags.js";
-import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableEffectsOfType, hasUnavoidableDamageOfType, isInstantaneous } from "./item-properties.js";
+import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableApplicationsOfType, hasUnavoidableDamageOfType, isAttack, isInstantaneous, isSpell } from "./item-properties.js";
 import { createTemplate } from "./templates.js";
 import { makeUpdater } from "./updater-utility.js";
 import { effectDurationFromItemDuration, fromUuid, getActorToken, i18n, isActorImmune, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
@@ -54,9 +55,13 @@ export class Resolver {
         "applyDefaultTargetsAsEffective",
         "applyDurationEffect", 
         "applyEffects",
+        "applySelectedTargets",
+        "applySelectedTargetsAsEffective",
+        "applyTargetFromCondition",
         "attackCompleted",
         "confirmTargets",
         "configure-attack",
+        "detachTemplate",
         "idle", 
         "performAttackDamageRoll",
         "performAttackRoll", 
@@ -65,7 +70,8 @@ export class Resolver {
         "placeTemplate",
         "removeSelfTarget",
         "rolling-attack-damage", 
-        "rolling-save-damage", 
+        "rolling-save-damage",
+        "promptVariant",
         "targets-confirmed",
         "triggerAction",
         "waiting-for-action-trigger",
@@ -111,6 +117,12 @@ export class Resolver {
             await this.activation.assignTargets([...game.user.targets].map(t => t.actor));
             await this.activation.applyState("idle");
             await this.step(n);
+        } else if (isAuthor && this.activation.state === "applySelectedTargetsAsEffective") {
+            const targets = [...game.user.targets].map(t => t.actor);
+            await this.activation.assignTargets(targets);
+            await this.activation.applyEffectiveTargets(targets);
+            await this.activation.applyState("idle");
+            await this.step(n);
 
         } else if (isAuthor && this.activation.state === "applyTargetFromCondition") {
             const conditionDetails = this.activation.condition?.details;
@@ -129,6 +141,7 @@ export class Resolver {
             await this.step(n);
 
         } else if (isOriginator && this.activation.state === "removeSelfTarget") {
+            await this.activation.removeTarget(item.actor);
             const token = getActorToken(item.actor);
             if (token && token.isTargeted) {
                 token.setTarget(false, { releaseOthers: false });
@@ -154,15 +167,17 @@ export class Resolver {
                         setProperty(config, "attack.disadvantage", preparationResult.disadvantage);
                     }
                 }
-
-                await this.activation.assignConfig(config);
             }
+
+            config.wasAttackPerformed = true;
+
+            await this.activation.assignConfig(config);
 
             if (this.activation.config.attack?.useDialog) {
                 await this.activation.applyState("configure-attack");
                 await this.step(n);
             } else {
-                await this.activation.applyState("attack-configured");
+                await this.activation.applyState("attack-configured", true);
                 await this.step(n);
             }
         } else if (isOriginator && this.activation.state === "configure-attack") {
@@ -172,7 +187,7 @@ export class Resolver {
 
             if (result != undefined) {
                 await this.activation.assignConfig(result);
-                await this.activation.applyState("attack-configured");
+                await this.activation.applyState("attack-configured", true);
                 await this.step(n);
             }
         } else if (isOriginator && this.activation.state === "attack-configured") {
@@ -196,6 +211,15 @@ export class Resolver {
                 await this.activation.applyState("idle", true);
                 await this.step(n);
             }
+
+        } else if (isOriginator && this.activation.state === "promptVariant") {
+            const options = this.activation.config.variantOptions;
+            if (options?.length) {
+                const variant = await new game.wire.SelectVariantDialog(item, options).render(true);
+                await this.activation.assignConfig({ ...this.activation.config, variant });
+            }
+            await this.activation.applyState("idle", true);
+            await this.step(n);
 
         } else if (isAuthor && this.activation.state === "confirmTargets") {
             if (hasApplicationsOfType(item, this.activation.applicationType, this.activation.variant)) {
@@ -239,6 +263,20 @@ export class Resolver {
             await this.activation.template?.delete();
             await this.activation.applyState("idle");
             await this.step(n);
+        } else if (isOriginator && this.activation.state === "detachTemplate") {
+            runInQueue(async () => {
+                const templateDoc = this.activation.template;
+
+                const attachedTokenId = templateDoc.getFlag("wire", "attachedTokenId");
+                if (attachedTokenId) {
+                    const token = canvas.tokens.get(attachedTokenId);
+                    await token?.document.unsetFlag("wire", "attachedTemplateId");
+                    await templateDoc.unsetFlag("wire", "attachedTokenId");
+                }
+    
+            });
+            await this.activation.applyState("idle");
+            await this.step(n);
 
         } else if (isAuthor && this.activation.state === "performAttackDamageRoll") {
             if ((this.activation.effectiveTargets.length && hasDamageOfType(item, applicationType, this.activation.variant)) || hasUnavoidableDamageOfType(item, applicationType, this.activation.variant)) {
@@ -276,7 +314,7 @@ export class Resolver {
             await this.step(n);
 
         } else if (isGM && this.activation.state === "performSavingThrow") {
-            if (hasOnlyUnavoidableEffectsOfType(item, applicationType, this.activation.variant)) {
+            if (hasOnlyUnavoidableApplicationsOfType(item, applicationType, this.activation.variant)) {
                 await this.activation.applyEffectiveTargets(this.activation.allTargets.map(a => a.actor));
                 await this.activation.applyState("idle");
                 await this.step(n);
@@ -318,7 +356,7 @@ export class Resolver {
             await this.step(n);
 
         } else if (isGM && this.activation.state === "attackCompleted") {
-            await this._triggerAttackConditions();
+            // await this._triggerAttackConditions();
             await this.activation.applyState("idle");
             await this.step(n);
 
@@ -369,6 +407,26 @@ export class Resolver {
                 }
             } else {
                 console.log("UNKNOWN STATE", this.activation.state, ". Maybe run a macro?");
+            }
+        } else if (!this.activation.state) {
+            if (this.activation.config.wasAttackPerformed) {
+                await this._triggerAttackConditions();
+            }
+            if (this.activation.isPrimaryRoll && isSpell(item)) {
+                await this._triggerSpellCastConditions();
+            }
+
+            if (isInstantaneous(item)) {
+                const createdEffects = this.activation.createdEffects.filter(e => !e.flags.wire?.independentDuration);
+                runInQueue(async () => {
+                    for (const effect of createdEffects) {
+                        await effect.delete();
+                    }
+                });
+            }
+
+            if (this.activation.config.deleteItem) {
+                await item.delete();
             }
         }
     }
@@ -580,6 +638,11 @@ export class Resolver {
                 await updater?.process();
             }
         }
+    }
+
+    async _triggerSpellCastConditions() {
+        const caster = this.activation.item.actor;
+        await triggerConditions(caster, "target-casts-spell", { ignoredEffects: this.activation.createdEffects });
     }
 
 }

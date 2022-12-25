@@ -21,6 +21,10 @@ export function isAttack(item) {
     return item.hasAttack;
 }
 
+export function isSpell(item) {
+    return item.type === "spell";
+}
+
 export function isSave(item) {
     return item.system.actionType === "save";
 }
@@ -91,6 +95,10 @@ export function hasUnavoidableApplicationsOfType(item, applicationType, variant)
 
 export function hasOnlyUnavoidableEffectsOfType(item, applicationType, variant) {
     return !hasSaveableApplicationsOfType(item, applicationType, variant) && hasUnavoidableEffectsOfType(item, applicationType, variant);
+}
+
+export function hasOnlyUnavoidableApplicationsOfType(item, applicationType, variant) {
+    return !hasSaveableApplicationsOfType(item, applicationType, variant) && hasUnavoidableApplicationsOfType(item, applicationType, variant);
 }
 
 export function isAttackMagical(item) {

@@ -1,5 +1,6 @@
 import { runInQueue } from "../action-queue.js";
-import { addTokenFX, deleteTokenFX, fromUuid, getActorToken, isActorEffect, isEffectEnabled, triggerConditions } from "../utils.js";
+import { isInstantaneous } from "../item-properties.js";
+import { addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, getActorToken, isActorEffect, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
 
 export function getWireFlags() {
     return [
@@ -117,22 +118,44 @@ export function getWireFlags() {
 
         ...[
             "flags.wire.damage.multiplier.all",
+            "flags.wire.grants.damage.multiplier.all",
         ],
         ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
-            `flags.wire.damage.multiplier.action.${at}`
+            `flags.wire.damage.multiplier.action.${at}`,
+            `flags.wire.grants.damage.multiplier.action.${at}`
         ]),
         ...Object.keys(CONFIG.DND5E.creatureTypes).flatMap(ct => [
-            `flags.wire.damage.multiplier.creature.${ct}`
+            `flags.wire.damage.multiplier.creature.${ct}`,
+            `flags.wire.grants.damage.multiplier.creature.${ct}`
+        ]),
+        ...[...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"].flatMap(dt => [
+            `flags.wire.damage.multiplier.type.${dt}`,
+            `flags.wire.grants.damage.multiplier.type.${dt}`
         ]),
         ...Object.keys(CONFIG.DND5E.abilities).flatMap(abl => [
-            `flags.wire.damage.multiplier.ability.${abl}`
-        ]),
+            `flags.wire.damage.multiplier.ability.${abl}`,
+            `flags.wire.grants.damage.multiplier.ability.${abl}`
+        ])
     ];
 }
 
 const flagInitialValues = {
-    "flags.wire.damage.multiplier.*": 1
+    "flags.wire.damage.multiplier.*": 1,
+    "flags.wire.grants.damage.multiplier.*": 1
 }
+
+const switchFlags = [
+    "flags.wire.advantage.*",
+    "flags.wire.disadvantage.*",
+    "flags.wire.grants.advantage.*",
+    "flags.wire.grants.disadvantage.*"
+    // "flags.wire.fail.*",
+    // "flags.wire.succeed.*",
+    // "flags.wire.max.*",
+    // "flags.wire.min.*",
+    // "flags.wire.receive.max.*",
+    // "flags.wire.receive.min.*",
+]
 
 export function getEffectFlags(actor) {
     return foundry.utils.mergeObject(
@@ -141,8 +164,47 @@ export function getEffectFlags(actor) {
     );
 }
 
-export function getStaticAttackOptions(item, defender, attackConfig) {
+function evaluateAttackFlag(values, attacker, defender, config) {
+    if (!Array.isArray(values)) { return false; }
+
+    return values.some(value => {
+        const item = fromUuid(value.origin);
+        if (item && item instanceof CONFIG.Item.documentClass) {
+            const isAttacker = item.actor === attacker ? 1 : 0;
+            const isDefender = item.actor === defender ? 1 : 0;
+        
+            const rollData = {
+                attacker: attacker?.getRollData() || {},
+                defender: defender?.getRollData() || {},
+                originator: { isAttacker, isDefender },
+                config
+            };
+        
+            return evaluateFormula(value.value, rollData) > 0;
+        } else {
+            return evaluateFormula(value.value, {}) > 0;
+        }
+    });
+}
+
+function evaluateActorFlag(values, actor, config) {
+    if (!Array.isArray(values)) { return false; }
+
+    return values.some(value => {
+        const rollData = {
+            actor: actor?.getRollData() || {},
+            config
+        };
+    
+        return evaluateFormula(value.value, rollData) > 0;
+    });
+}
+
+export function getStaticAttackOptions(item, defender, config) {
+    const attackConfig = config?.attack;
     const attacker = item.actor;
+
+    const ef = (value) => evaluateAttackFlag(value, attacker, defender, config);
 
     const attAdv = getEffectFlags(attacker)?.advantage || {};
     const attDis = getEffectFlags(attacker)?.disadvantage || {};
@@ -160,11 +222,11 @@ export function getStaticAttackOptions(item, defender, attackConfig) {
     const defenderType = defender?.system.details?.type?.value || "humanoid";
     const attackerTypeProperty = `attack.${attackerType}`;
     const defenderTypeProperty = `attack.${defenderType}`;
-    const isTypeAdv = foundry.utils.getProperty(attAdv, defenderTypeProperty) || foundry.utils.getProperty(gntAdv, attackerTypeProperty);
-    const isTypeDis = foundry.utils.getProperty(attDis, defenderTypeProperty) || foundry.utils.getProperty(gntDis, attackerTypeProperty);
+    const isTypeAdv = ef(foundry.utils.getProperty(attAdv, defenderTypeProperty)) || ef(foundry.utils.getProperty(gntAdv, attackerTypeProperty));
+    const isTypeDis = ef(foundry.utils.getProperty(attDis, defenderTypeProperty)) || ef(foundry.utils.getProperty(gntDis, attackerTypeProperty));
 
-    const isAdvantage = checkProperties.some(p => foundry.utils.getProperty(advFlags, p)) || isTypeAdv;
-    const isDisdvantage = checkProperties.some(p => foundry.utils.getProperty(disFlags, p)) || isTypeDis;
+    const isAdvantage = checkProperties.some(p => ef(foundry.utils.getProperty(advFlags, p))) || isTypeAdv;
+    const isDisdvantage = checkProperties.some(p => ef(foundry.utils.getProperty(disFlags, p))) || isTypeDis;
 
     let advantage = (attackConfig?.advantage || (isAdvantage && !isDisdvantage)) && !attackConfig?.disadvantage;
     let disadvantage = (attackConfig?.disadvantage || (isDisdvantage && !isAdvantage)) && !attackConfig?.advantage;
@@ -173,7 +235,7 @@ export function getStaticAttackOptions(item, defender, attackConfig) {
 }
 
 export async function getAttackOptions(item, defender, config) {
-    let { advantage, disadvantage } = getStaticAttackOptions(item, defender, config.attack);
+    let { advantage, disadvantage } = getStaticAttackOptions(item, defender, config);
     const { parts, rollData } = item.getAttackToHit() || {};
 
     if (config.attack?.bonus) {
@@ -186,15 +248,16 @@ export async function getAttackOptions(item, defender, config) {
     return { advantage, disadvantage, parts, data: rollData };
 }
 
-export function getDamageMultiplier(item, actor, target) {
+export function getDamageInflictingMultiplier(item, actor, target, damageType) {
     const multiplierFlags = getEffectFlags(actor)?.damage?.multiplier || {};
 
-    const globalMultiplier = multiplierFlags.all || 1;
-    const actionTypeMultiplier = multiplierFlags.action ? multiplierFlags.action[item.system.actionType] || 1 : 1;
-    const creatureTypeMultiplier = multiplierFlags.creature ? (target?.system.details?.type?.value ? multiplierFlags.creature[target.system.details.type.value] || 1 : 1) : 1;
-    const abilityMultiplier = multiplierFlags.ability ? multiplierFlags.ability[item.abilityMod] || 1 : 1;
+    const globalMultiplier = typeCheckedNumber(multiplierFlags.all, 1);
+    const actionTypeMultiplier = multiplierFlags.action ? typeCheckedNumber(multiplierFlags.action[item.system.actionType], 1) : 1;
+    const creatureTypeMultiplier = multiplierFlags.creature ? (target?.system.details?.type?.value ? typeCheckedNumber(multiplierFlags.creature[target.system.details.type.value], 1) : 1) : 1;
+    const damageTypeMultiplier = multiplierFlags.type ? (damageType ? typeCheckedNumber(multiplierFlags.type[damageType], 1) : 1) : 1;
+    const abilityMultiplier = multiplierFlags.ability ? typeCheckedNumber(multiplierFlags.ability[item.abilityMod], 1) : 1;
 
-    return globalMultiplier * actionTypeMultiplier * creatureTypeMultiplier * abilityMultiplier;
+    return globalMultiplier * actionTypeMultiplier * creatureTypeMultiplier * damageTypeMultiplier * abilityMultiplier;
 }
 
 export function getDamageInflictingOptions(item, actor, damageType) {
@@ -220,7 +283,18 @@ export function getDamageReceivingOptions(item, actor, damageType) {
     const maximize = hasMax && !hasMin;
     const minimize = hasMin && !hasMax;
 
-    return { maximize, minimize };
+    const multiplierFlags = getEffectFlags(actor)?.grants?.damage?.multiplier || {};
+    const source = item.actor;
+
+    const globalMultiplier = typeCheckedNumber(multiplierFlags.all, 1);
+    const actionTypeMultiplier = multiplierFlags.action ? typeCheckedNumber(multiplierFlags.action[item.system.actionType], 1) : 1;
+    const creatureTypeMultiplier = multiplierFlags.creature ? (source?.system.details?.type?.value ? typeCheckedNumber(multiplierFlags.creature[source.system.details.type.value], 1) : 1) : 1;
+    const damageTypeMultiplier = multiplierFlags.type ? (damageType ? typeCheckedNumber(multiplierFlags.type[damageType], 1) : 1) : 1;
+    const abilityMultiplier = multiplierFlags.ability ? typeCheckedNumber(multiplierFlags.ability[item.abilityMod], 1) : 1;
+
+    const multiplier = globalMultiplier * actionTypeMultiplier * creatureTypeMultiplier * damageTypeMultiplier * abilityMultiplier;
+
+    return { maximize, minimize, multiplier };
 }
 
 export function getDamageReduction(actor) {
@@ -236,7 +310,7 @@ export function getDamageReduction(actor) {
     return entries;
 }
 
-export function getSaveOptions(actor, abilityId, isConcentration) {
+export function getSaveOptions(actor, abilityId, config, isConcentration) {
     const flags = getEffectFlags(actor);
 
     const succeedFlags = flags?.succeed || {};
@@ -248,11 +322,13 @@ export function getSaveOptions(actor, abilityId, isConcentration) {
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
 
+    const ef = (value) => evaluateActorFlag(value, actor, config);
+
     const advFlags = flags?.advantage?.ability || {};
     const disFlags = flags?.disadvantage?.ability || {};
 
-    const isAdvantage = flags?.advantage?.all || advFlags.all || advFlags.save?.all || (advFlags.save && advFlags.save[abilityId]) || (isConcentration && flags?.advantage?.concentration);
-    const isDisdvantage = flags?.disadvantage?.all || disFlags.all || disFlags.save?.all || (disFlags.save && disFlags.save[abilityId]) || (isConcentration && flags?.disadvantage?.concentration);
+    const isAdvantage = ef(flags?.advantage?.all) || ef(advFlags.all) || ef(advFlags.save?.all) || (advFlags.save && ef(advFlags.save[abilityId])) || (isConcentration && ef(flags?.advantage?.concentration));
+    const isDisdvantage = ef(flags?.disadvantage?.all) || ef(disFlags.all) || ef(disFlags.save?.all) || (disFlags.save && ef(disFlags.save[abilityId])) || (isConcentration && ef(flags?.disadvantage?.concentration));
 
     const advantage = isAdvantage && !isDisdvantage;
     const disadvantage = isDisdvantage && !isAdvantage;
@@ -260,7 +336,7 @@ export function getSaveOptions(actor, abilityId, isConcentration) {
     return { success, failure, advantage, disadvantage };
 }
 
-export function getAbilityCheckOptions(actor, abilityId) {
+export function getAbilityCheckOptions(actor, abilityId, config) {
     const flags = getEffectFlags(actor);
 
     const succeedFlags = flags?.succeed || {};
@@ -272,11 +348,13 @@ export function getAbilityCheckOptions(actor, abilityId) {
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
 
+    const ef = (value) => evaluateActorFlag(value, actor, config);
+
     const advFlags = flags?.advantage?.ability || {};
     const disFlags = flags?.disadvantage?.ability || {};
 
-    const isAdvantage = flags?.advantage?.all || advFlags.all || advFlags.check?.all || (advFlags.check && advFlags.check[abilityId]);
-    const isDisdvantage = flags?.disadvantage?.all || disFlags.all || disFlags.check?.all || (disFlags.check && disFlags.check[abilityId]);
+    const isAdvantage = ef(flags?.advantage?.all) || ef(advFlags.all) || ef(advFlags.check?.all) || (advFlags.check && ef(advFlags.check[abilityId]));
+    const isDisdvantage = ef(flags?.disadvantage?.all) || ef(disFlags.all) || ef(disFlags.check?.all) || (disFlags.check && ef(disFlags.check[abilityId]));
 
     const advantage = isAdvantage && !isDisdvantage;
     const disadvantage = isDisdvantage && !isAdvantage;
@@ -284,19 +362,47 @@ export function getAbilityCheckOptions(actor, abilityId) {
     return { success, failure, advantage, disadvantage };
 }
 
-export function applyConditionImmunity(actor, effectDataList) {
+function applyConditionImmunities(actor) {
+    const keys = [
+        "macro.CE",
+        "StatusEffect",
+        "wire.custom.statusEffect",
+        "wire.custom.persistentStatusEffect"
+    ]
+    const immunities = [
+        ...actor.system.traits?.ci?.value,
+        ...actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase())
+    ];
+
+    const effects = actor.effects
+        .filter(effect => {
+            return effect.changes.find(change => {
+                return keys.includes(change.key) && immunities.includes(change.value.toLowerCase())
+            });
+        });
+
+    runInQueue(async () => {
+        for (const effect of effects) {
+            await effect.delete();
+        }
+    });
+}
+
+export function checkConditionImmunity(actor, effectDataList) {
+    const keys = [
+        "macro.CE",
+        "StatusEffect",
+        "wire.custom.statusEffect",
+        "wire.custom.persistentStatusEffect"
+    ]
+    const immunities = [
+        ...actor.system.traits?.ci?.value,
+        ...actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase())
+    ];
+
     return effectDataList
         .filter(effectData => {
             return !effectData.changes.find(change => {
-                const keys = [
-                    "macro.CE",
-                    "StatusEffect",
-                    "wire.custom.statusEffect"
-                ]
-                const immunities = [
-                    ...actor.system.traits?.ci?.value,
-                    ...actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase())
-                ];
                 return keys.includes(change.key) && immunities.includes(change.value.toLowerCase())
             });
         });
@@ -313,7 +419,9 @@ export function initEffectFlagHooks() {
                         const uuid = actor.uuid;
                         const isLinked = change.key !== "wire.custom.persistentStatusEffect";
                         const origin = isLinked ? effect.origin : null;
-                        await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
+                        if (!game.dfreds?.effectInterface?.hasEffectApplied(effectName, uuid)) {
+                            await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
+                        }
                     });
                 }
                 if (change.key === "wire.custom.tokenFX") {
@@ -338,7 +446,9 @@ export function initEffectFlagHooks() {
                             const uuid = actor.uuid;
                             const isLinked = change.key !== "wire.custom.persistentStatusEffect";
                             const origin = isLinked ? effect.origin : null;
-                            await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
+                            if (!game.dfreds?.effectInterface?.hasEffectApplied(effectName, uuid)) {
+                                await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
+                            }
                         });
                     }
                     if (changes.disabled === true) {
@@ -400,6 +510,7 @@ export function setupRollFlagWrappers() {
     // libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.prepareDerivedData", onActorPrepareDerivedData, "MIXED");
     // libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.applyActiveEffects", onActorApplyActiveEffects, "MIXED");
     libWrapper.register("wire", "CONFIG.ActiveEffect.documentClass.prototype.apply", onActiveEffectApply, "MIXED");
+    libWrapper.register("wire", "CONFIG.ActiveEffect.documentClass.prototype._displayScrollingStatus", onActiveEffectDisplayScrollingStatus, "MIXED");
 
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.rollSkill", onActorRollSkill, "MIXED");
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.rollAbilityTest", onActorRollAbilityTest, "MIXED");
@@ -442,8 +553,23 @@ function onActiveEffectApply(wrapped, actor, change) {
         return;
     }
 
+    let ret;
     if (change.key.startsWith("flags.wire.")) {
         const current = foundry.utils.getProperty(actor, change.key) ?? null;
+
+        for (let switchKey of switchFlags) {
+            if (switchKey === change.key || switchKey.endsWith("*") && change.key.startsWith(switchKey.slice(0, switchKey.length - 1))) {
+                const changes = {}
+                const origin = change.effect.origin;
+                const value = change.value;
+                const changeValue = [...(current || []), { origin, value }];
+
+                foundry.utils.setProperty(actor, change.key, changeValue)
+                changes[change.key] = changeValue;
+
+                return changes;
+            }
+        }
 
         if (current === null ) {
             let initialValue = null;
@@ -458,18 +584,29 @@ function onActiveEffectApply(wrapped, actor, change) {
                 foundry.utils.setProperty(actor, change.key, initialValue);
             }
         }
-    }
 
-    if (change.key.startsWith("flags.midi-qol.")) {
+        ret = wrapped.apply(this, [actor, change]);
+    } else if (change.key.startsWith("flags.midi-qol.")) {
         const wireKey = "flags.wire.midi-qol." + change.key.substring("flags.midi-qol.".length);
         const copy = duplicate(change);
         copy.key = wireKey;
         copy.mode = CONST.ACTIVE_EFFECT_MODES.OVERRIDE;
         copy.value = true;
-        return wrapped.apply(this, [actor, copy]);
+        ret = wrapped.apply(this, [actor, copy]);
+    } else {
+        ret = wrapped.apply(this, [actor, change]);
     }
 
-    return wrapped.apply(this, [actor, change]);
+    applyConditionImmunities(actor);
+
+    return ret;
+}
+
+function onActiveEffectDisplayScrollingStatus(wrapped, enabled) {
+    if (isInstantaneous(fromUuid(this.origin))) {
+        return;
+    }
+    wrapped(enabled);
 }
 
 async function makeRollParts(parts) {
@@ -487,6 +624,8 @@ async function onActorRollSkill(wrapped, skillId, options) {
     const skill = this.system.skills[skillId];
     const abilityId = skill.ability;
 
+    const ef = (value) => evaluateActorFlag(value, this);
+
     const advFlags = getEffectFlags(this)?.advantage || {};
     const disFlags = getEffectFlags(this)?.disadvantage || {};
     const skillAdv = advFlags.skill || {};
@@ -494,8 +633,8 @@ async function onActorRollSkill(wrapped, skillId, options) {
     const abilityAdv = advFlags.ability || {};
     const abilityDis = disFlags.ability || {};
 
-    const isAdvantage   = advFlags.all || abilityAdv.all || abilityAdv.check?.all || (abilityAdv.check && abilityAdv.check[abilityId]) || skillAdv.all || skillAdv[skillId];
-    const isDisdvantage = disFlags.all || abilityDis.all || abilityDis.check?.all || (abilityDis.check && abilityDis.check[abilityId]) || skillDis.all || skillDis[skillId];
+    const isAdvantage   = ef(advFlags.all) || ef(abilityAdv.all) || ef(abilityAdv.check?.all) || (abilityAdv.check && ef(abilityAdv.check[abilityId])) || ef(skillAdv.all) || ef(skillAdv[skillId]);
+    const isDisdvantage = ef(disFlags.all) || ef(abilityDis.all) || ef(abilityDis.check?.all) || (abilityDis.check && ef(abilityDis.check[abilityId])) || ef(skillDis.all) || ef(skillDis[skillId]);
 
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
@@ -520,7 +659,7 @@ async function onActorRollAbilityTest(wrapped, abilityId, options) {
 async function onActorRollAbilitySave(wrapped, abilityId, options) {
     const bonus = await triggerConditions(this, "prepare-ability-save");
 
-    const saveOptions = getSaveOptions(this, abilityId, options?.isConcentration);
+    const saveOptions = getSaveOptions(this, abilityId, undefined, options?.isConcentration);
     const advantage = options.advantage || (saveOptions.advantage && !options.disadvantage && !options.normal);
     const disadvantage = options.disadvantage || (saveOptions.disadvantage && !options.advantage && !options.normal);
 
@@ -534,8 +673,10 @@ function onActorRollDeathSave(wrapped, options) {
     const advFlags = getEffectFlags(this)?.advantage || {};
     const disFlags = getEffectFlags(this)?.disadvantage || {};
 
-    const isAdvantage = advFlags.deathSave;
-    const isDisdvantage = disFlags.deathSave;
+    const ef = (value) => evaluateActorFlag(value, this);
+
+    const isAdvantage = ef(advFlags.deathSave);
+    const isDisdvantage = ef(disFlags.deathSave);
 
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);

@@ -220,6 +220,10 @@ export class Flow {
         return ["applySelectedTargets", ...this.chain(this.pick(...arguments))];
     }
 
+    applySelectedTargetsAsEffective() {
+        return ["applySelectedTargetsAsEffective", ...this.chain(this.pick(...arguments))];
+    }
+
     applyTargetFromCondition() {
         return ["applyTargetFromCondition", ...this.chain(this.pick(...arguments))];
     }
@@ -234,6 +238,10 @@ export class Flow {
 
     confirmTargets() {
         return ["confirmTargets", ...this.chain(this.pick(...arguments))];
+    }
+
+    detachTemplate() {
+        return ["detachTemplate", ...this.chain(this.pick(...arguments))];
     }
 
     endEffect() {
@@ -268,6 +276,10 @@ export class Flow {
         return ["placeTemplate", ...this.chain(this.pick(...arguments))];
     }
 
+    promptVariant() {
+        return ["promptVariant", ...this.chain(this.pick(...arguments))];
+    }
+
     removeSelfTarget() {
         return ["removeSelfTarget", ...this.chain(this.pick(...arguments))];
     }
@@ -283,15 +295,18 @@ export class Flow {
     // Prepared flows
 
     defaultFlow() {
-        return itemRollFlow.apply(this);
+        const steps = itemRollFlow.apply(this) || [];
+        return [...steps, ...this.chain(this.pick(...arguments))];
     }
 
     areaEffectFlow(options = {}) {
-        return areaEffectFlow.apply(this, [options]);
+        const steps = areaEffectFlow.apply(this, [options]) || [];
+        return [...steps, ...this.chain(this.pick(...arguments))];
     }
 
-    singleTargetFlow() {
-        return singleTargetFlow.apply(this);
+    singleTargetFlow(options = {}) {
+        const steps = singleTargetFlow.apply(this, [options]) || [];
+        return [...steps, ...this.chain(this.pick(...arguments))];
     }
 
     // Pre-roll options
@@ -310,6 +325,10 @@ export class Flow {
 
     skipTemplatePlacement() {
         this.preRollOptions["skipTemplatePlacement"] = true;
+    }
+
+    skipVariantSelection() {
+        this.preRollOptions["skipVariantSelection"] = true;
     }
 
     setTemplateTargetSelection(state) {

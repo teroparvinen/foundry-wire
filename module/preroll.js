@@ -31,13 +31,12 @@ export async function preRollConfig(item, options = {}, event) {
     let doCreateMeasuredTemplate = hasArea && !options.skipTemplatePlacement;       // Trigger a template creation
     let doConsumeRecharge = !!recharge.value;     // Consume recharge
     let doConsumeResource = !!resource.target && (!item.hasAttack || (resource.type !== "ammo")); // Consume a linked (non-ammo) resource
-    let doConsumeSpellSlot = requireSpellSlot;    // Consume a spell slot
     let consumedUsageCount = uses.per ? 1 : 0;              // Consume limited uses
     let consumedItemQuantity = uses.autoDestroy;     // Consume quantity of the item in lieu of uses
     let consumedSpellLevel = null;               // Consume a specific category of spell slot
     if (requireSpellSlot) consumedSpellLevel = id.preparation.mode === "pact" ? "pact" : `spell${id.level}`;
 
-    if (options.variantOptions && !options.variant) {
+    if (options.variantOptions && !options.variant && !options.skipVariantSelection) {
         const variant = await new game.wire.SelectVariantDialog(item, options.variantOptions).render(true);
         if (!variant) {
             return;
@@ -46,11 +45,14 @@ export async function preRollConfig(item, options = {}, event) {
     } else {
         activationConfig.variant = options.variant;
     }
+    activationConfig.variantOptions = options.variantOptions;
+    if (requireSpellSlot) {
+        activationConfig.spellLevel = id.level;
+        activationConfig.upcastLevel = 0;
+    }
 
-    const skipDefaultDialog = false;
     const useConfig = {
-        doCreateMeasuredTemplate, doConsumeRecharge, doConsumeResource, doConsumeSpellSlot, 
-        consumedSpellLevel, consumedUsageCount, consumedItemQuantity, skipDefaultDialog
+        doConsumeRecharge, doConsumeResource, consumedSpellLevel, consumedUsageCount, consumedItemQuantity
     };
     
     if (options.customConfigurationCallback) {
@@ -65,31 +67,25 @@ export async function preRollConfig(item, options = {}, event) {
 
     // Display a configuration dialog to customize the usage
     const needsConfiguration =
-        useConfig.doCreateMeasuredTemplate || useConfig.doConsumeRecharge || useConfig.doConsumeResource || 
-        useConfig.doConsumeSpellSlot || useConfig.consumedUsageCount;
+        doConsumeRecharge || doConsumeResource || requireSpellSlot || useConfig.consumedUsageCount;
     if (needsConfiguration && !options.skipConfigurationDialog && !useConfig.skipDefaultDialog) {
         const configuration = await game.dnd5e.applications.item.AbilityUseDialog.create(item);
         if (!configuration) return;
 
         // Determine consumption preferences
-        // doCreateMeasuredTemplate = Boolean(configuration.createMeasuredTemplate);
         useConfig.consumedUsageCount = Boolean(configuration.consumeUsage) ? 1 : 0;
         useConfig.doConsumeRecharge = Boolean(configuration.consumeRecharge);
         useConfig.doConsumeResource = Boolean(configuration.consumeResource);
-        useConfig.doConsumeSpellSlot = Boolean(configuration.consumeSpellSlot);
 
         // Handle spell upcasting
         if (requireSpellSlot) {
             useConfig.consumedSpellLevel = configuration.consumeSpellLevel === "pact" ? "pact" : `spell${configuration.consumeSpellLevel}`;
-            if (useConfig.doConsumeSpellSlot === false) useConfig.consumedSpellLevel = null;
+            if (configuration.consumeSpellSlot === false) useConfig.consumedSpellLevel = null;
             const upcastLevel = configuration.consumeSpellLevel === "pact" ? ad.spells.pact.level : parseInt(configuration.consumeSpellLevel);
 
             activationConfig.spellLevel = upcastLevel;
             activationConfig.upcastLevel = upcastLevel - id.level;
         }
-    } else if (requireSpellSlot) {
-        activationConfig.spellLevel = id.level;
-        activationConfig.upcastLevel = 0;
     }
 
     // Determine whether the item can be used by testing for resource consumption
@@ -99,7 +95,7 @@ export async function preRollConfig(item, options = {}, event) {
 
     // Commit pending data updates
     if (!foundry.utils.isEmpty(itemUpdates)) await item.update(itemUpdates);
-    if (consumedItemQuantity && (item.system.quantity === 0)) await item.delete();
+    if (consumedItemQuantity && (item.system.quantity === 0)) { activationConfig.deleteItem = true }
     if (!foundry.utils.isEmpty(actorUpdates)) await actor.update(actorUpdates);
     if (resourceUpdates.length) await actor.updateEmbeddedDocuments("Item", resourceUpdates);
 

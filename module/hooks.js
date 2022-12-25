@@ -77,7 +77,7 @@ export function initHooks() {
             html[0].classList.add("wire-hide-speaker-fields");
         }
 
-        if (message.getFlag("wire", "activation") || message.getFlag("wire", "isGmView")) {
+        if (message.getFlag("wire", "isPrimaryRoll") || message.getFlag("wire", "activation") || message.getFlag("wire", "isGmView")) {
             html[0].classList.add("wire-activation-view");
         }
         if (message.getFlag("wire", "isDamageCard")) {
@@ -99,24 +99,26 @@ export function initHooks() {
     });
 
     async function teardownMasterEffect(effect, clean) {
-        const templateUuid = effect.getFlag("wire", "templateUuid");
-        if (templateUuid) {
-            const template = fromUuid(templateUuid);
-            await template?.delete();
-        }
-
-        const childEffectUuids = effect.getFlag("wire", "childEffectUuids");
-        if (childEffectUuids && childEffectUuids.length) {
-            for (let uuid of childEffectUuids) {
-                await fromUuid(uuid)?.delete();
+        await runInQueue(async () => {
+            const templateUuid = effect.getFlag("wire", "templateUuid");
+            if (templateUuid) {
+                const template = fromUuid(templateUuid);
+                await template?.delete();
             }
-        }
-
-        if (clean) {
-            await effect.unsetFlag("wire", "templateUuid");
-            await effect.unsetFlag("wire", "childEffectUuids");
-            await effect.unsetFlag("wire", "isMasterEffect");
-        }
+    
+            const childEffectUuids = effect.getFlag("wire", "childEffectUuids");
+            if (childEffectUuids && childEffectUuids.length) {
+                for (let uuid of childEffectUuids) {
+                    await fromUuid(uuid)?.delete();
+                }
+            }
+    
+            if (clean) {
+                await effect.unsetFlag("wire", "templateUuid");
+                await effect.unsetFlag("wire", "childEffectUuids");
+                await effect.unsetFlag("wire", "isMasterEffect");
+            }
+        })
     }
 
     async function triggerTransferEffect(effect) {
@@ -317,8 +319,12 @@ export function initHooks() {
                 await resetVisitedTemplates();
 
                 if (combatant.isNPC && !combatant.isDefeated) {
-                    combatant.token?.object?.control();
-                    canvas.animatePan({ x: combatant.token?._object?.x, y: combatant.token?._object?.y })
+                    if (game.settings.get("wire", "change-turn-control-npc")) {
+                        combatant.token?.object?.control();
+                    }
+                    if (game.settings.get("wire", "change-turn-focus-npc")) {
+                        canvas.animatePan({ x: combatant.token?._object?.x, y: combatant.token?._object?.y })
+                    }
                 }
     
                 if (!combatant.isDefeated && game.settings.get("wire", "turn-change-notifications")) {

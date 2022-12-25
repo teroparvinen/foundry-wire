@@ -30,6 +30,8 @@
             "activate-reaction": "Take a reaction",
             "activate-action": "Take an action",
             "concentration-save-header": "Concentration Save DC {dc}",
+            "concentration-drop-header": "Concentration Lost",
+            "drop-concentration": "Drop Concentration",
             "death-save-header": "Death Save",
             "temporary-hp": "Temporary HP",
             "off-hand": "Off hand",
@@ -99,6 +101,7 @@
             "condition-target-is-hit.rwak": "Is hit by a ranged weapon attack",
             "condition-target-is-hit.msak": "Is hit by a melee spell attack",
             "condition-target-is-hit.rsak": "Is hit by a ranged spell attack",
+            "condition-target-casts-spell": "Target casts a spell",
             "condition-takes-damage": "Takes damage",
             "condition-saving-throw-completed": "Has made a saving throw",
             "condition-skill-check-completed": "Has made a skill check",
@@ -174,6 +177,7 @@
         },
         "warn": {
             "select-single-target-for-attack": "Select a target for the attack",
+            "select-targets-for-effect": "Make a target selection",
             "damage-roll-has-no-parts": "There is no damage to roll!",
             "could-not-parse-bonus-damage": "Could not parse bonus damage!",
             "resolve-performAttackRoll-noTarget": "Attack has no target!"
@@ -190,7 +194,11 @@
             "hide-npc-save-results": "Hide NPC save results",
             "hide-npc-save-results-hint": "Without this option, players will see if NPCs targeted by their spells/abilities fail or succeed saves. Select this to hide the result.",
             "damage-roll-confirms-hit": "Damage roll confirms hit",
-            "damage-roll-confirms-hit-hint": "If selected, whenever the GM is prompted to choose if an NPC attack roll was a hit, the damage buttons will also be shown. Pressing a damage button will then automatically call the attack roll a hit before rolling damage."
+            "damage-roll-confirms-hit-hint": "If selected, whenever the GM is prompted to choose if an NPC attack roll was a hit, the damage buttons will also be shown. Pressing a damage button will then automatically call the attack roll a hit before rolling damage.",
+            "change-turn-focus-npc": "When an NPC's turn starts, focus on the token",
+            "change-turn-control-npc": "When an NPC's turn starts, select the token",
+            "auto-drop-concentration": "Automatically drop concentration at 0 hp",
+            "auto-drop-concentration-hint": "If this is not selected, a card will be displayed prompting to drop concentration."
         },
         "keybindings": {
             "next-turn": "Next turn",

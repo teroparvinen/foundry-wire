@@ -13,11 +13,12 @@ import { initItemSheetHooks, setupItemSheetWrappers } from "./injections/item-sh
 import { setupKeybindings } from "./keybindings.js";
 import { setupSocket } from "./socket.js";
 import { setupWrappers } from "./wrappers.js";
-import { fromUuid } from "./utils.js";
+import { createScrollingText, fromUuid, getActorToken } from "./utils.js";
 import { createChildEffects, removeChildEffects } from "./game/active-effects.js";
 import { initSettings } from "./settings.js";
 import { getAvailablePackImports, importPackItems, setupCompendiumHooks } from "./compendiums.js";
 import { initTemplateHooks, placeTemplate, setupTemplateWrappers } from "./templates.js";
+import { setupLogicRolls } from "./logic-rolls.js";
 
 Hooks.once("init", () => {
     initHooks();
@@ -41,8 +42,10 @@ Hooks.once("init", () => {
         placeTemplate,
         runInQueue,
         fromUuid,
+        getActorToken,
         removeChildEffects,
         createChildEffects,
+        createScrollingText,
         getAvailablePackImports,
         importPackItems
     }
@@ -58,6 +61,7 @@ Hooks.once("setup", () => {
     setupActionQueue();
     setupKeybindings();
     setupCompendiumHooks();
+    setupLogicRolls();
 });
 
 Hooks.once("ready", async () => {
