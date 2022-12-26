@@ -6,6 +6,7 @@ import { DeathSaveCard } from "./cards/death-save-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { resetVisitedTemplates } from "./conditions/area-effects.js";
 import { updateCombatTurnEndConditions, updateCombatTurnStartConditions } from "./conditions/combat-turns.js";
+import { checkCombatDurations } from "./durations.js";
 import { applySingleEffect } from "./game/active-effects.js";
 import { getDisplayableAttackComponents } from "./game/attack-components.js";
 import { getStaticAttackOptions, getWireFlags } from "./game/effect-flags.js";
@@ -163,6 +164,15 @@ export function initHooks() {
             if (isAuraEffect(effect)) {
                 updateAuras();
             }
+
+            const conditions = effect.flags.wire?.conditions?.filter(c => c.condition === "effect-ends") ?? [];
+            for (let condition of conditions) {
+                const item = fromUuid(effect.origin);
+                const updater = makeUpdater(condition, effect, item);
+                runInQueue(async () => {
+                    await updater?.process();
+                });
+            }
         }
     });
 
@@ -304,6 +314,10 @@ export function initHooks() {
             if (combat.current.combatantId !== lastKnownCombatantId) {
                 await updateCombatTurnEndConditions();
             }
+
+            await runInQueue(async () => {
+                await checkCombatDurations(combat);
+            });
 
             if (change.round && change.round !== lastKnownRound && game.settings.get("wire", "round-change-notifications")) {
                 ChatMessage.create({

@@ -24,15 +24,11 @@ export function itemRollFlow() {
                                     this.hasDamage(
                                         this.performAttackDamageRoll(
                                             this.applyDamage(
-                                                this.applyEffects(
-                                                    this.attackCompleted()
-                                                )
+                                                this.applyEffects()
                                             )
                                         )
                                     ),
-                                    this.applyEffects(
-                                        this.attackCompleted()
-                                    )
+                                    this.applyEffects()
                                 )
                             ),
                             this.otherwise(

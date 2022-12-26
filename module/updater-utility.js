@@ -89,6 +89,8 @@ export function determineUpdateTargets(item, effect, condition, externalTargetAc
         case "target-is-hit.rsak":
         case "takes-damage":
         case "saving-throw-completed":
+        case "effect-created":
+        case "effect-ends":
             return [effect.parent];
         case "take-an-action":
             if (isCastersTurn(item)) {

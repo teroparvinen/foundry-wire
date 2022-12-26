@@ -112,6 +112,7 @@
             "condition-prepare-attack-roll": "Prepare an attack roll",
             "condition-prepare-damage-roll": "Prepare a damage roll",
             "condition-effect-created": "The effect is created",
+            "condition-effect-ends": "The effect ends",
             "update-apply-immediate": "Activate immediate damage and effects",
             "update-apply-delayed": "Activate delayed damage and effects",
             "update-apply-overtime": "Activate over time damage and effects",
@@ -237,7 +238,9 @@
         },
         "module-check": {
             "itemacro-title": "Item Macro settings warning",
-            "itemacro-content": "<p>The following Item Macro settings should be off for WIRE and Item Macro to work correctly together.</p><ul><li>Character Sheet Hook</li><li>Override default macro execution</li></ul><p>At least one of them is currently enabled. Do you want to use the recommended settings?</p>"
+            "itemacro-content": "<p>The following Item Macro settings should be off for WIRE and Item Macro to work correctly together.</p><ul><li>Character Sheet Hook</li><li>Override default macro execution</li></ul><p>At least one of them is currently enabled. Do you want to use the recommended settings?</p>",
+            "times-up-title": "Times Up module conflict",
+            "times-up-content": "<p>Times Up is no longer recommended to be used with WIRE. WIRE now has its own duration tracking adopted to best fit the module's needs. Continuing to use Times Up may cause unpredictable behavior.</p><p>Do you want to disable Times Up?</p>"
         }
     }
 }

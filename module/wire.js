@@ -19,6 +19,7 @@ import { initSettings } from "./settings.js";
 import { getAvailablePackImports, importPackItems, setupCompendiumHooks } from "./compendiums.js";
 import { initTemplateHooks, placeTemplate, setupTemplateWrappers } from "./templates.js";
 import { setupLogicRolls } from "./logic-rolls.js";
+import { setupDurations } from "./durations.js";
 
 Hooks.once("init", () => {
     initHooks();
@@ -62,6 +63,7 @@ Hooks.once("setup", () => {
     setupKeybindings();
     setupCompendiumHooks();
     setupLogicRolls();
+    setupDurations();
 });
 
 Hooks.once("ready", async () => {
@@ -69,6 +71,7 @@ Hooks.once("ready", async () => {
 
     await checkBetaWarning();
     await checkItemMacroSettings();
+    await checkTimesUpWarning();
 });
 
 async function checkBetaWarning() {
@@ -91,6 +94,23 @@ async function checkItemMacroSettings() {
             yes: () => {
                 game.settings.set("itemacro", "charsheet", false);
                 game.settings.set("itemacro", "defaultmacro", false);
+                setTimeout(() => window.location.reload(), 500);
+            },
+            no: () => {},
+            defaultYes: true
+        });
+    }
+}
+
+async function checkTimesUpWarning() {
+    if (game.user.isGM && game.modules.get("times-up")?.active) {
+        await Dialog.confirm({
+            title: game.i18n.localize("wire.module-check.times-up-title"),
+            content: game.i18n.localize("wire.module-check.times-up-content"),
+            yes: async () => {
+                const settings = game.settings.get("core", ModuleManagement.CONFIG_SETTING);
+                settings["times-up"] = false;
+                await game.settings.set("core", ModuleManagement.CONFIG_SETTING, settings);
                 setTimeout(() => window.location.reload(), 500);
             },
             no: () => {},

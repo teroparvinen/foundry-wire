@@ -9,15 +9,11 @@ export function singleTargetFlow({ skipTargeting = false } = {}) {
                     this.hasDamage(
                         this.performAttackDamageRoll(
                             this.applyDamage(
-                                this.applyEffects(
-                                    this.attackCompleted()
-                                )
+                                this.applyEffects()
                             )
                         )
                     ),
-                    this.applyEffects(
-                        this.attackCompleted()
-                    )
+                    this.applyEffects()
                 )
             ),
             this.otherwise(

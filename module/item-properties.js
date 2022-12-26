@@ -13,7 +13,7 @@ export function hasDuration(item) {
 }
 
 export function isInstantaneous(item) {
-    const units = item.system.duration.units;
+    const units = item instanceof CONFIG.Item.documentClass && item.system.duration?.units;
     return !units || units === "inst";
 }
 

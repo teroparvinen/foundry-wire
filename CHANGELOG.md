@@ -5,6 +5,7 @@
 Breaking changes
 
 - Item duration specified in turns was previously counted as individual actors' turns. It is now considered to mean the specified number of the caster's turns, making it effectively the same as a duration in rounds but lasting until the end of that caster's turn. A duration of 1 turn therefore effectively means "until the end of this turn" and 2 turns means "until the end of your next round". Several spells use the latter and nothing in 5e uses how it currently works so hopefully not a very impactful breaking change.
+- Some aspects of WIRE require more detailed duration tracking timing than what was possible using a separate module and Foundry hooks. Effect duration tracking was rolled into WIRE, and using Times Up is no longer recommended. A pop-up recommending disabling it will now be shown at start up. (See the change regarding the "The effect ends" condition below.)
 
 Changes
 
@@ -40,6 +41,7 @@ Changes
 - PCs will be shown a variant of the concentration card when they hit 0 hp that will have a button to drop concentration. Accidentally dropping concentration can lead to a huge hassle with effects dropping, templates being deleted and duration tracking getting interrupted, so having a middle ground with a notification but no accidental drops is available here.
     - Added a setting for those who just dont care. It makes concentration drop immediately at 0 hp.
 - New condition: "Target casts a spell". This will be triggered whenever an activation flow triggered from an item that is a spell reaches its end.
+- New condition: "The effect ends". The condition will be triggered when an effect ends. This is typically triggered after all "turn ends" conditions have been fired and before any "turn starts" conditions have been triggered.
 - Deprecated the activation flow step `attackCompleted`. The conditions triggered by it will now be automatically triggered whenever a flow containing the `performAttackRoll` step is completed.
 - New application flow step option `applySelectedTargetsAsEffective`. This allows setting up items that always land, omitting attack rolls or saves.
 
