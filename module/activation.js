@@ -381,7 +381,7 @@ export class Activation {
         await this._update();
     }
 
-    async _assignTemplateData(templateData) {
+    async assignTemplateData(templateData) {
         this.templateProxy = new DocumentProxy(game.scenes.current, "MeasuredTemplate", templateData);
 
         this.templateProxy.setFlag("wire", "activationMessageId", this.message.id);
@@ -460,8 +460,24 @@ export class Activation {
         if (this.sourceEffect) {
             await this.sourceEffect.setFlag("wire", "activationConfig", config);
         }
+        if (this.masterEffect) {
+            await this.masterEffect.setFlag("wire", "activationConfig", config);
+        }
 
         foundry.utils.setProperty(this.data, "config", config);
+        await this._update();
+    }
+
+    async updateConfig(config) {
+        const current = this.config;
+        const updated = foundry.utils.mergeObject(current, config);
+        foundry.utils.setProperty(this.data, "config", updated);
+        if (this.sourceEffect) {
+            await this.sourceEffect.setFlag("wire", "activationConfig", updated);
+        }
+        if (this.masterEffect) {
+            await this.masterEffect.setFlag("wire", "activationConfig", updated);
+        }
         await this._update();
     }
 

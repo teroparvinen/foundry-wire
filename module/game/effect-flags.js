@@ -1,6 +1,6 @@
 import { runInQueue } from "../action-queue.js";
 import { isInstantaneous } from "../item-properties.js";
-import { addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, getActorToken, isActorEffect, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
+import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, getActorToken, isActorEffect, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
 
 export function getWireFlags() {
     return [
@@ -369,10 +369,7 @@ function applyConditionImmunities(actor) {
         "wire.custom.statusEffect",
         "wire.custom.persistentStatusEffect"
     ]
-    const immunities = [
-        ...actor.system.traits?.ci?.value,
-        ...(actor.system.traits?.ci?.custom && actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase()) || [])
-    ];
+    const immunities = actorConditionImmunityTypes(actor);
 
     const effects = actor.effects
         .filter(effect => {
@@ -607,7 +604,9 @@ function onActiveEffectApply(wrapped, actor, change) {
         ret = wrapped.apply(this, [actor, change]);
     }
 
-    applyConditionImmunities(actor);
+    if (game.user.isGM) {
+        applyConditionImmunities(actor);
+    }
 
     return ret;
 }

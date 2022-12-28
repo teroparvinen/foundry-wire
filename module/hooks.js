@@ -426,7 +426,7 @@ export function initHooks() {
                         if (item.hasAreaTarget && !template) {
                             const templateData = await createTemplate(item, activation.config, activation.applicationType, { disableTargetSelection: true });
                             if (templateData) {
-                                await activation._assignTemplateData(templateData);
+                                await activation.assignTemplateData(templateData);
                                 await activation._finalizeUpdate();
                             }
                         }

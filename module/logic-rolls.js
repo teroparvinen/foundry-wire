@@ -23,7 +23,7 @@ export function setupLogicRolls() {
 
 function formatReplacementResult(value) {
     if (Array.isArray(value)) {
-        return value.map(v => formatReplacementResult(v)).join();
+        return value.length ? value.map(v => formatReplacementResult(v)).join() : "undefined";
     } else {
         const str = String(value).trim();
         const isQuotable = isNaN(str) && !str.startsWith("@");

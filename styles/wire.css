@@ -472,7 +472,7 @@
     padding-bottom: 20px !important;
 }
 
-.sheet .condition-control, .sheet .variant-control {
+.sheet .condition-control, .sheet .variant-control, .sheet .immunity-control {
     width: 18px;
     flex: 0 0 18px;
     line-height: 24px;
@@ -481,7 +481,7 @@
     color: #7a7971;
 }
 
-.sheet .condition-header, .sheet .variant-header {
+.sheet .condition-header, .sheet .variant-header, .sheet .immunity-header {
     margin: 0;
     padding: 0;
     font-weight: bold;
@@ -489,15 +489,16 @@
     color: #4b4a44;
 }
 
-.sheet .condition-parts, .sheet .variant-rows {
+.sheet .condition-parts, .sheet .variant-rows, .sheet .immunity-rows {
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-.sheet .condition-parts .condition-part, .sheet .variant-rows .variant-row {
+.sheet .condition-parts .condition-part, .sheet .variant-rows .variant-row, .sheet .immunity-rows .immunity-row {
     flex: 0 0 100%;
     padding: 0;
+    margin-bottom: 3px;
 }
 
 .sheet .condition-parts .condition-part select, .sheet .condition-parts .condition-part input {
@@ -505,18 +506,26 @@
     flex: 1;
 }
 
+.sheet .immunity-rows .immunity-row select, .sheet .immunity-rows .immunity-row input, .sheet .immunity-rows .immunity-row .unspecified-immunity {
+    margin-left: 5px;
+    flex: 1;
+}
+
+.sheet .immunity-rows .immunity-row .unspecified-immunity {
+    padding: 0 4px;
+}
+
 .sheet .condition-parts .condition-part select:first-of-type {
     margin-left: 0;
 }
 
 
-.sheet .variant-rows {
+.sheet .immunity-rows {
     margin-bottom: 5px;
 }
 
 .sheet .variant-rows .variant-row input {
     flex: 1;
-    margin-bottom: 3px;
 }
 
 

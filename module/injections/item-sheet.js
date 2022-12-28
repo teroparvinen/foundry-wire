@@ -104,7 +104,93 @@ export function initItemSheetHooks() {
         // Damage parts
         const parts = item.system.damage?.parts || [];
         const wireParts = item.flags.wire?.damageParts || [];
-        
+
+        // Immunities
+        const immunities = item.flags.wire?.immunities || [];
+        const immunityRows = immunities.map((immunity, i) => {
+            const type = immunity.type;
+            const value = immunity.value;
+            
+            let typeField;
+            switch (type) {
+                case "creatureType":
+                    const typeOptions = Object.entries(CONFIG.DND5E.creatureTypes).map(ct => {
+                        return `<option value="${ct[0]}" ${selected(ct[0], value)}>${i18n(ct[1])}</option>`;
+                    });
+                    typeField = `
+                        <select name="flags.wire.immunities.${i}.value" ${disabled}>
+                            <option value=""></option>
+                            ${typeOptions}
+                        </select>
+                    `;
+                    break;
+                case "creatureTypeNot":
+                    const notTypeOptions = Object.entries(CONFIG.DND5E.creatureTypes).map(ct => {
+                        return `<option value="${ct[0]}" ${selected(ct[0], value)}>${i18n(ct[1])}</option>`;
+                    });
+                    typeField = `
+                        <select name="flags.wire.immunities.${i}.value" ${disabled}>
+                            <option value=""></option>
+                            ${notTypeOptions}
+                        </select>
+                    `;
+                    break;
+                case "conditionImmunity":
+                    const conditionOptions = Object.entries(CONFIG.DND5E.conditionTypes).map(ct => {
+                        return `<option value="${ct[0]}" ${selected(ct[0], value)}>${i18n(ct[1])}</option>`;
+                    });
+                    typeField = `
+                        <select name="flags.wire.immunities.${i}.value" ${disabled}>
+                            <option value=""></option>
+                            ${conditionOptions}
+                        </select>
+                    `;
+                    break;
+                case "formula":
+                    typeField = `<input type="text" name="flags.wire.immunities.${i}.value" value="${value || ''}" />`;
+                    break;
+                default:
+                    typeField = `<div class="unspecified-immunity"></div>`;
+            }
+
+            return `
+                <li class="immunity-row flexrow" data-immunity="${i}">
+                    <select name="flags.wire.immunities.${i}.type" ${disabled}>
+                        <option value=""></option>
+                        <option value="creatureType" ${selected(type, "creatureType")}>${i18n("wire.item.immunity-creature")}</option>
+                        <option value="creatureTypeNot" ${selected(type, "creatureTypeNot")}>${i18n("wire.item.immunity-creature-not")}</option>
+                        <option value="conditionImmunity" ${selected(type, "conditionImmunity")}>${i18n("wire.item.immunity-condition")}</option>
+                        <option value="formula" ${selected(type, "formula")}>${i18n("wire.item.immunity-formula")}</option>
+                    </select>
+                    ${typeField}
+                    <a class="immunity-control delete-immunity"><i class="fas fa-minus"></i></a>
+                </li>
+            `;
+        }).join("");
+        const immunityHtml = `
+            <h4 class="immunity-header">
+                ${i18n("wire.item.immunity-header")}
+                <a class="immunity-control add-immunity"><i class="fas fa-plus"></i></a>
+            </h4>
+            <ol class="immunity-rows form-group">
+                ${immunityRows}
+            </ol>
+        `;
+        usageInsertPoint.before(immunityHtml);
+
+        html.find('.add-immunity').click(async (event) => {
+            const immunities = item.getFlag("wire", "immunities") || [];
+            immunities.push("");
+            await item.setFlag("wire", "immunities", immunities);
+        });
+        html.find('.delete-immunity').click(async (event) => {
+            const i = event.target.closest('.immunity-row').dataset.immunity;
+            const variants = item.getFlag("wire", "immunities") || [];
+            immunities.splice(i, 1);
+            await item.setFlag("wire", "immunities", immunities);
+        });
+
+        // Damage parts
         html.find('.damage-part').each(function() {
             const i = this.dataset.damagePart;
             const halving = wireParts[i]?.halving || parts[i]["halving"];
@@ -193,6 +279,9 @@ function onItemSubmit(wrapped, updateData) {
     // Re-handle the variants array
     const variants = data.flags?.wire?.variants;
     if (variants) submitData['flags.wire.variants'] = Object.values(variants);
+
+    const immunities = data.flags?.wire?.immunities;
+    if (immunities) submitData['flags.wire.immunities'] = Object.values(immunities);
 
     const conditions = data.flags?.wire?.conditions;
     if (conditions) submitData['flags.wire.conditions'] = Object.values(conditions);

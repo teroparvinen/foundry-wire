@@ -7,7 +7,7 @@ import { getAttackOptions } from "./game/effect-flags.js";
 import { hasApplicationsOfType, hasDamageOfType, hasOnlyUnavoidableApplicationsOfType, hasUnavoidableDamageOfType, isAttack, isInstantaneous, isSpell } from "./item-properties.js";
 import { createTemplate } from "./templates.js";
 import { makeUpdater } from "./updater-utility.js";
-import { effectDurationFromItemDuration, fromUuid, getActorToken, i18n, isActorImmune, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
+import { effectDurationFromItemDuration, fromUuid, fudgeToActor, getActorToken, i18n, isActorImmune, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
     constructor(activation) {
@@ -126,14 +126,14 @@ export class Resolver {
 
         } else if (isAuthor && this.activation.state === "applyTargetFromCondition") {
             const conditionDetails = this.activation.condition?.details;
-            const targetActor = fromUuid(conditionDetails?.attackTargetUuid) || fromUuid(conditionDetails?.attackerUuid);
+            const targetActor = fudgeToActor(fromUuid(conditionDetails?.attackTargetUuid) || fromUuid(conditionDetails?.attackerUuid));
             const targetActors = targetActor ? [targetActor] : [];
             await this.activation.assignTargets(targetActors);
             await this.activation.applyState("idle");
             await this.step(n);
         } else if (isAuthor && this.activation.state === "applyTargetFromConditionAsEffective") {
             const conditionDetails = this.activation.condition?.details;
-            const targetActor = fromUuid(conditionDetails?.attackTargetUuid) || fromUuid(conditionDetails?.attackerUuid);
+            const targetActor = fudgeToActor(fromUuid(conditionDetails?.attackTargetUuid) || fromUuid(conditionDetails?.attackerUuid));
             const targetActors = targetActor ? [targetActor] : [];
             await this.activation.assignTargets(targetActors);
             await this.activation.applyEffectiveTargets(targetActors);
@@ -255,7 +255,7 @@ export class Resolver {
             const token = getActorToken(item.actor);
             if (token && !this.activation.templateUuid) {
                 const templateData = await createTemplate(item, this.activation.config, this.activation.applicationType, { disableTargetSelection: false, preventCancel: true });
-                await this.activation._assignTemplateData(templateData);
+                await this.activation.assignTemplateData(templateData);
             }    
             await this.activation.applyState("idle");
             await this.step(n);

@@ -38,7 +38,7 @@ Changes
         - For non-attack roll advantage/disadvantage
             - `actor` is the actor doing the roll
             - `config` is the activation configuration object if available (it is not available for basic rolls from the character sheet, for example)
-    - An example of what this is good for is Chill Touch that makes undead targets do attacks at a disadvantage against the caster. In this case (will be available from the SRD in the future) set the flag `flags.wire.disadvantage.attack.all` to the value `and(@originator.isDefender, eq(@attacker.details.type.value, undead))`.
+    - An example of what this is good for is Chill Touch that makes undead targets do attacks at a disadvantage against the caster. In this case (will be available from the SRD in the future) set the flag `flags.wire.disadvantage.attack.all` to the value `and(@originator.isDefender, eq(@attacker.details.type.value, "undead"))`.
 - Active effects now have two additional properties
     - Allow multiple applications: Normally, when an effect from one item affects a target that already has that effect, the old effect is removed. This setting prevents that. It allows stacking damage type effects such as Strength Drain.
     - Treat the Effect Value as a roll: If this is enabled, whatever is provided as the "value" of changes in this effect will be treated as dice rolls and rolled as the effect is applied. The result obtained as a result of a roll will persist, so don't use this for things like Bless that should roll a die as a part of another action. This is great for things like Strength Drain.
@@ -48,6 +48,9 @@ Changes
 - New condition: "The effect ends". The condition will be triggered when an effect ends. This is typically triggered after all "turn ends" conditions have been fired and before any "turn starts" conditions have been triggered.
 - Deprecated the activation flow step `attackCompleted`. The conditions triggered by it will now be automatically triggered whenever a flow containing the `performAttackRoll` step is completed.
 - New application flow step option `applySelectedTargetsAsEffective`. This allows setting up items that always land, omitting attack rolls or saves.
+- Added the possibility to add immunity conditions to items. Using an item on an immune target works exactly the same as items that grant immunity on a successful save, i.e. the creature can be targeted but the invocation is not effective.
+    - There are four immunity categories: Creature type, Creature type not (exclusive version, see Hold Person), Condition immunity (creatures with a condition immunity are immune to this item) and Formula (which takes a formula)
+    - The formula has the standard item properties available, as well as `@target` that can be used to refer to properties on the target.
 
 Fixes
 

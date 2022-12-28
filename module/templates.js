@@ -81,7 +81,7 @@ export async function createTemplate(item, config, applicationType, { disableTem
     }
 }
 
-export async function placeTemplate(item, config, { selectTargets = true, preventCancel = false } = {}) {
+export async function placeTemplate(item, config, { selectTargets = true, preventCancel = false, interactive = true } = {}) {
     let template;
     if (item instanceof CONFIG.Item.documentClass) {
         template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
@@ -91,8 +91,10 @@ export async function placeTemplate(item, config, { selectTargets = true, preven
         const templateObject = new cls(item, {parent: canvas.scene});
         template = new game.dnd5e.canvas.AbilityTemplate(templateObject);
     }
+
+    if (!template) { return; }
     
-    if (template) {
+    if (interactive) {
         const initialLayer = canvas.activeLayer;
         
         await setTemplateTargeting(false);
@@ -171,5 +173,10 @@ export async function placeTemplate(item, config, { selectTargets = true, preven
             
             template.refresh();
         });
+    } else {
+        await setTemplateTargeting(selectTargets);
+        await template.draw();
+        await template.destroy();
+        return template.document.toObject();
     }
 }

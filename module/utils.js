@@ -211,7 +211,7 @@ export function i18n(...args) {
 export function evaluateFormula(formula, rollData) {
     if (typeof formula === "string") {
         try {
-            const targetFormula = Roll.replaceFormulaData(formula, rollData);
+            const targetFormula = Roll.replaceFormulaData(formula, rollData, { missing: "undefined" });
             return Roll.safeEval(targetFormula);
         } catch (error) {
             ui.notifications.error(error.message);
@@ -457,8 +457,32 @@ export function handleError(error) {
     console.error(msg, error);
 }
 
+export function actorConditionImmunityTypes(actor) {
+    return [
+        ...actor.system.traits?.ci?.value,
+        ...(actor.system.traits?.ci?.custom && actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase()) || [])
+    ]
+}
+
 export function isActorImmune(actor, item) {
-    return !!actor.effects.find(e => e.flags.wire?.immuneItemUuid === item.uuid);
+    const hasTemporaryImmunity = !!actor.effects.find(e => e.flags.wire?.immuneItemUuid === item.uuid);
+    if (hasTemporaryImmunity) { return true; }
+
+    const immunities = item.flags.wire?.immunities || [];
+    const actorCI = actorConditionImmunityTypes(actor);
+    const actorType = actor.system.details?.type?.value || (actor.type === "character" && "humanoid") || "";
+    return immunities.some(immunity => {
+        if (immunity.type === "creatureType") {
+            return actorType === immunity.value;
+        } else if (immunity.type === "creatureTypeNot") {
+            return actorType !== immunity.value;
+        } else if (immunity.type === "conditionImmunity") {
+            return actorCI.includes(immunity.value);
+        } else if (immunity.type === "formula") {
+            const rollData = foundry.utils.mergeObject({ target: actor.getRollData() }, item.getRollData());
+            return evaluateFormula(immunity.value, rollData);
+        }
+    });
 }
 
 export function typeCheckedNumber(value, defaultValue) {

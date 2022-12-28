@@ -86,7 +86,7 @@ async function onItemUse(wrapped, options, event) {
     
             await activation.assignConfig(config);
             if (templateData) {
-                await activation._assignTemplateData(templateData);
+                await activation.assignTemplateData(templateData);
             }
             await activation._activate();
 
