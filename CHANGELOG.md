@@ -21,15 +21,16 @@ Changes
     - Number comparisons `gt` (greater than), `gte` (greater than or equal), `lt`, `lte`
     - `and` and `or` for any number of arguments
     - If-then-else like functionality using `pick` and `unless` (if is a reserved word in javascript so it couldn't be used)
-    - WIRE also contains an extension to roll parameter replacement that handles strings properly.
+    - `includes` checks if the last parameter is equal to one of the other parameters
+    - WIRE also contains an extension to roll parameter replacement that handles strings properly. Let me know if some exotic roll formula you need breaks.
 - Damage formulas now have access to activation configuration data (settable through macros) via `@config`.
 - Changed the way some effect flags that simply enable something are handled. Currently this is implemented for advantage/disadvantage flags, but will be added to additional flags in the future.
-    - Earlier the SRD module convention was to flag every advantage/disadvantage using the ADD mode with a value of 1. This will still work.
+    - Earlier the WIRE SRD module convention was to flag every advantage/disadvantage using the ADD mode with a value of 1. This will still work.
     - For flags that have this treatment, the change mode is effectively ignored. If multiple instances of the same flag are present (from multiple effects), it is enough for one of them to evaluate to be effective.
     - What is new is that the value field is treated as a number. Any value that is greater than zero will mean the flag is enabled, anything zero or below will be disabled. The powerful bit is using this in conjunction with roll data (variables) that are passed along and the logic functions (see above).
     - The variables currently supported are
         - For attack roll advantage/disadvantage
-            - `attacker` for the attacker's properties (e.g. `eq(@attacker.details.type.value, undead)`)
+            - `attacker` for the attacker's properties (e.g. `eq(@attacker.details.type.value, "undead")`)
             - `defender` for the defender's properties
             - `originator.isAttacker` is 1 if the originator (i.e. caster for spells) of the effect applying the flag is the attacker, 0 otherwise
             - `originator.isDefender` similar but the other way around
@@ -38,6 +39,9 @@ Changes
             - `actor` is the actor doing the roll
             - `config` is the activation configuration object if available (it is not available for basic rolls from the character sheet, for example)
     - An example of what this is good for is Chill Touch that makes undead targets do attacks at a disadvantage against the caster. In this case (will be available from the SRD in the future) set the flag `flags.wire.disadvantage.attack.all` to the value `and(@originator.isDefender, eq(@attacker.details.type.value, undead))`.
+- Active effects now have two additional properties
+    - Allow multiple applications: Normally, when an effect from one item affects a target that already has that effect, the old effect is removed. This setting prevents that. It allows stacking damage type effects such as Strength Drain.
+    - Treat the Effect Value as a roll: If this is enabled, whatever is provided as the "value" of changes in this effect will be treated as dice rolls and rolled as the effect is applied. The result obtained as a result of a roll will persist, so don't use this for things like Bless that should roll a die as a part of another action. This is great for things like Strength Drain.
 - PCs will be shown a variant of the concentration card when they hit 0 hp that will have a button to drop concentration. Accidentally dropping concentration can lead to a huge hassle with effects dropping, templates being deleted and duration tracking getting interrupted, so having a middle ground with a notification but no accidental drops is available here.
     - Added a setting for those who just dont care. It makes concentration drop immediately at 0 hp.
 - New condition: "Target casts a spell". This will be triggered whenever an activation flow triggered from an item that is a spell reaches its end.
@@ -53,6 +57,7 @@ Fixes
 - Fixed an issue with chat cards generated from conditions having buttons showing for players. This may have some side effects I missed in testing, let me know if your players are missing buttons.
 - PCs now automatically go Unconscious at 0 hp
 - Status effects from `wire.custom.statusEffect` and `wire.custom.persistentStatusEffect` should no longer be applied multiple times.
+- The condition list on the active effect editing sheet was functioning similarly to the condition list on the item sheet, even when the sheets themselves did not (the item sheet saves as you make changes, the effect sheet has an explicit save button). This would cause changes to get lost when working with conditions on the effect sheet. This has now been fixed.
 - Some miscellaneous bug fixes
 
 ### 0.10.4

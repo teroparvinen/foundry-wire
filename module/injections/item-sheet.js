@@ -163,7 +163,7 @@ export function initItemSheetHooks() {
         }
 
         // Conditions
-        await injectConditionList(item, html, '.tab.details', "item");
+        await injectConditionList(item, html, '.tab.details', "item", app.options.submitOnChange);
     });
 
 }

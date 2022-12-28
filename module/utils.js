@@ -167,6 +167,24 @@ export function substituteEffectConfig(actor, config, changes) {
     });
 }
 
+export function rollChangeValues(changes, isRollable) {
+    if (isRollable) {
+        const changeResults = [];
+        const rolls = [];
+        for (const change of changes) {
+            const { key, mode, priority, value } = change;
+
+            const roll = Roll.create(value).evaluate({ async: false });
+
+            changeResults.push({ key, mode, priority, value: roll.total });
+            if (roll.dice.length) { rolls.push(roll); }
+        }
+        return { changes: changeResults, rolls };
+    } else {
+        return { changes, rolls: [] };
+    }
+}
+
 export function copyConditions(effect) {
     const conditions = effect.flags.wire?.conditions;
     if (conditions) {

@@ -54,7 +54,7 @@
             "application-immediate": "Immediate",
             "application-delayed": "Delayed",
             "application-overtime": "Over time",
-            "activation-header": "Effect application",
+            "condition-list-header": "Conditional Effects",
             "conditions-and-effects": "Conditions and effects",
             "condition-creature-enters-area": "A creature first enters the area on a turn",
             "condition-creature-starts-turn-inside-area": "A creature starts its turn inside the area",
@@ -125,6 +125,9 @@
             "variant-header": "Variants"
         },
         "active-effect": {
+            "activation-header": "Activation",
+            "application-header": "Application Details",
+            "transfer-hint": "If selected, effect automatically applies to the actor. Inventory items need to be equipped. Enable this for inventory items and passive abilities.",
             "apply-on-save-or-miss": "Apply the effect if the save succeeds or the attack misses",
             "blocks-area-conditions": "Prevent area conditions from triggering",
             "blocks-area-conditions-hint": "While this effect is active on an actor, area based conditions on the item itself will not trigger for this actor.",
@@ -137,7 +140,11 @@
             "aura-target-none": "Not an aura",
             "aura-target-creature": "Creatures",
             "aura-target-ally": "Allies",
-            "aura-target-enemy": "Enemies"
+            "aura-target-enemy": "Enemies",
+            "stack-effects": "Allow multiple applications of this effect on one target",
+            "stack-effects-hint": "Select this option for effects resembling damage or cumulative effects, such as Strength Drain",
+            "roll-effects": "Treat the Effect Value as a roll and evaluate it when the effect is activated",
+            "roll-effects-hint": "In practically all cases, this should be selected if an Effect Value contains a die roll"
         },
         "select-variant": {
             "prompt": "Select a variant"

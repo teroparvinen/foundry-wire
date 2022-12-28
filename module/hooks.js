@@ -16,12 +16,12 @@ import { areAllied, areEnemies, evaluateFormula, fromUuid, getActorToken, i18n, 
 
 export function initHooks() {
     Hooks.on("renderChatLog", (app, html, data) => {
-         ItemCard.activateListeners(html)
-         DamageCard.activateListeners(html);
-         ConcentrationCard.activateListeners(html);
-         DeathSaveCard.activateListeners(html);
-
-         html.on("click", ".clickable-token", function(event) {
+        ItemCard.activateListeners(html)
+        DamageCard.activateListeners(html);
+        ConcentrationCard.activateListeners(html);
+        DeathSaveCard.activateListeners(html);
+        
+        html.on("click", ".clickable-token", function(event) {
             const token = fromUuid(event.target.dataset.tokenUuid)?.object;
             token?.control({ releaseOthers: true });
         });
@@ -211,7 +211,7 @@ export function initHooks() {
                         })
                     })
                 .flatMap(e => e);
-    
+
             if (deletions.length > 0) {
                 runInQueue(actor.deleteEmbeddedDocuments.bind(actor), "ActiveEffect", deletions);
             }
@@ -482,6 +482,23 @@ export function initHooks() {
     Hooks.on("actorItemHoverOut", (item, html) => {
         $('#item-attack-bonuses').remove();
     });
+
+// Hooks.on("dfreds-convenient-effects.ready", () => {
+//     console.log(arguments);
+    
+//     const original = game.dfreds.effects;
+
+//     const handler = {
+//         get(target, prop, receiver) {
+//             if (prop === "spells" || prop === "classFeatures") {
+//                 return [];
+//             }
+//             return Reflect.get(...arguments);
+//         },
+//     };
+
+//     game.dfreds.effects = new Proxy(original, handler);
+// });
 }
 
 async function declareDamage(rolls, tokens) {
@@ -555,7 +572,7 @@ async function updateAuras() {
             if (item.system.target?.units == "rect") {
                 range = Math.hypot(range, range);
             }
-    
+
             auraEffects = auraEffects.filter(e => e.flags.wire?.auraSourceUuid !== sourceUuid)
             
             if (range) {

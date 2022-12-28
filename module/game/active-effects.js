@@ -1,5 +1,5 @@
 import { wireSocket } from "../socket.js";
-import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, effectMatchesVariant, fromUuid, isEffectEnabled, isInCombat, substituteEffectConfig } from "../utils.js";
+import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, effectMatchesVariant, fromUuid, isEffectEnabled, isInCombat, rollChangeValues, substituteEffectConfig } from "../utils.js";
 import { checkConditionImmunity } from "./effect-flags.js";
 
 export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config, extraData) {
@@ -14,10 +14,12 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     const allTargetsEffects = effects.filter(e => e.getFlag("wire", "applyOnSaveOrMiss"));
     const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
 
-    const makeEffectData = (effect) => {
-        return foundry.utils.mergeObject(
+    const makeEffectDataAndRolls = (effect) => {
+        const { changes, rolls } = rollChangeValues(substituteEffectConfig(actor, config, copyEffectChanges(effect)), effect.flags.wire?.rollEffects);
+        
+        const data = foundry.utils.mergeObject(
             {
-                changes: substituteEffectConfig(actor, config, copyEffectChanges(effect)),
+                changes,
                 origin: item.uuid,
                 disabled: false,
                 icon: effect.icon,
@@ -30,6 +32,8 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                         conditions: copyConditions(effect),
                         activationConfig: config,
                         blocksAreaConditions: effect.flags.wire?.blocksAreaConditions,
+                        stackEffects: effect.flags.wire?.stackEffects,
+                        independentDuration: effect.flags.wire?.independentDuration,
                         masterEffectUuid: (masterEffect && !effect.flags.wire?.independentDuration) ? masterEffect.uuid : null
                     },
                     core: {
@@ -38,11 +42,20 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                 }
             },
             extraData || {}
-        )
+        );
+
+        return { data, rolls };
     };
 
-    const allTargetsEffectData = allTargetsEffects.map(effect => makeEffectData(effect));
-    const effectiveTargetsEffectData = effectiveTargetsEffects.map(effect => makeEffectData(effect));
+    const allDataAndRolls = allTargetsEffects.map(effect => makeEffectDataAndRolls(effect));
+    const effectiveDataAndRolls = effectiveTargetsEffects.map(effect => makeEffectDataAndRolls(effect));
+
+    const allTargetsEffectData = allDataAndRolls.map(e => e.data);
+    const effectiveTargetsEffectData = effectiveDataAndRolls.map(e => e.data);
+    const allRolls = allDataAndRolls.flatMap(e => e.rolls);
+    const effectiveRolls = effectiveDataAndRolls.flatMap(e => e.rolls);
+
+    await Promise.all([...allRolls, ...effectiveRolls].map(roll => game.dice3d?.showForRoll(roll, game.user, !game.user.isGM)));
 
     let createdEffects = [];
 
@@ -50,7 +63,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     for (let target of targetSet) {
         const data = effectiveTargetActors.includes(target) ? [...allTargetsEffectData, ...effectiveTargetsEffectData] : allTargetsEffectData;
 
-        const sourceEffectUuids = data.map(d => d.flags.wire.sourceEffectUuid);
+        const sourceEffectUuids = data.filter(d => !d.flags.wire.stackEffects).map(d => d.flags.wire.sourceEffectUuid);
         const existingEffects = target.effects.filter(e => sourceEffectUuids.includes(e.flags.wire?.sourceEffectUuid));
         if (existingEffects.length) {
             await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));
@@ -91,6 +104,8 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
                         conditions: copyConditions(effect),
                         activationConfig: config,
                         blocksAreaConditions: effect.flags.wire?.blocksAreaConditions,
+                        stackEffects: effect.flags.wire?.stackEffects,
+                        independentDuration: effect.flags.wire?.independentDuration,
                         masterEffectUuid: (masterEffect && !effect.flags.wire?.independentDuration) ? masterEffect.uuid : null
                     },
                     core: createStatus ? {
@@ -109,7 +124,7 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
     for (let target of targets) {
         const data = [effectData];
 
-        const sourceEffectUuids = data.map(d => d.flags.wire.sourceEffectUuid);
+        const sourceEffectUuids = data.filter(d => !d.flags.wire.stackEffects).map(d => d.flags.wire.sourceEffectUuid);
         const existingEffects = target.effects.filter(e => sourceEffectUuids.includes(e.flags.wire?.sourceEffectUuid));
         if (existingEffects.length) {
             await target.deleteEmbeddedDocuments("ActiveEffect", existingEffects.map(e => e.id));

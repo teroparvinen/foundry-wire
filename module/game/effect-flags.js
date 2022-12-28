@@ -165,7 +165,7 @@ export function getEffectFlags(actor) {
 }
 
 function evaluateAttackFlag(values, attacker, defender, config) {
-    if (!Array.isArray(values)) { return false; }
+    if (!Array.isArray(values)) { return values === true || (!isNaN(values) && values > 0); }
 
     return values.some(value => {
         const item = fromUuid(value.origin);
@@ -188,7 +188,7 @@ function evaluateAttackFlag(values, attacker, defender, config) {
 }
 
 function evaluateActorFlag(values, actor, config) {
-    if (!Array.isArray(values)) { return false; }
+    if (!Array.isArray(values)) { return values === true || (!isNaN(values) && values > 0); }
 
     return values.some(value => {
         const rollData = {
@@ -371,7 +371,7 @@ function applyConditionImmunities(actor) {
     ]
     const immunities = [
         ...actor.system.traits?.ci?.value,
-        ...actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase())
+        ...(actor.system.traits?.ci?.custom && actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase()) || [])
     ];
 
     const effects = actor.effects
@@ -381,8 +381,18 @@ function applyConditionImmunities(actor) {
             });
         });
 
+    const statuses = actor.effects
+        .filter(effect => {
+            const statusId = effect.flags.core?.statusId;
+            const isConvenient = effect.flags.isConvenient;
+
+            if (isConvenient && immunities.includes(effect.label.toLowerCase()) || immunities.includes(statusId)) {
+                return true;
+            }
+        });
+
     runInQueue(async () => {
-        for (const effect of effects) {
+        for (const effect of [...effects, ...statuses]) {
             await effect.delete();
         }
     });
@@ -590,7 +600,7 @@ function onActiveEffectApply(wrapped, actor, change) {
         const wireKey = "flags.wire.midi-qol." + change.key.substring("flags.midi-qol.".length);
         const copy = duplicate(change);
         copy.key = wireKey;
-        copy.mode = CONST.ACTIVE_EFFECT_MODES.OVERRIDE;
+        copy.mode = CONST.ACTIVE_EFFECT_MODES.ADD;
         copy.value = true;
         ret = wrapped.apply(this, [actor, copy]);
     } else {
@@ -603,7 +613,7 @@ function onActiveEffectApply(wrapped, actor, change) {
 }
 
 function onActiveEffectDisplayScrollingStatus(wrapped, enabled) {
-    if (isInstantaneous(fromUuid(this.origin))) {
+    if (isActorEffect(this) && fromUuid(this.origin)?.system.duration?.units === "inst") {
         return;
     }
     wrapped(enabled);

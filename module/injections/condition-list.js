@@ -73,7 +73,7 @@ const updateList = [
     ["end-on-check", ["all"]],
 ]
 
-export async function injectConditionList(object, html, containerSelector, conditionType) {
+export async function injectConditionList(object, html, containerSelector, conditionType, submitOnChange) {
     const selected = (value, fieldValue) => { return value === fieldValue ? "selected" : "" };
 
     let customUpdaters = [];
@@ -91,7 +91,7 @@ export async function injectConditionList(object, html, containerSelector, condi
         conditions = [];
         object.setFlag("wire", "conditions", []);
     }
-    const conditionsHtml = conditions?.map((condition, i) => {
+    const makeConditionRow = (condition, i) => {
         const bits = [];
         bits.push(`
             <li class="flexrow condition-part condition" data-condition="${i}">
@@ -116,10 +116,11 @@ export async function injectConditionList(object, html, containerSelector, condi
         `);
 
         return bits.join("");
-    }).join("");
+    };
+    const conditionsHtml = conditions?.map((condition, i) => makeConditionRow(condition, i)).join("");
 
     const fields = `
-        <h3 class="form-header">${i18n("wire.item.activation-header")}</h3>
+        <h3 class="form-header">${i18n("wire.item.condition-list-header")}</h3>
         <h4 class="condition-header">
             ${i18n("wire.item.conditions-and-effects")}
             <a class="condition-control add-condition"><i class="fas fa-plus"></i></a>
@@ -130,15 +131,31 @@ export async function injectConditionList(object, html, containerSelector, condi
     `;
     html.find(containerSelector).append(fields);
 
+    function registerDeleteHandlers(html) {
+        html.find('.delete-condition').off('click').click(async (event) => {
+            if (submitOnChange) {
+                const i = event.target.closest('.condition').dataset.condition;
+                const conditions = object.getFlag("wire", "conditions") || [];
+                conditions.splice(i, 1);
+                await object.setFlag("wire", "conditions", conditions);
+            } else {
+                event.target.closest('.condition').remove();
+            }
+        });
+    }
+
     html.find('.add-condition').click(async (event) => {
-        const conditions = object.getFlag("wire", "conditions") || [];
-        conditions.push({});
-        await object.setFlag("wire", "conditions", conditions);
+        if (submitOnChange) {
+            const conditions = object.getFlag("wire", "conditions") || [];
+            conditions.push({});
+            await object.setFlag("wire", "conditions", conditions);
+        } else {
+            const indices = html.find('.condition-parts li').map((i, el) => el.dataset.condition).get();
+            const idx = indices.length ? Math.max(...indices) + 1 : 0;
+            html.find('.condition-parts').append(makeConditionRow({}, idx));
+            registerDeleteHandlers(html);
+        }
     });
-    html.find('.delete-condition').click(async (event) => {
-        const i = event.target.closest('.condition').dataset.condition;
-        const conditions = object.getFlag("wire", "conditions") || [];
-        conditions.splice(i, 1);
-        await object.setFlag("wire", "conditions", conditions);
-    });
+
+    registerDeleteHandlers(html);
 }
