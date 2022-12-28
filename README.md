@@ -44,10 +44,6 @@ Because WIRE aims to automate manual adjustments, there is less need to keep the
 
 Pretty much necessary at this point if only for the ability to edit active effects directly attached to an actor's spells. DAE is very heavily leaned towards co-operating with Midi-QOL, which is not compatible (see below), but for now using it is recommended.
 
-### Times-up
-
-Without it effects won't expire. I haven't even tried it without, but I guess it should work if one wants to manually keep track of durations.
-
 ### DFreds Convenient Effects
 
 All status effects are handled using an integration with Convenient Effects. There is a fallback for concentration, but I highly recommend using CE.
@@ -67,6 +63,10 @@ All rolls that are made will be rolled using 3D dice and will operate asynchrono
 ### Midi-QOL
 
 WIRE does many of the same things as Midi-QOL and some of them differently. It is not compatible and should not be used simultaneously. WIRE uses a similar flag naming scheme where possible to make adaptation easier both ways and will support Midi-QOL flags in effects.
+
+### Times-up
+
+WIRE has internal effect duration tracking that integrates with WIRE internals better than a separate module could. Times-up is no longer compatible with WIRE
 
 ### Active Auras
 
