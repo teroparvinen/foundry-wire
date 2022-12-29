@@ -1,5 +1,13 @@
 import { fromUuid, fudgeToActor, getActorToken, getSpeaker } from "../utils.js";
 
+export async function requestConcentrationSave(actor, dc = 10) {
+    const concentrationEffect = actor.effects.find(e => e.flags.wire?.isConcentration);
+    if (concentrationEffect) {
+        const concentrationCard = new ConcentrationCard(actor, concentrationEffect, { dc });
+        await concentrationCard.make();
+    }
+}
+
 export class ConcentrationCard {
 
     static templateName = "modules/wire/templates/concentration-card.hbs";
@@ -49,13 +57,23 @@ export class ConcentrationCard {
         return new ConcentrationCard(fudgeToActor(fromUuid(data.actorUuid)), fromUuid(data.concentrationEffectUuid), data.damageAmount);
     }
 
-    constructor(actor, concentrationEffect, damageAmount) {
+    constructor(actor, concentrationEffect, requirement) {
         this.actor = actor;
         this.concentrationEffect = concentrationEffect;
-        this.damageAmount = damageAmount
+        this.requirement = requirement
+        this.damageAmount = requirement?.damage;
+        this.flatDc = requirement?.dc;
     }
 
-    get dc() { return Math.max(Math.floor(this.damageAmount / 2), 10); }
+    get dc() {
+        if (this.damageAmount !== undefined) {
+            return Math.max(Math.floor(this.damageAmount / 2), 10);
+        } else if (this.flatDc !== undefined) {
+            return this.flatDc;
+        } else {
+            return 10;
+        }
+    }
 
     async make() {
         const flagData = await this._getFlagData();

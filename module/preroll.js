@@ -1,4 +1,4 @@
-import { hasSaveableApplicationsOfType, isAttack, isSelfTarget } from "./item-properties.js";
+import { hasSaveableApplicationsOfType, isAreaTargetable, isAttack, isSelfTarget } from "./item-properties.js";
 import { createTemplate } from "./templates.js";
 import { localizedWarning, runAndAwait } from "./utils.js";
 
@@ -20,7 +20,7 @@ export async function preRollConfig(item, options = {}, event) {
     let activationConfig = foundry.utils.mergeObject({}, options.config || {});
 
     // Reference aspects of the item data necessary for usage
-    const hasArea = item.hasAreaTarget;       // Is the ability usage an AoE?
+    const hasArea = isAreaTargetable(item);   // Is the ability usage an AoE?
     const resource = id.consume || {};        // Resource consumption
     const recharge = id.recharge || {};       // Recharge mechanic
     const uses = id?.uses ?? {};              // Limited uses

@@ -1,8 +1,8 @@
 import { areaEffectFlow } from "./flows/area-effect.js";
 import { itemRollFlow } from "./flows/item-roll.js";
 import { singleTargetFlow } from "./flows/single-target.js";
-import { hasConcentration, hasDamageOfType, hasDuration, hasEffectsOfType, hasSaveableApplicationsOfType, isAttack, isSave, isSelfTarget, isTokenTargetable } from "./item-properties.js";
-import { handleError } from "./utils.js";
+import { hasConcentration, hasDamageOfType, hasDuration, hasEffectsOfType, hasSaveableApplicationsOfType, isAreaTargetable, isAttack, isAura, isSave, isSelfTarget, isTokenTargetable } from "./item-properties.js";
+import { handleError, isAuraEffect } from "./utils.js";
 
 export class Flow {
     constructor(item, applicationType, evaluator, { variant = null, allowMacro = true, isConditionTriggered = false } = {}) {
@@ -95,7 +95,13 @@ export class Flow {
     // Item information
 
     hasAreaTarget() {
-        if (this.item.hasAreaTarget) {
+        if (isAreaTargetable(this.item)) {
+            return this.pick(...arguments);
+        }
+    }
+
+    hasAuraOrAreaTarget() {
+        if (isAreaTargetable(this.item) || isAura(this.item)) {
             return this.pick(...arguments);
         }
     }
@@ -173,7 +179,7 @@ export class Flow {
     }
 
     isSelfTarget() {
-        if (isSelfTarget(this.item)) {
+        if (isSelfTarget(this.item) || isAura(this.item)) {
             return this.pick(...arguments);
         }
     }
@@ -270,6 +276,10 @@ export class Flow {
 
     performSavingThrow() {
         return ["performSavingThrow", ...this.chain(this.pick(...arguments))];
+    }
+
+    performSavingThrowAlways() {
+        return ["performSavingThrowAlways", ...this.chain(this.pick(...arguments))];
     }
 
     placeTemplate() {

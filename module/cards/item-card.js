@@ -122,11 +122,16 @@ export class ItemCard {
                 const actorUuid = event.target.closest('.saving-throw-target').dataset.actorId;
                 const actor = fudgeToActor(fromUuid(actorUuid));
                 if (actor && (game.user.isGM || actor.isOwner)) {
-                    const advantage = !!event.altKey;
-                    const disadvantage = !advantage && (!!event.metaKey || !!event.ctrlKey);
-                    const success = action === "wire-save-success";
-                    const failure = action === "wire-save-failure";
-                    activation._rollSave(actor, { advantage, disadvantage, success, failure });
+                    const saveOptions = {};
+                    if (!!event.altKey && (!!event.metaKey || !!event.ctrlKey)) {
+                        Object.assign(saveOptions, { advantage: false, disadvantage: false });
+                    } else {
+                        if (!!event.altKey) saveOptions.advantage = true;
+                        if ((!!event.metaKey || !!event.ctrlKey)) saveOptions.disadvantage = true;
+                    }
+                    if (action === "wire-save-success") saveOptions.success = true;
+                    if (action === "wire-save-failure") saveOptions.failure = true;
+                    activation._rollSave(actor, saveOptions);
                 }
                 break;
             case "wire-save-config":
@@ -139,8 +144,7 @@ export class ItemCard {
                     const actor = fudgeToActor(fromUuid(actorUuid));
                     const usedSave = activation.item.system.save.ability;
                     const usedCheck = activation.abilityToCheckForSave;
-                    const config = activation.config;
-                    const app = usedCheck ? new ConfigureCheck(actor, usedCheck, config, dialogOptions) : new ConfigureSave(actor, usedSave, config, dialogOptions);
+                    const app = usedCheck ? new ConfigureCheck(actor, usedCheck, activation, dialogOptions) : new ConfigureSave(actor, usedSave, activation, dialogOptions);
                     const result = await app.render(true);
         
                     if (result != undefined) {

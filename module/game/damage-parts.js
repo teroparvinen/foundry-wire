@@ -39,7 +39,7 @@ export class DamageParts {
         const isVersatile = activation.config.damageVersatile;
 
         let isCritical = (isAttack && evaluateCritical) ? DamageParts.isCritical(activation) : undefined;
-        const attackTarget = isAttack ? activation.singleTarget?.actor : undefined;
+        const singleTarget = activation.singleTarget?.actor;
 
         if (!item.hasDamage) throw new Error("You may not make a Damage Roll with this Item.");
         const itemData = item.system;
@@ -70,22 +70,22 @@ export class DamageParts {
         rollData.config = activation.config;
 
         // Add target info to roll data
-        if (attackTarget) {
+        if (singleTarget) {
             const targetType = Object.keys(CONFIG.DND5E.creatureTypes).reduce((accumulator, value) => {
                 return {...accumulator, [value]: 0 };
             }, {});
-            if (attackTarget.system.details?.type?.value) {
-                targetType[attackTarget.system.details.type.value] = 1;
+            if (singleTarget.system.details?.type?.value) {
+                targetType[singleTarget.system.details.type.value] = 1;
             }
     
             const targetSize = Object.keys(CONFIG.DND5E.actorSizes).reduce((accumulator, value) => {
                 return {...accumulator, [value]: 0 };
             }, {});
-            if (attackTarget.system.details?.size) {
-                targetSize[attackTarget.system.details?.size] = 1;
+            if (singleTarget.system.details?.size) {
+                targetSize[singleTarget.system.details?.size] = 1;
             }
     
-            rollData.target = { type: targetType, size: targetSize };
+            rollData.target = foundry.utils.mergeObject({ type: targetType, size: targetSize }, singleTarget.getRollData());
         }
     
         // Scale damage from up-casting spells
@@ -163,7 +163,7 @@ export class DamageParts {
         }
 
         // Effect damage multiplier
-        parts = parts.map( part => ({ ...part, multiplier: getDamageInflictingMultiplier(item, item.actor, attackTarget, part.type) }));
+        parts = parts.map( part => ({ ...part, multiplier: getDamageInflictingMultiplier(item, item.actor, singleTarget, part.type) }));
     
         // Factor in extra critical damage dice from the Barbarian's "Brutal Critical"
         const criticalBonusDice = itemData.actionType === "mwak" ? item.actor.getFlag("dnd5e", "meleeCriticalDamageDice") ?? 0 : 0;

@@ -26,7 +26,7 @@ function formatReplacementResult(value) {
         return value.length ? value.map(v => formatReplacementResult(v)).join() : "undefined";
     } else {
         const str = String(value).trim();
-        const isQuotable = isNaN(str) && !str.startsWith("@");
+        const isQuotable = str.match(/^[a-z][\w\.-]*$/i);
         return isQuotable ? `"${str}"` : str;
     }
 }

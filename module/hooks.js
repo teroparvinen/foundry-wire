@@ -10,9 +10,10 @@ import { checkCombatDurations } from "./durations.js";
 import { applySingleEffect } from "./game/active-effects.js";
 import { getDisplayableAttackComponents } from "./game/attack-components.js";
 import { getStaticAttackOptions, getWireFlags } from "./game/effect-flags.js";
+import { isAreaTargetable } from "./item-properties.js";
 import { createTemplate } from "./templates.js";
 import { makeUpdater } from "./updater-utility.js";
-import { areAllied, areEnemies, evaluateFormula, fromUuid, getActorToken, i18n, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, isItemActorOnCanvas, tokenSeparation, triggerConditions } from "./utils.js";
+import { areAllied, areEnemies, evaluateFormula, fromUuid, fudgeToActor, fudgeToToken, getActorToken, i18n, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, isItemActorOnCanvas, tokenSeparation, triggerConditions } from "./utils.js";
 
 export function initHooks() {
     Hooks.on("renderChatLog", (app, html, data) => {
@@ -125,7 +126,7 @@ export function initHooks() {
     async function triggerTransferEffect(effect) {
         const condition = effect.flags.wire?.conditions?.find(c => c.condition === "effect-created");
         if (condition) {
-            const updater = makeUpdater(condition, effect, fromUuid(effect.origin));
+            const updater = makeUpdater(condition, effect, fromUuid(effect.origin), null, { effectUuid: effect.uuid });
             await updater?.process();
         }
     }
@@ -142,6 +143,10 @@ export function initHooks() {
     Hooks.on("createActiveEffect", async (effect, options, user) => {
         if (user === game.user.id && effect.flags.wire?.wasTransferred && isEffectEnabled(effect) && isActorEffect(effect) && getActorToken(effect.parent)) {
             await triggerTransferEffect(effect);
+        }
+
+        if (game.user.isGM && isAuraEffect(effect)) {
+            updateAuras();
         }
     });
 
@@ -161,7 +166,7 @@ export function initHooks() {
             }
 
             // Aura deleted
-            if (isAuraEffect(effect)) {
+            if (isAuraEffect(effect) && !effect.getFlag("wire", "masterEffectUuid")) {
                 updateAuras();
             }
 
@@ -386,8 +391,8 @@ export function initHooks() {
                 },
                 callback: li => {
                     const message = game.messages.get(li.data("messageId"));
-                    const actors = [...game.user.targets];
-                    declareDamage(message.rolls, actors);
+                    const tokens = [...game.user.targets];
+                    declareRollDamage(message.rolls, tokens);
                 }
             },
             {
@@ -399,8 +404,8 @@ export function initHooks() {
                 },
                 callback: li => {
                     const message = game.messages.get(li.data("messageId"));
-                    const actors = canvas.tokens.controlled;
-                    declareDamage(message.rolls, actors);
+                    const tokens = canvas.tokens.controlled;
+                    declareRollDamage(message.rolls, tokens);
                 }
             },
 
@@ -414,7 +419,7 @@ export function initHooks() {
                     if (effect) {
                         const item = fromUuid(effect.origin);
                         const template = fromUuid(effect.flags.wire?.templateUuid);
-                        return item.hasAreaTarget && !template;
+                        return isAreaTargetable(item) && !template;
                     }
                 },
                 callback: async li => {
@@ -423,7 +428,7 @@ export function initHooks() {
                     if (activation) {
                         const item = activation.item;
                         const template = fromUuid(activation.templateUuid);
-                        if (item.hasAreaTarget && !template) {
+                        if (isAreaTargetable(item) && !template) {
                             const templateData = await createTemplate(item, activation.config, activation.applicationType, { disableTargetSelection: true });
                             if (templateData) {
                                 await activation.assignTemplateData(templateData);
@@ -501,7 +506,7 @@ export function initHooks() {
 // });
 }
 
-async function declareDamage(rolls, tokens) {
+async function declareRollDamage(rolls, tokens) {
     const damage = tokens.map(token => {
         return {
             actor: token.actor,
@@ -603,7 +608,7 @@ async function updateAuras() {
                     const extraData = {
                         "flags.wire.auraSourceUuid": source.effect.uuid
                     }
-                    await applySingleEffect(source.effect, targets, masterEffect, {}, extraData);
+                    await applySingleEffect(source.effect, targets, masterEffect, {}, extraData, { skipAuraTransfer: true });
                 }
             }
         }

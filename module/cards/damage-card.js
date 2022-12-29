@@ -1,5 +1,43 @@
 import { wireSocket } from "../socket.js";
-import { fromUuid, fudgeToActor, getActorToken, getSpeaker } from "../utils.js";
+import { fromUuid, fudgeToActor, fudgeToToken, getActorToken, getSpeaker } from "../utils.js";
+
+export async function declareDamage(points, targets, sourceActor = null) {
+    const t = Array.isArray(targets) ? targets : [targets];
+    const damage = t.map(t => fudgeToToken(t)).map(token => ({
+        actor: token.actor,
+        token,
+        points: { damage: points }
+    }));
+
+    const pcDamage = damage.filter(d => d.actor.hasPlayerOwner);
+    const npcDamage = damage.filter(d => !d.actor.hasPlayerOwner);
+
+    if (pcDamage.length) {
+        await DamageCard.make(sourceActor, pcDamage);
+    }
+    if (npcDamage.length) {
+        await DamageCard.make(sourceActor, npcDamage);
+    }
+}
+
+export async function declareHealing(points, targets, sourceActor = null) {
+    const t = Array.isArray(targets) ? targets : [targets];
+    const damage = t.map(t => fudgeToToken(t)).map(token => ({
+        actor: token.actor,
+        token,
+        points: { healing: points }
+    }));
+
+    const pcDamage = damage.filter(d => d.actor.hasPlayerOwner);
+    const npcDamage = damage.filter(d => !d.actor.hasPlayerOwner);
+
+    if (pcDamage.length) {
+        await DamageCard.make(sourceActor, pcDamage);
+    }
+    if (npcDamage.length) {
+        await DamageCard.make(sourceActor, npcDamage);
+    }
+}
 
 export class DamageCard {
 

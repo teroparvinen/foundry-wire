@@ -156,7 +156,7 @@ async function onActorPreUpdate(wrapped, change, options, user) {
             if (effectiveHp > 0 || !game.settings.get("wire", "auto-drop-concentration")) {
                 // Concentration check
                 if (concentrationEffect) {
-                    const concentrationCard = new ConcentrationCard(actor, concentrationEffect, damage);
+                    const concentrationCard = new ConcentrationCard(actor, concentrationEffect, { damage });
                     await concentrationCard.make();
                 }
             } else {

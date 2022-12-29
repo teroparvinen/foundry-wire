@@ -28,7 +28,7 @@ export function initAreaConditionHooks() {
                             else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
 
                             if (dispositionCheck) {
-                                const updater = makeUpdater(condition, effect, item, actor);
+                                const updater = makeUpdater(condition, effect, item, actor, { actorUuid: actor.uuid });
                                 await updater?.process();
                             }
                         }
@@ -70,7 +70,7 @@ export function initAreaConditionHooks() {
                         else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
     
                         if (dispositionCheck) {
-                            const updater = makeUpdater(condition, effect, item, actor);
+                            const updater = makeUpdater(condition, effect, item, actor, { actorUuid: actor.uuid });
                             await updater?.process();
                         }
                     }
@@ -158,7 +158,7 @@ async function checkTemplateEnvelopment(templateDoc) {
                     else if (condition.condition.endsWith("creature")) { dispositionCheck = true; }
     
                     if (dispositionCheck) {
-                        const updater = makeUpdater(condition, effect, item, actor);
+                        const updater = makeUpdater(condition, effect, item, actor, { actorUuid: actor.uuid });
                         await updater?.process();
                     }
                 };
@@ -182,7 +182,7 @@ async function checkTemplateEnvelopment(templateDoc) {
                         else if (condition.condition.endsWith("creature")) { dispositionCheck = true; }
     
                         if (dispositionCheck) {
-                            const updater = makeUpdater(condition, effect, item, actor);
+                            const updater = makeUpdater(condition, effect, item, actor, { actorUuid: actor.uuid });
                             await updater?.process();
                         }
                     }

@@ -121,8 +121,22 @@ export function fudgeToActor(candidate) {
         return candidate;
     } else if (candidate instanceof CONFIG.Token.documentClass) {
         return candidate.object.actor;
+    } else if (candidate instanceof CONFIG.Token.objectClass) {
+        return candidate.actor;
     } else {
-        console.warn('Expected', candidate, 'to be actor');
+        console.warn('Could not fudge', candidate, 'to an actor');
+    }
+}
+
+export function fudgeToToken(candidate) {
+    if (candidate instanceof CONFIG.Token.objectClass) {
+        return candidate;
+    } else if (candidate instanceof CONFIG.Token.documentClass) {
+        return candidate.object;
+    } else if (candidate instanceof CONFIG.Actor.documentClass) {
+        return getActorToken(candidate);
+    } else {
+        console.warn('Could not fudge', candidate, 'to a token');
     }
 }
 

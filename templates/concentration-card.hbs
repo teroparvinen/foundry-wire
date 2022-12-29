@@ -1,5 +1,5 @@
 <div class="dnd5e chat-card concentration-card">
-    {{#if (lt damageAmount actor.system.attributes.hp.value)}}
+    {{#if (or (not damageAmount) (lt damageAmount actor.system.attributes.hp.value))}}
         <header class="card-header flexrow">
             <img class="flex0 actor-image clickable-token" data-token-uuid="{{token.document.uuid}}" src="{{token.document.texture.src}}" />
             <h3 class="item-name">{{localize "wire.ui.concentration-save-header" dc=dc}}</h3>

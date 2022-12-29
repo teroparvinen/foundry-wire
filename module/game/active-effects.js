@@ -34,6 +34,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                         blocksAreaConditions: effect.flags.wire?.blocksAreaConditions,
                         stackEffects: effect.flags.wire?.stackEffects,
                         independentDuration: effect.flags.wire?.independentDuration,
+                        auraTargets: effect.flags.wire?.auraTargets,
                         masterEffectUuid: (masterEffect && !effect.flags.wire?.independentDuration) ? masterEffect.uuid : null
                     },
                     core: {
@@ -81,7 +82,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     return createdEffects;
 }
 
-export async function applySingleEffect(effect, targets, masterEffect, config, extraData, { createStatus } = {}) {
+export async function applySingleEffect(effect, targets, masterEffect, config, extraData, { createStatus, skipAuraTransfer } = {}) {
     const item = masterEffect ? fromUuid(masterEffect.origin) : fromUuid(effect.origin);
     const actor = item.actor;
 
@@ -106,6 +107,7 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
                         blocksAreaConditions: effect.flags.wire?.blocksAreaConditions,
                         stackEffects: effect.flags.wire?.stackEffects,
                         independentDuration: effect.flags.wire?.independentDuration,
+                        auraTargets: !skipAuraTransfer && effect.flags.wire?.auraTargets,
                         masterEffectUuid: (masterEffect && !effect.flags.wire?.independentDuration) ? masterEffect.uuid : null
                     },
                     core: createStatus ? {

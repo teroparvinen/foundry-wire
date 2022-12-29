@@ -2,12 +2,12 @@ import { getSaveOptions } from "../game/effect-flags.js";
 import { getDisplayableSaveComponents } from "../game/check-and-save-components.js";
 
 export class ConfigureSave extends Application {
-    constructor(actor, ability, config, options) {
+    constructor(actor, ability, activation, options) {
         super(options);
 
         this.actor = actor;
         this.ability = ability;
-        this.config = config;
+        this.activation = activation;
     }
 
     static get defaultOptions() {
@@ -26,10 +26,11 @@ export class ConfigureSave extends Application {
             normal: "wire.roll-component.normal",
             disadvantage: "wire.roll-component.disadvantage",
         };
-        const options = getSaveOptions(this.actor, this.ability, this.config);
+        const options = getSaveOptions(this.actor, this.ability, this.activation);
+        const config = this.activation?.config || {};
 
-        const advantage = !this.config.save?.disadvantage && (options.advantage || this.config.save?.advantage);
-        const disadvantage = !this.config.save?.advantage && (options.disadvantage || this.config.save?.disadvantage);
+        const advantage = !config.save?.disadvantage && (options.advantage || config.save?.advantage);
+        const disadvantage = !config.save?.advantage && (options.disadvantage || config.save?.disadvantage);
 
         const defaultMode = advantage ? "advantage" : (disadvantage ? "disadvantage" : "normal");
 
@@ -47,17 +48,18 @@ export class ConfigureSave extends Application {
 
     _onSubmit(event) {
         event.preventDefault();
+        const config = this.activation?.config || {};
         const bonusInput = $(this.element).find('.configure-check__custom-bonus').val();
         const mode = $(this.element).find('.configure-check__mode-select').val();
 
         const advantage = mode === "advantage";
         const disadvantage = mode === "disadvantage";
         const normal = mode === "normal";
-        const bonus = [bonusInput, this.config.save?.bonus].filter(b => b).join(" + ");
+        const bonus = [bonusInput, config.save?.bonus].filter(b => b).join(" + ");
 
         const save = { advantage, disadvantage, normal, parts: [bonus] };
 
-        this.resolve(foundry.utils.mergeObject(this.config, save));
+        this.resolve(foundry.utils.mergeObject(config, save));
         this.close();
         return false;
     }

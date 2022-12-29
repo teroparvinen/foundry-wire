@@ -10,7 +10,7 @@ export function itemRollFlow() {
                 this.hasConcentration(
                     this.applyConcentration()
                 ),
-                this.hasAreaTarget(
+                this.hasAuraOrAreaTarget(
                     this.applyDurationEffect()
                 )
             ),

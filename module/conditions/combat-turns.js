@@ -28,7 +28,7 @@ async function handleTurn(actor, token, isStart) {
     // Target turn changes
     const handledTargetCondition = isStart ? "start-of-turn-target" : "end-of-turn-target";
 
-    await triggerConditions(actor, handledTargetCondition);
+    await triggerConditions(actor, handledTargetCondition, { actorUuid: actor.uuid });
 
     // Caster turn changes
     const handledCasterCondition = isStart ? "start-of-turn-caster" : "end-of-turn-caster";
@@ -70,7 +70,7 @@ async function handleTurn(actor, token, isStart) {
                 else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
 
                 if (dispositionCheck) {
-                    const updater = makeUpdater(condition, effect, item, token.actor);
+                    const updater = makeUpdater(condition, effect, item, token.actor, { actorUuid: actor.uuid });
                     await updater?.process();
                 }
             }

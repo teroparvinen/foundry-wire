@@ -67,6 +67,7 @@ export class Resolver {
         "performAttackRoll", 
         "performSaveDamageRoll", 
         "performSavingThrow",
+        "performSavingThrowAlways",
         "placeTemplate",
         "removeSelfTarget",
         "rolling-attack-damage", 
@@ -324,6 +325,11 @@ export class Resolver {
                 }
                 await this.activation.applyState("waiting-for-saves", true);
             }
+        } else if (isGM && this.activation.state === "performSavingThrowAlways") {
+            if (this.activation.message.user === game.user && this.activation.pcTargets.length) {
+                this.activation._createPlayerMessage(true);
+            }
+            await this.activation.applyState("waiting-for-saves", true);
         } else if (isGM && this.activation.state === "waiting-for-saves") {
             if (this.activation.saveResults?.length === this.activation.allTargets.length) {
                 const dc = item.system.save.dc;

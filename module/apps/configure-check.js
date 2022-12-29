@@ -2,12 +2,12 @@ import { getAbilityCheckOptions } from "../game/effect-flags.js";
 import { getDisplayableCheckComponents } from "../game/check-and-save-components.js";
 
 export class ConfigureCheck extends Application {
-    constructor(actor, ability, config, options) {
+    constructor(actor, ability, activation, options) {
         super(options);
 
         this.actor = actor;
         this.ability = ability;
-        this.config = config;
+        this.activation = activation;
     }
 
     static get defaultOptions() {
@@ -26,10 +26,11 @@ export class ConfigureCheck extends Application {
             normal: "wire.roll-component.normal",
             disadvantage: "wire.roll-component.disadvantage",
         };
-        const options = getAbilityCheckOptions(this.actor, this.ability, this.config);
+        const options = getAbilityCheckOptions(this.actor, this.ability, this.activation);
+        const config = this.activation?.config || {};
 
-        const advantage = !this.config.check?.disadvantage && (options.advantage || this.config.check?.advantage);
-        const disadvantage = !this.config.check?.advantage && (options.disadvantage || this.config.check?.disadvantage);
+        const advantage = !config.check?.disadvantage && (options.advantage || config.check?.advantage);
+        const disadvantage = !config.check?.advantage && (options.disadvantage || config.check?.disadvantage);
 
         const defaultMode = advantage ? "advantage" : (disadvantage ? "disadvantage" : "normal");
 
@@ -47,17 +48,18 @@ export class ConfigureCheck extends Application {
 
     _onSubmit(event) {
         event.preventDefault();
+        const config = this.activation?.config || {};
         const bonusInput = $(this.element).find('.configure-check__custom-bonus').val();
         const mode = $(this.element).find('.configure-check__mode-select').val();
 
         const advantage = mode === "advantage";
         const disadvantage = mode === "disadvantage";
         const normal = mode === "normal";
-        const bonus = [bonusInput, this.config.check?.bonus].filter(b => b).join(" + ");
+        const bonus = [bonusInput, config.check?.bonus].filter(b => b).join(" + ");
 
         const check = { advantage, disadvantage, normal, parts: [bonus] };
 
-        this.resolve(foundry.utils.mergeObject(this.config, check));
+        this.resolve(foundry.utils.mergeObject(config, check));
         this.close();
         return false;
     }

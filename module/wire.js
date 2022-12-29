@@ -3,7 +3,7 @@ import { SelectVariantDialog } from "./apps/select-variant.js";
 import { initAreaConditionHooks } from "./conditions/area-effects.js";
 import { initRegularRollHooks } from "./conditions/regular-rolls.js";
 import { DamageParts } from "./game/damage-parts.js";
-import { DamageCard } from "./cards/damage-card.js";
+import { DamageCard, declareDamage, declareHealing } from "./cards/damage-card.js";
 import { initEffectFlagHooks, setupRollFlagWrappers } from "./game/effect-flags.js";
 import { registerHandlebarsHelpers } from "./handlebars.js";
 import { initHooks } from "./hooks.js";
@@ -20,6 +20,7 @@ import { getAvailablePackImports, importPackItems, setupCompendiumHooks } from "
 import { initTemplateHooks, placeTemplate, setupTemplateWrappers } from "./templates.js";
 import { setupLogicRolls } from "./logic-rolls.js";
 import { setupDurations } from "./durations.js";
+import { requestConcentrationSave } from "./cards/concentration-card.js";
 
 Hooks.once("init", () => {
     initHooks();
@@ -47,6 +48,9 @@ Hooks.once("init", () => {
         removeChildEffects,
         createChildEffects,
         createScrollingText,
+        declareDamage,
+        declareHealing,
+        requestConcentrationSave,
         getAvailablePackImports,
         importPackItems
     }

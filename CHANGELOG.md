@@ -1,5 +1,20 @@
 # Changes by version number
 
+### 0.10.6
+
+Changes
+
+- Saves and ability checks rolled as a part of an item card activation now pass information about the triggering `@condition` as a variable to switch flags such as advantage/disadvantage flags (see the last update).
+    - An example of where this is useful is the condition for Hideous Laughter to give advantage on a save when taking damage. This is now a wisdom save advantage flag with the value `eq(@condition.condition, "takes-damage")`.
+    - This and the `@config` variable mentioned in the last update are now only present when rolling saves for the item causing the save, so if some hapless victim is subject to two spells that give a save when damage is taken, advantage will only be given to the save that matches the originating spell. If you just want to check if the save/check flag is from the item containing the effect, you can also use `@isFromItem` which may be clearer when you get back to editing it later.
+    - These still need better documentation. My current plan is to implement a large part of the SRD spells and see where the APIs settle in that process, then start on improved documentation.
+
+Fixes
+
+- Fixed an issue with the formula string value handling introduced in the last update.
+- Fixed some issues with aura effects from spells
+- The "End the effect on a save" updater used the same logic as regular saving throws, which meant that if an item's initial effects were marked always effective (either always full damage or an effect that applies even on a failed attack or save), the save was skipped. This didn't make much sense since in all cases the save was explicitly required, so a new flow step option `performSavingThrowAlways` was added, and the "End the effect on a save" updater was converted to use this new logic.
+
 ### 0.10.5
 
 Breaking changes

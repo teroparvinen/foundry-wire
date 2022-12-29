@@ -45,8 +45,16 @@ export function isSelfRange(item) {
     return item.system.range.units === "self";
 }
 
+export function isAura(item) {
+    return item.effects.some(e => !!e.flags.wire?.auraTargets);
+}
+
+export function isAreaTargetable(item) {
+    return item.hasAreaTarget && !isAura(item);
+}
+
 export function hasSelfAttachableAreaTarget(item) {
-    return isSelfRange(item) && item.hasAreaTarget && (item.system.target.type === "sphere" || item.system.target.type === "radius");
+    return isSelfRange(item) && isAreaTargetable(item) && (item.system.target.type === "sphere" || item.system.target.type === "radius");
 }
 
 export function hasDamageOfType(item, applicationType, variant) {

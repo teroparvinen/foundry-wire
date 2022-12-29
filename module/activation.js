@@ -499,6 +499,17 @@ export class Activation {
         await this._update();
     }
 
+    isTargetEffective(target) {
+        let targetUuid;
+        if (target instanceof CONFIG.Actor.documentClass) {
+            targetUuid = target.uuid;
+        } else {
+            targetUuid = target?.actor?.uuid;
+        }
+
+        return this.data.effectiveTargetUuids.includes(targetUuid);
+    }
+
     async applyState(state, updateCard = false) {
         console.log("STATE", state, "for message", this.message.id);
         foundry.utils.setProperty(this.data, "state", state || null);
@@ -609,7 +620,7 @@ export class Activation {
         const usedSave = this.item.system.save.ability;
         const usedCheck = this.abilityToCheckForSave;
 
-        const actorOptions = usedCheck ? getAbilityCheckOptions(actor, usedCheck, this.config) : getSaveOptions(actor, usedSave, this.config);
+        const actorOptions = usedCheck ? getAbilityCheckOptions(actor, usedCheck, this) : getSaveOptions(actor, usedSave, this);
         const rollOptions = foundry.utils.mergeObject(actorOptions, options);
 
         if (rollOptions.success || rollOptions.failure) {
@@ -619,9 +630,9 @@ export class Activation {
         } else {
             let roll;
             if (usedCheck) {
-                roll = await actor.rollAbilityTest(usedCheck, foundry.utils.mergeObject(rollOptions, { chatMessage: false, fastForward: true }));
+                roll = await actor.rollAbilityTest(usedCheck, foundry.utils.mergeObject(rollOptions, { chatMessage: false, fastForward: true, "data.condition": this.condition, "data.config": this.config }));
             } else {
-                roll = await actor.rollAbilitySave(usedSave, foundry.utils.mergeObject(rollOptions, { chatMessage: false, fastForward: true }));
+                roll = await actor.rollAbilitySave(usedSave, foundry.utils.mergeObject(rollOptions, { chatMessage: false, fastForward: true, "data.condition": this.condition, "data.config": this.config }));
             }
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.applySave(actor, roll);

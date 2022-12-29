@@ -187,15 +187,21 @@ function evaluateAttackFlag(values, attacker, defender, config) {
     });
 }
 
-function evaluateActorFlag(values, actor, config) {
+function evaluateActorFlag(values, actor, activation) {
     if (!Array.isArray(values)) { return values === true || (!isNaN(values) && values > 0); }
 
     return values.some(value => {
         const rollData = {
-            actor: actor?.getRollData() || {},
-            config
+            actor: actor?.getRollData() || {}
         };
     
+        const item = fromUuid(value.origin);
+        rollData.isFromItem = item === activation?.item ? 1 : 0;
+        if (item === activation?.item) {
+            rollData.config = activation.config;
+            rollData.condition = activation.condition;
+        }
+
         return evaluateFormula(value.value, rollData) > 0;
     });
 }
@@ -310,7 +316,7 @@ export function getDamageReduction(actor) {
     return entries;
 }
 
-export function getSaveOptions(actor, abilityId, config, isConcentration) {
+export function getSaveOptions(actor, abilityId, activation, { isConcentration } = {}) {
     const flags = getEffectFlags(actor);
 
     const succeedFlags = flags?.succeed || {};
@@ -322,7 +328,7 @@ export function getSaveOptions(actor, abilityId, config, isConcentration) {
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
 
-    const ef = (value) => evaluateActorFlag(value, actor, config);
+    const ef = (value) => evaluateActorFlag(value, actor, activation);
 
     const advFlags = flags?.advantage?.ability || {};
     const disFlags = flags?.disadvantage?.ability || {};
@@ -336,7 +342,7 @@ export function getSaveOptions(actor, abilityId, config, isConcentration) {
     return { success, failure, advantage, disadvantage };
 }
 
-export function getAbilityCheckOptions(actor, abilityId, config) {
+export function getAbilityCheckOptions(actor, abilityId, activation) {
     const flags = getEffectFlags(actor);
 
     const succeedFlags = flags?.succeed || {};
@@ -348,7 +354,7 @@ export function getAbilityCheckOptions(actor, abilityId, config) {
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
 
-    const ef = (value) => evaluateActorFlag(value, actor, config);
+    const ef = (value) => evaluateActorFlag(value, actor, activation);
 
     const advFlags = flags?.advantage?.ability || {};
     const disFlags = flags?.disadvantage?.ability || {};
@@ -668,7 +674,7 @@ async function onActorRollAbilityTest(wrapped, abilityId, options) {
 async function onActorRollAbilitySave(wrapped, abilityId, options) {
     const bonus = await triggerConditions(this, "prepare-ability-save");
 
-    const saveOptions = getSaveOptions(this, abilityId, undefined, options?.isConcentration);
+    const saveOptions = getSaveOptions(this, abilityId, undefined, options);
     const advantage = options.advantage || (saveOptions.advantage && !options.disadvantage && !options.normal);
     const disadvantage = options.disadvantage || (saveOptions.disadvantage && !options.advantage && !options.normal);
 
