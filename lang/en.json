@@ -54,6 +54,7 @@
             "application-immediate": "Immediate",
             "application-delayed": "Delayed",
             "application-overtime": "Over time",
+            "application-resolving": "While resolving outcome",
             "immunity-header": "Immunities",
             "immunity-creature": "Creature type",
             "immunity-creature-not": "Creature type not",

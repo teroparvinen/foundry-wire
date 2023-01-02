@@ -125,7 +125,15 @@
                             </div>
                             <div class="flex0 target-save-result {{#if (gte roll.total ../../item.system.save.dc)}}success{{else}}fail{{/if}}">
                                 {{#if (or ../../isGM isPC)}}
-                                    {{roll.total}}
+                                    {{#unless auto}}
+                                        {{roll.total}}
+                                    {{else}}
+                                        {{#if (gte roll.total ../../item.system.save.dc)}}
+                                            <i class="fas fa-check"></i>
+                                        {{else}}
+                                            <i class="fas fa-times"></i>
+                                        {{/if}}
+                                    {{/unless}}
                                 {{else}}
                                     {{#unless ../../settings.hideNpcSaveResults}}
                                         {{#if (gte roll.total ../../item.system.save.dc)}}

@@ -226,6 +226,10 @@ export class Flow {
         return ["applySelectedTargets", ...this.chain(this.pick(...arguments))];
     }
 
+    applySelectedTargetsAlliesAsEffective() {
+        return ["applySelectedTargetsAlliesAsEffective", ...this.chain(this.pick(...arguments))];
+    }
+
     applySelectedTargetsAsEffective() {
         return ["applySelectedTargetsAsEffective", ...this.chain(this.pick(...arguments))];
     }

@@ -111,7 +111,8 @@ export class Activation {
     get saveResults() { return this.data.saves?.map(e => {
         return {
             actor: fudgeToActor(fromUuid(e.actorUuid)),
-            roll: CONFIG.Dice.D20Roll.fromData(e.roll)
+            roll: CONFIG.Dice.D20Roll.fromData(e.roll),
+            auto: e.auto
         };
     })}
     get condition() { return this.data.condition; }
@@ -430,7 +431,7 @@ export class Activation {
     }
 
     async assignTargets(targets) {
-        foundry.utils.setProperty(this.data, "targetUuids", targets.filter(a => !isActorDefeated(a) && !isActorImmune(a, this.item)).map(t => t.uuid));
+        foundry.utils.setProperty(this.data, "targetUuids", targets.map(a => fudgeToActor(a)).filter(a => !isActorDefeated(a) && !isActorImmune(a, this.item)).map(t => t.uuid));
         await this._update();
     }
 
@@ -488,7 +489,7 @@ export class Activation {
     }
 
     async applyEffectiveTargets(targets) {
-        foundry.utils.setProperty(this.data, "effectiveTargetUuids", targets.filter(a => !isActorDefeated(a) && !isActorImmune(a, this.item)).map(t => t.uuid));
+        foundry.utils.setProperty(this.data, "effectiveTargetUuids", targets.map(a => fudgeToActor(a)).filter(a => !isActorDefeated(a) && !isActorImmune(a, this.item)).map(t => t.uuid));
         await this._update();
     }
 
@@ -562,17 +563,19 @@ export class Activation {
         await this._update();
     }
 
-    async applySave(actor, roll) {
+    async applySave(actor, roll, { auto = undefined, interactive = true } = {}) {
         const saves = this.data.saves || [];
         if (!saves.find(s => s.actorUuid === actor.uuid)) {
-            saves.push({ actorUuid: actor.uuid, roll: roll.toJSON(), isPC: actor.hasPlayerOwner });
+            saves.push({ actorUuid: actor.uuid, roll: roll.toJSON(), isPC: actor.hasPlayerOwner, auto });
             foundry.utils.setProperty(this.data, "saves", saves);
 
             await this._update();
             await this._updateCard();
     
-            await this._step();
-            wireSocket.executeForOthers("refreshActivation", this.message.uuid, this.data);
+            if (interactive) {
+                await this._step();
+                wireSocket.executeForOthers("refreshActivation", this.message.uuid, this.data);
+            }
         }
     }
 
@@ -615,18 +618,25 @@ export class Activation {
         await this._step();
     }
 
-    async _rollSave(actor, options = {}) {
-        const spellDC = this.item.system.save.dc;
+    _getSaveRollOptions(actor, options = {}) {
         const usedSave = this.item.system.save.ability;
         const usedCheck = this.abilityToCheckForSave;
 
         const actorOptions = usedCheck ? getAbilityCheckOptions(actor, usedCheck, this) : getSaveOptions(actor, usedSave, this);
         const rollOptions = foundry.utils.mergeObject(actorOptions, options);
 
+        return { rollOptions, usedSave, usedCheck };
+    }
+
+    async _rollSave(actor, options = {}) {
+        const { rollOptions, usedSave, usedCheck } = this._getSaveRollOptions(actor, options);
+
         if (rollOptions.success || rollOptions.failure) {
+            const spellDC = this.item.system.save.dc;
             const formula = rollOptions.success ? `1d20min${spellDC}` : `1d20max${spellDC-1}`;
             const roll = await new CONFIG.Dice.D20Roll(formula, {}, { configured: true }).evaluate({ async: true });
-            await this.applySave(actor, roll);
+            const auto = rollOptions.success ? "success" : "failure"
+            await this.applySave(actor, roll, { auto });
         } else {
             let roll;
             if (usedCheck) {
@@ -639,5 +649,19 @@ export class Activation {
         }
 
         await triggerConditions(actor, "saving-throw-completed");
+    }
+
+    async _applyAutoSaves() {
+        for (const actor of this.allTargets.map(t => t.actor)) {
+            const { rollOptions } = this._getSaveRollOptions(actor);
+
+            if (rollOptions.success || rollOptions.failure) {
+                const spellDC = this.item.system.save.dc;
+                const formula = rollOptions.success ? `1d20min${spellDC}` : `1d20max${spellDC-1}`;
+                const roll = await new CONFIG.Dice.D20Roll(formula, {}, { configured: true }).evaluate({ async: true });
+                const auto = rollOptions.success ? "success" : "failure";
+                await this.applySave(actor, roll, { auto, interactive: false });
+            }
+        }
     }
 }

@@ -1,5 +1,23 @@
 # Changes by version number
 
+### 0.10.7
+
+Changes
+
+- An active effect's application phase can now be set to "While resolving outcome", which will apply the effect to all targets for the duration of the item roll resolution. This is helpful for effects that cause conditional save disadvantages or similar when the spell is initially cast, such as Shatter causing disadvantage to constructs. Usually best combined with the `@isFromItem` conditional variable in the Effect Value field.
+- Extended the effect flag processing introduced for save advantage/disadvantage to damage minimization and maximization flags and save/check auto fail and auto succeed flags.
+- Automatically failing or succeeding saves are now applied and displayed immediately when saves are prompted.
+- When the actor size (in game terms: medium, large, huge etc.) is changed (possibly through an active effect), the token size is adjusted automatically. Further, the size change will check that the token does not end up in a prohibited location in relation to walls.
+    - If the size change can't be completed because there is not enough space, the token will take the largest valid size that will fit.
+    - When there are multiple viable locations for the resulting token placement, the ones closest to the starting position are preferred. If there are multiple within the same distance, one will be chosen at random (not always just top left).
+    - The collision checks are done from individual grid square centers, so some niche conditions with zero width walls may need manual adjustment
+- Added a new effect flag, `flags.wire.size.adjustment`. It is a number value that will adjust the size of a target by the specified number of steps. E.g. +1 will enlarge a medium creature to a size of large.
+- Added an application flow step `applySelectedTargetsAlliesAsEffective` that applies selected targets and, if they are all allies, marks them effective, possibly skipping subsequent saving throw steps as unnecessary.
+
+Fixes
+
+- Miscellaneous fixes to small bugs
+
 ### 0.10.6
 
 Changes

@@ -10,7 +10,8 @@ export function initItemSheetHooks() {
         const item = app.object;
 
         const stockTargetValue = foundry.utils.getProperty(item, "system.target.value");
-        const targetValue = foundry.utils.getProperty(item, "flags.wire.override.target.value") || stockTargetValue;
+        const overriddenTargetValue = foundry.utils.getProperty(item, "flags.wire.override.target.value");
+        const targetValue = overriddenTargetValue !== undefined ? overriddenTargetValue : stockTargetValue;
 
         const disabled = app.isEditable ? "" : "disabled";
 

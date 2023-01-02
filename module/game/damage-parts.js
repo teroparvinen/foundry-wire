@@ -199,7 +199,7 @@ export class DamageParts {
     
         // Evaluate the configured roll
         for (let pr of partsWithRolls) {
-            const { maximize, minimize } = getDamageInflictingOptions(item, item.actor, pr.part.type)
+            const { maximize, minimize } = getDamageInflictingOptions(item, singleTarget, pr.part.type, activation.config)
             await pr.roll.evaluate({ maximize, minimize, async: true });
         }
 
@@ -276,7 +276,7 @@ export class DamageParts {
         return this.result.pr.reduce((prev, part) => prev + part.roll.total, 0);
     }
 
-    async appliedToActor(item, actor, isEffective) {
+    async appliedToActor(item, actor, isEffective, activation) {
         function halvingFactor(halving, isEffective) {
             if (!isEffective) {
                 if (halving == "full") return 1;
@@ -306,7 +306,7 @@ export class DamageParts {
         }
 
         await Promise.all(this.result.map(async pr => {
-            const { maximize, minimize, multiplier } = getDamageReceivingOptions(item, actor, pr.part.type);
+            const { maximize, minimize, multiplier } = getDamageReceivingOptions(item, actor, pr.part.type, activation?.config);
 
             let roll = pr.roll;
             if (maximize) { roll = await pr.roll.reroll({ maximize, async: true }); }

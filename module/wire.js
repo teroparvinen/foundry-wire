@@ -13,7 +13,7 @@ import { initItemSheetHooks, setupItemSheetWrappers } from "./injections/item-sh
 import { setupKeybindings } from "./keybindings.js";
 import { setupSocket } from "./socket.js";
 import { setupWrappers } from "./wrappers.js";
-import { createScrollingText, fromUuid, getActorToken } from "./utils.js";
+import { createScrollingText, fromUuid, fudgeToActor, fudgeToToken, getActorToken } from "./utils.js";
 import { createChildEffects, removeChildEffects } from "./game/active-effects.js";
 import { initSettings } from "./settings.js";
 import { getAvailablePackImports, importPackItems, setupCompendiumHooks } from "./compendiums.js";
@@ -41,16 +41,20 @@ Hooks.once("init", () => {
         DamageParts,
         DamageCard,
         SelectVariantDialog,
-        placeTemplate,
-        runInQueue,
-        fromUuid,
-        getActorToken,
-        removeChildEffects,
+
+        asActor: fudgeToActor,
+        asToken: fudgeToToken,
         createChildEffects,
         createScrollingText,
         declareDamage,
         declareHealing,
+        fromUuid,
+        getActorToken,
+        placeTemplate,
+        removeChildEffects,
         requestConcentrationSave,
+        runInQueue,
+
         getAvailablePackImports,
         importPackItems
     }

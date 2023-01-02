@@ -1,6 +1,6 @@
 import { runInQueue } from "../action-queue.js";
 import { isInstantaneous } from "../item-properties.js";
-import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, getActorToken, isActorEffect, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
+import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, getActorToken, getTokenSquarePositions, isActorEffect, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
 
 export function getWireFlags() {
     return [
@@ -135,26 +135,30 @@ export function getWireFlags() {
         ...Object.keys(CONFIG.DND5E.abilities).flatMap(abl => [
             `flags.wire.damage.multiplier.ability.${abl}`,
             `flags.wire.grants.damage.multiplier.ability.${abl}`
-        ])
+        ]),
+        ...[
+            "flags.wire.size.adjustment"
+        ]
     ];
 }
 
 const flagInitialValues = {
     "flags.wire.damage.multiplier.*": 1,
-    "flags.wire.grants.damage.multiplier.*": 1
+    "flags.wire.grants.damage.multiplier.*": 1,
+    "flags.wire.size.adjustment": 0
 }
 
 const switchFlags = [
     "flags.wire.advantage.*",
     "flags.wire.disadvantage.*",
     "flags.wire.grants.advantage.*",
-    "flags.wire.grants.disadvantage.*"
-    // "flags.wire.fail.*",
-    // "flags.wire.succeed.*",
-    // "flags.wire.max.*",
-    // "flags.wire.min.*",
-    // "flags.wire.receive.max.*",
-    // "flags.wire.receive.min.*",
+    "flags.wire.grants.disadvantage.*",
+    "flags.wire.fail.*",
+    "flags.wire.succeed.*",
+    "flags.wire.max.*",
+    "flags.wire.min.*",
+    "flags.wire.receive.max.*",
+    "flags.wire.receive.min.*"
 ]
 
 export function getEffectFlags(actor) {
@@ -266,12 +270,16 @@ export function getDamageInflictingMultiplier(item, actor, target, damageType) {
     return globalMultiplier * actionTypeMultiplier * creatureTypeMultiplier * damageTypeMultiplier * abilityMultiplier;
 }
 
-export function getDamageInflictingOptions(item, actor, damageType) {
+export function getDamageInflictingOptions(item, defender, damageType, config) {
+    const actor = item.actor;
+
+    const ef = (value) => evaluateAttackFlag(value, actor, defender, config);
+
     const maxFlags = getEffectFlags(actor)?.max?.damage || {};
     const minFlags = getEffectFlags(actor)?.min?.damage || {};
 
-    const hasMax = maxFlags.all || maxFlags[item.system.actionType] || maxFlags[damageType];
-    const hasMin = minFlags.all || minFlags[item.system.actionType] || minFlags[damageType];
+    const hasMax = ef(maxFlags.all) || ef(maxFlags[item.system.actionType]) || ef(maxFlags[damageType]);
+    const hasMin = ef(minFlags.all) || ef(minFlags[item.system.actionType]) || ef(minFlags[damageType]);
 
     const maximize = hasMax && !hasMin;
     const minimize = hasMin && !hasMax;
@@ -279,12 +287,16 @@ export function getDamageInflictingOptions(item, actor, damageType) {
     return { maximize, minimize };
 }
 
-export function getDamageReceivingOptions(item, actor, damageType) {
+export function getDamageReceivingOptions(item, actor, damageType, config) {
+    const attacker = item.actor;
+
+    const ef = (value) => evaluateAttackFlag(value, attacker, actor, config);
+
     const maxFlags = getEffectFlags(actor)?.receive?.max?.damage || {};
     const minFlags = getEffectFlags(actor)?.receive?.min?.damage || {};
 
-    const hasMax = maxFlags.all || maxFlags[item.system.actionType] || maxFlags[damageType];
-    const hasMin = minFlags.all || minFlags[item.system.actionType] || minFlags[damageType];
+    const hasMax = ef(maxFlags.all) || ef(maxFlags[item.system.actionType]) || ef(maxFlags[damageType]);
+    const hasMin = ef(minFlags.all) || ef(minFlags[item.system.actionType]) || ef(minFlags[damageType]);
 
     const maximize = hasMax && !hasMin;
     const minimize = hasMin && !hasMax;
@@ -317,18 +329,18 @@ export function getDamageReduction(actor) {
 }
 
 export function getSaveOptions(actor, abilityId, activation, { isConcentration } = {}) {
+    const ef = (value) => evaluateActorFlag(value, actor, activation);
+
     const flags = getEffectFlags(actor);
 
     const succeedFlags = flags?.succeed || {};
     const failFlags = flags?.fail || {};
 
-    const isSuccess = succeedFlags.ability?.all || succeedFlags.ability?.save?.all || (succeedFlags.ability?.save && succeedFlags.ability.save[abilityId]);
-    const isFailure = failFlags.ability?.all || failFlags.ability?.save?.all || (failFlags.ability?.save && failFlags.ability.save[abilityId]);
+    const isSuccess = ef(succeedFlags.ability?.all) || ef(succeedFlags.ability?.save?.all) || (succeedFlags.ability?.save && ef(succeedFlags.ability.save[abilityId]));
+    const isFailure = ef(failFlags.ability?.all) || ef(failFlags.ability?.save?.all) || (failFlags.ability?.save && ef(failFlags.ability.save[abilityId]));
 
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
-
-    const ef = (value) => evaluateActorFlag(value, actor, activation);
 
     const advFlags = flags?.advantage?.ability || {};
     const disFlags = flags?.disadvantage?.ability || {};
@@ -343,18 +355,18 @@ export function getSaveOptions(actor, abilityId, activation, { isConcentration }
 }
 
 export function getAbilityCheckOptions(actor, abilityId, activation) {
+    const ef = (value) => evaluateActorFlag(value, actor, activation);
+
     const flags = getEffectFlags(actor);
 
     const succeedFlags = flags?.succeed || {};
     const failFlags = flags?.fail || {};
 
-    const isSuccess = succeedFlags.ability?.all || succeedFlags.ability?.check?.all || (succeedFlags.ability?.check && succeedFlags.ability.check[abilityId]);
-    const isFailure = failFlags.ability?.all || failFlags.ability?.check?.all || (failFlags.ability?.check && failFlags.ability.check[abilityId]);
+    const isSuccess = ef(succeedFlags.ability?.all) || ef(succeedFlags.ability?.check?.all) || (succeedFlags.ability?.check && ef(succeedFlags.ability.check[abilityId]));
+    const isFailure = ef(failFlags.ability?.all) || ef(failFlags.ability?.check?.all) || (failFlags.ability?.check && ef(failFlags.ability.check[abilityId]));
 
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
-
-    const ef = (value) => evaluateActorFlag(value, actor, activation);
 
     const advFlags = flags?.advantage?.ability || {};
     const disFlags = flags?.disadvantage?.ability || {};
@@ -523,6 +535,7 @@ export function setupRollFlagWrappers() {
     // libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.prepareDerivedData", onActorPrepareDerivedData, "MIXED");
     // libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.applyActiveEffects", onActorApplyActiveEffects, "MIXED");
     libWrapper.register("wire", "CONFIG.ActiveEffect.documentClass.prototype.apply", onActiveEffectApply, "MIXED");
+    libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype._safePrepareData", onActorPrepareData, "MIXED");
     libWrapper.register("wire", "CONFIG.ActiveEffect.documentClass.prototype._displayScrollingStatus", onActiveEffectDisplayScrollingStatus, "MIXED");
 
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype.rollSkill", onActorRollSkill, "MIXED");
@@ -610,15 +623,149 @@ function onActiveEffectApply(wrapped, actor, change) {
         ret = wrapped.apply(this, [actor, change]);
     }
 
-    if (game.user.isGM) {
-        applyConditionImmunities(actor);
-    }
-
     return ret;
 }
 
+function checkActorTokenSizeAdjustment(actor) {
+    const sizes = Object.keys(CONFIG.DND5E.actorSizes);
+
+    const current = foundry.utils.getProperty(actor, "system.traits.size") ?? "med";
+    const adjustment = foundry.utils.getProperty(actor, "flags.wire.size.adjustment") || 0;
+
+    const currentIndex = sizes.indexOf(current);
+    if (currentIndex >= 0) {
+        const newIndex = Math.max(Math.min(currentIndex + adjustment, sizes.length - 1), 0);
+        const newSize = sizes[newIndex];
+        
+        foundry.utils.setProperty(actor, "system.traits.size", newSize);
+        foundry.utils.setProperty(actor.overrides, "system.traits.size", newSize);
+    }
+}
+
+function checkActorTokenSize(actor) {
+    const currentSystemSize = foundry.utils.getProperty(actor, "system.traits.size") || "med";
+    const subsquareTargetSize = CONFIG.DND5E.tokenSizes[currentSystemSize];
+    if (!subsquareTargetSize) return;
+
+    const targetSize = Math.max(subsquareTargetSize, 1);
+
+    const token = getActorToken(actor);
+    if (!token) return;
+
+    const subsquareExistingSize = Math.max(token.document._source.width, token.document._source.height);
+    const existingSize = parseInt(subsquareExistingSize);
+
+    if (targetSize != existingSize) {
+        const gs = canvas.grid.size;
+        const hs = gs * 0.5;
+
+        function getExpandedPosition(x, y, size, dx, dy) {
+            const corner = {
+                x: dx < 0 ? x + hs : x + size * gs - hs,
+                y: dy < 0 ? y + hs : y + size * gs - hs
+            }
+            const cornerTest = {
+                x: corner.x + dx * gs,
+                y: corner.y + dy * gs
+            }
+
+            let hrays = [...Array(size).keys()].map(i => {
+                const edge = {
+                    x: x + i * gs + hs,
+                    y: dy < 0 ? y + hs : y + size * gs - hs
+                }
+                const edgeTest = {
+                    x: edge.x,
+                    y: edge.y + dy * gs
+                }
+                return [edge, edgeTest];
+            })
+            let vrays = [...Array(size).keys()].map(i => {
+                const edge = {
+                    x: dx < 0 ? x + hs : x + size * gs - hs,
+                    y: y + i * gs + hs
+                }
+                const edgeTest = {
+                    x: edge.x + dx * gs,
+                    y: edge.y
+                }
+                return [edge, edgeTest];
+            })
+            const rays = [[corner, cornerTest], ...hrays, ...vrays];
+            const isValid = rays.every(pair => !CONFIG.Canvas.losBackend.testCollision(pair[0], pair[1], { mode: "any", type: "move" }));
+            if (isValid) {
+                return {
+                    x: dx < 0 ? x + dx * gs : x,
+                    y: dy < 0 ? y + dy * gs : y
+                }
+            }
+        }
+
+        function getExpandedPositions(x, y, size) {
+            const deltas = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+            return deltas.map(d => getExpandedPosition(x, y, size, d[0], d[1])).filter(p => p);
+        }
+
+        let positionsByDistance;
+        let currentSize = existingSize;
+        if (targetSize > existingSize) {
+            let validPositions = [{ x: token.document.x, y: token.document.y }];
+
+            while (currentSize < targetSize) {
+                const expandedPositions = validPositions.flatMap(p => getExpandedPositions(p.x, p.y, currentSize));
+                if (expandedPositions.length) {
+                    currentSize++;
+                    validPositions = expandedPositions;
+                } else {
+                    break;
+                }
+            }
+
+            positionsByDistance = validPositions.map(p => {
+                const c = { x: p.x + currentSize * hs, y: p.y + currentSize * hs };
+                const dx = token.center.x - c.x;
+                const dy = token.center.y - c.y;
+                return { d: dx*dx + dy*dy, p };
+            });
+        } else {
+            currentSize = targetSize;
+            positionsByDistance = [];
+            for (let i = 0; i <= existingSize - targetSize; i++) {
+                for (let j = 0; j <= existingSize - targetSize; j++) {
+                    const p = { x: token.document.x + i * gs, y: token.document.y + j * gs };
+                    const c = { x: p.x + currentSize * hs, y: p.y + currentSize * hs };
+                    const dx = token.center.x - c.x;
+                    const dy = token.center.y - c.y;
+                    positionsByDistance.push({ d: dx*dx + dy*dy, p });
+                }
+            }
+
+            if (currentSize == 1 && subsquareTargetSize < currentSize) currentSize = subsquareTargetSize;
+        }
+
+        positionsByDistance.sort((a, b) => a.d - b.d);
+        const shortestDistance = positionsByDistance[0].d;
+        const candidates = positionsByDistance.filter(p => p.d == shortestDistance).map(p => p.p);
+        const position = candidates[Math.floor(Math.random() * candidates.length)];
+
+        token.document.update({ x: position.x, y: position.y, width: currentSize, height: currentSize});
+    } else if (subsquareExistingSize != subsquareTargetSize) {
+        token.document.update({ x: token.document.x, y: token.document.y, width: subsquareTargetSize, height: subsquareTargetSize});
+    }
+}
+
+function onActorPrepareData(wrapped) {
+    wrapped();
+
+    if (game.user.isGM) {
+        checkActorTokenSizeAdjustment(this);
+        checkActorTokenSize(this);
+        applyConditionImmunities(this);
+    }
+}
+
 function onActiveEffectDisplayScrollingStatus(wrapped, enabled) {
-    if (isActorEffect(this) && fromUuid(this.origin)?.system.duration?.units === "inst") {
+    if (isActorEffect(this) && fromUuid(this.origin)?.system.duration?.units === "inst" && !this.flags.wire?.independentDuration) {
         return;
     }
     wrapped(enabled);

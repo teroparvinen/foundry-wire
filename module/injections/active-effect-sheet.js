@@ -48,6 +48,7 @@ export function initActiveEffectSheetHooks() {
                     <option value="immediate">${i18n("wire.item.application-immediate")}</option>
                     <option value="delayed" ${selected(applicationType, "delayed")}>${i18n("wire.item.application-delayed")}</option>
                     <option value="overtime" ${selected(applicationType, "overtime")}>${i18n("wire.item.application-overtime")}</option>
+                    <option value="resolving" ${selected(applicationType, "resolving")}>${i18n("wire.item.application-resolving")}</option>
                 </select>
                 <div class="hint">${i18n("wire.active-effect.application-phase-hint")}</div>
             </div>
