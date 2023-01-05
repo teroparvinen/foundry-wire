@@ -1,6 +1,6 @@
 import { runInQueue } from "../action-queue.js";
 import { isInstantaneous } from "../item-properties.js";
-import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, getActorToken, getTokenSquarePositions, isActorEffect, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
+import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, fudgeToActor, getActorToken, getTokenSquarePositions, isActorEffect, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
 
 export function getWireFlags() {
     return [
@@ -436,6 +436,7 @@ export function checkConditionImmunity(actor, effectDataList) {
 export function initEffectFlagHooks() {
     Hooks.on("createActiveEffect", async (effect, options, user) => {
         if (game.user.isGM && isActorEffect(effect) && isEffectEnabled(effect)) {
+            const ceApi = game.dfreds?.effectInterface;
             const actor = effect.parent;
             for (let change of effect.changes) {
                 if (change.key === "wire.custom.statusEffect" || change.key === "wire.custom.persistentStatusEffect") {
@@ -444,8 +445,12 @@ export function initEffectFlagHooks() {
                         const uuid = actor.uuid;
                         const isLinked = change.key !== "wire.custom.persistentStatusEffect";
                         const origin = isLinked ? effect.origin : null;
-                        if (!game.dfreds?.effectInterface?.hasEffectApplied(effectName, uuid)) {
-                            await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
+                        if (ceApi?.findEffectByName(effectName)) {
+                            if (!ceApi?.hasEffectApplied(effectName, uuid)) {
+                                await ceApi?.addEffect({ effectName, uuid, origin });
+                            }
+                        } else {
+                            console.warn(`Status effect "${effectName}" not found`);
                         }
                     });
                 }
@@ -462,6 +467,7 @@ export function initEffectFlagHooks() {
 
     Hooks.on("updateActiveEffect", async(effect, changes, options, user) => {
         if (game.user.isGM && isActorEffect(effect)) {
+            const ceApi = game.dfreds?.effectInterface;
             const actor = effect.parent;
             for (let change of effect.changes) {
                 if (change.key === "wire.custom.statusEffect" || change.key === "wire.custom.persistentStatusEffect") {
@@ -471,8 +477,12 @@ export function initEffectFlagHooks() {
                             const uuid = actor.uuid;
                             const isLinked = change.key !== "wire.custom.persistentStatusEffect";
                             const origin = isLinked ? effect.origin : null;
-                            if (!game.dfreds?.effectInterface?.hasEffectApplied(effectName, uuid)) {
-                                await game.dfreds?.effectInterface?.addEffect({ effectName, uuid, origin });
+                            if (ceApi?.findEffectByName(effectName)) {
+                                if (!ceApi?.hasEffectApplied(effectName, uuid)) {
+                                    await ceApi?.addEffect({ effectName, uuid, origin });
+                                }
+                            } else {
+                                console.warn(`Status effect "${effectName}" not found`);
                             }
                         });
                     }
@@ -480,7 +490,9 @@ export function initEffectFlagHooks() {
                         await runInQueue(async () => {
                             const effectName = change.value;
                             const uuid = actor.uuid;
-                            await game.dfreds?.effectInterface?.removeEffect({ effectName, uuid });
+                            if (ceApi?.hasEffectApplied(effectName, uuid)) {
+                                await ceApi?.removeEffect({ effectName, uuid });
+                            }
                         });
                     }
                 }
@@ -506,13 +518,16 @@ export function initEffectFlagHooks() {
 
     Hooks.on("deleteActiveEffect", async (effect, options, user) => {
         if (game.user.isGM && isActorEffect(effect)) {
+            const ceApi = game.dfreds?.effectInterface;
             const actor = effect.parent;
             for (let change of effect.changes) {
-                if (change.key === "wire.custom.statusEffect" /*|| change.key === "wire.custom.persistentStatusEffect"*/) {
+                if (change.key === "wire.custom.statusEffect") {
                     await runInQueue(async () => {
                         const effectName = change.value;
                         const uuid = actor.uuid;
-                        await game.dfreds?.effectInterface?.removeEffect({ effectName, uuid });
+                        if (ceApi?.hasEffectApplied(effectName, uuid)) {
+                            await ceApi?.removeEffect({ effectName, uuid });
+                        }
                     });
                 }
                 if (change.key === "wire.custom.tokenFX") {

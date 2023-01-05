@@ -104,7 +104,7 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
                         castingActorUuid: actor.uuid,
                         sourceEffectUuid: effect.uuid,
                         conditions: copyConditions(effect),
-                        applicationType,
+                        applicationType: effect.flags.wire?.applicationType,
                         activationConfig: config,
                         blocksAreaConditions: effect.flags.wire?.blocksAreaConditions,
                         stackEffects: effect.flags.wire?.stackEffects,

@@ -40,7 +40,7 @@ async function checkTimedDurations(worldTime) {
     const canvasActors = canvas.tokens.objects.children.map(t => t.actor);
     const combatActors = game.combat?.turns.map(t => t.actor) || [];
 
-    [...canvasActors, ...combatActors].forEach(a => actorSet.add(a));
+    [...canvasActors, ...combatActors].filter(a => a).forEach(a => actorSet.add(a));
     const effects = [...actorSet].flatMap(actor => actor.effects.filter(e => e.isTemporary && e.duration?.type === "seconds"));
     const expiredEffects = effects.filter(effect => {
         const dur = effect.duration;

@@ -455,7 +455,7 @@ export class Resolver {
             }
 
             if (isInstantaneous(item)) {
-                const createdEffects = this.activation.createdEffects.filter(e => !e.flags.wire?.independentDuration);
+                const createdEffects = this.activation.createdEffects.filter(e => e).filter(e => !e.flags.wire?.independentDuration && (e.flags.wire?.applicationType || "immediate") === "immediate");
                 runInQueue(async () => {
                     for (const effect of createdEffects) {
                         await effect.delete();
@@ -463,7 +463,7 @@ export class Resolver {
                 });
             }
 
-            const resolvingEffects = this.activation.createdEffects.filter(e => e && e.flags.wire?.applicationType === "resolving");
+            const resolvingEffects = this.activation.createdEffects.filter(e => e).filter(e => e && e.flags.wire?.applicationType === "resolving");
             runInQueue(async () => {
                 for (const effect of resolvingEffects) {
                     await effect.delete();

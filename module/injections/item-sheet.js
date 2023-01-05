@@ -252,7 +252,6 @@ export function initItemSheetHooks() {
         // Conditions
         await injectConditionList(item, html, '.tab.details', "item", app.options.submitOnChange);
     });
-
 }
 
 export function setupItemSheetWrappers() {

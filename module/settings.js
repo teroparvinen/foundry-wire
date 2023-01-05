@@ -29,6 +29,18 @@ export function initSettings() {
 
     game.settings.register(
         "wire",
+        "wounded-overlay",
+        {
+            name: "wire.settings.wounded-overlay",
+            scope: "world",
+            config: true,
+            type: Boolean,
+            default: false
+        }
+    );
+
+    game.settings.register(
+        "wire",
         "round-change-notifications",
         {
             name: "wire.settings.round-change-notifications",

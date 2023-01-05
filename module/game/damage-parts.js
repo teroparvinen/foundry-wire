@@ -273,7 +273,7 @@ export class DamageParts {
     }
 
     get total() {
-        return this.result.pr.reduce((prev, part) => prev + part.roll.total, 0);
+        return this.result.reduce((prev, part) => prev + part.roll.total, 0);
     }
 
     async appliedToActor(item, actor, isEffective, activation) {

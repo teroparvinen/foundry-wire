@@ -48,6 +48,7 @@ async function onItemUse(wrapped, options, event) {
     let variant;
     if (item.flags.wire?.variants?.length) {
         variant = await new game.wire.SelectVariantDialog(item, item.flags.wire.variants).render(true);
+        if (!variant) { return }
     }
 
     const flow = new Flow(item, "immediate", itemRollFlow, { variant });
@@ -124,6 +125,7 @@ async function onActorPreUpdate(wrapped, change, options, user) {
         const needsDead = !actor.hasPlayerOwner && isAtZero;
 
         const ceApi = game.dfreds?.effectInterface;
+        const useOverlays = game.settings.get("wire", "wounded-overlay");
 
         if (ceApi) {
             const damagedExists = ceApi.findEffectByName("Damaged");
@@ -133,8 +135,8 @@ async function onActorPreUpdate(wrapped, change, options, user) {
             const hasUnconscious = ceApi.hasEffectApplied("Unconscious", actor.uuid);
             const hasDead = ceApi.hasEffectApplied("Dead", actor.uuid);
 
-            if (damagedExists && (needsDamaged != hasDamaged)) { await ceApi.toggleEffect("Damaged", { uuids: [actor.uuid] }); }
-            if (needsWounded != hasWounded) { await ceApi.toggleEffect("Wounded", { uuids: [actor.uuid] }); }
+            if (damagedExists && (needsDamaged != hasDamaged)) { await ceApi.toggleEffect("Damaged", { overlay: useOverlays, uuids: [actor.uuid] }); }
+            if (needsWounded != hasWounded) { await ceApi.toggleEffect("Wounded", { overlay: useOverlays, uuids: [actor.uuid] }); }
             if (needsUnconscious != hasUnconscious) { await ceApi.toggleEffect("Unconscious", { uuids: [actor.uuid] }); }
             if (needsDead != hasDead) {
                 await ceApi.toggleEffect("Dead", { uuids: [actor.uuid], overlay: true });
@@ -199,13 +201,10 @@ function onEscape(context) {
 
     // Return to token controls
     if (ui.controls.activeControl !== "token" || ui.controls.activeTool !== "select") {
-        if (game.user.isGM && canvas.activeLayer && canvas.activeLayer !== canvas.tokens) {
-            canvas.activeLayer.deactivate();
-        }
+        const tool = "select";
+        if (canvas.tokens.active) ui.controls.initialize({ tool });
+        else canvas.tokens.activate({ tool });
 
-        canvas.tokens.activate();
-        ui.controls.control.activeTool = "select";
-        setTimeout(() => { ui.controls.render(); }, 1);
         return true;
     }
 

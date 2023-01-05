@@ -3,7 +3,7 @@ import { fromUuid, fudgeToActor, fudgeToToken, getActorToken, getSpeaker } from 
 
 export async function declareDamage(points, targets, sourceActor = null) {
     const t = Array.isArray(targets) ? targets : [targets];
-    const damage = t.map(t => fudgeToToken(t)).map(token => ({
+    const damage = t.map(t => fudgeToToken(t)).filter(t => t.actor).map(token => ({
         actor: token.actor,
         token,
         points: { damage: points }
@@ -22,7 +22,7 @@ export async function declareDamage(points, targets, sourceActor = null) {
 
 export async function declareHealing(points, targets, sourceActor = null) {
     const t = Array.isArray(targets) ? targets : [targets];
-    const damage = t.map(t => fudgeToToken(t)).map(token => ({
+    const damage = t.map(t => fudgeToToken(t)).filter(t => t.actor).map(token => ({
         actor: token.actor,
         token,
         points: { healing: points }

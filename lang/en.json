@@ -199,6 +199,7 @@
         "settings": {
             "wounded-threshold": "HP percentage to apply \"Wounded\" condition to NPCs",
             "wounded-threshold-hint": "(Convenient Effects required) When an NPC's hit points fall to below or equal to this percent of maximum hit points, The \"Wounded\" condition is applied. If a \"Damaged\" condition is available, it is applied whenever an NPC takes any damage at all.",
+            "wounded-overlay": "Show the \"Wounded\" and \"Damaged\" conditions as overlays",
             "round-change-notifications": "Show round change notifications",
             "turn-change-notifications": "Show turn change notifications",
             "reveal-npc-turn-change": "Reveal NPC turn change notifications to players",

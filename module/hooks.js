@@ -380,6 +380,18 @@ export function initHooks() {
         }
     });
 
+    Hooks.on("canvasReady", (canvas) => {
+        if (game.user.isGM && canvas.scene.active) {
+            updateAuras();
+        }
+    });
+
+    Hooks.on("updateScene", (scene, change) => {
+        if (game.user.isGM && change.active) {
+            updateAuras();
+        }
+    })
+
     Hooks.on("getChatLogEntryContext", (html, entryOptions) => {
         entryOptions.push(
             {
@@ -507,13 +519,15 @@ export function initHooks() {
 }
 
 async function declareRollDamage(rolls, tokens) {
-    const damage = tokens.map(token => {
-        return {
-            actor: token.actor,
-            token,
-            points: { damage: rolls.map(r => r.total).reduce((a, b) => a + b, 0) }
-        }
-    });
+    const damage = tokens
+        .map(token => {
+            return token.actor && {
+                actor: token.actor,
+                token,
+                points: { damage: rolls.map(r => r.total).reduce((a, b) => a + b, 0) }
+            }
+        })
+        .filter(d => d);
 
     const pcDamage = damage.filter(d => d.actor.hasPlayerOwner);
     const npcDamage = damage.filter(d => !d.actor.hasPlayerOwner);
@@ -551,18 +565,20 @@ async function processRemovalQueue() {
 }
 
 async function updateAuras() {
+    if (!canvas.scene.active) { return }
+
     const tokens = canvas.tokens.objects.children;
     const auraSources = tokens.flatMap(token => {
-        return token.actor.effects
+        return token.actor?.effects
             .filter(effect => isEffectEnabled(effect) && isAuraEffect(effect))
             .map(effect => {
                 return {
                     token, effect
                 };
-            });
+            }) ?? [];
     });
     let auraEffects = tokens.flatMap(token => {
-        return token.actor.effects.filter(effect => isAuraTargetEffect(effect))
+        return token.actor?.effects.filter(effect => isAuraTargetEffect(effect)) ?? []
     });
 
     for (let source of auraSources) {
@@ -586,11 +602,11 @@ async function updateAuras() {
 
                 for (let token of tokens) {
                     const isInRange = tokenSeparation(auraToken, token) <= range;
-                    const existingEffect = token.actor.effects.find(effect => effect.origin === source.effect.origin)
+                    const existingEffect = token.actor?.effects.find(effect => effect.origin === source.effect.origin)
 
                     if (!isInRange && existingEffect) {
                         await existingEffect.delete();
-                    } else if (isInRange && !existingEffect) {
+                    } else if (isInRange && !existingEffect && token.actor) {
                         let dispositionCheck = false;
                         if (disposition === "ally" && areAllied(auraToken.actor, token.actor)) { dispositionCheck = true; }
                         else if (disposition === "enemy" && areEnemies(auraToken.actor, token.actor)) { dispositionCheck = true; }

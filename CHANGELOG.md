@@ -1,5 +1,22 @@
 # Changes by version number
 
+### 0.10.8
+
+Changes
+
+- Added a setting option to make the Wounded and Damaged condition icons show as overlays
+
+Fixes
+
+- When a missing condition/status is activated through an active effect, error notificatins won't be generated on the screen any more. It will just output a warning in the console.
+- Fixed an issue preventing creating effects on non-linked token actors through the effect tab
+- Fixed some bugs with tokens that have had their actor removed (PC tokens left over when the actual character was deleted)
+- Auras now update when scenes are activated. This means that if the GM views another scene on their own, this update does not take place until the scene is activated for everyone.
+- Auras only update on token movement in the active scene. This means that if the GM adjusts token locations on a scene they are viewing on their own, no aura triggering events will take place. Note that if you want to do some clandestine adjustment of tokens with passive template based area effects, you can toggle the effect off to prevent updates.
+- Canceling variant selection now cancels the whole activation
+- Fixed an issue with retrieving the damage from an activation using the API
+- Using "While resolving outcome" effects on instant cast items could cause an error when removing the effect. This was fixed.
+
 ### 0.10.7
 
 Changes
