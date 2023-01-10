@@ -10,6 +10,15 @@ export async function updateCombatTurnEndConditions() {
     const previousActor = previousCombatant?.actor;
 
     if (previousActor && previousToken) {
+        if (game.settings.get("wire", "track-bonus-actions")) {
+            const ceApi = game.dfreds?.effectInterface;
+            const uuid = previousActor.uuid;
+            const effectName = game.wire.trackedActivationTypeProperties.bonus.condition;
+            if (ceApi?.hasEffectApplied(effectName, uuid)) {
+                await ceApi?.removeEffect({ effectName, uuid });
+            }
+        }
+
         await handleTurn(previousActor, previousToken, false);
     }
 }
@@ -20,6 +29,15 @@ export async function updateCombatTurnStartConditions() {
     const currentActor = currentCombatant.actor;
 
     if (currentActor && currentToken) {
+        if (game.settings.get("wire", "track-reactions")) {
+            const ceApi = game.dfreds?.effectInterface;
+            const uuid = currentActor.uuid;
+            const effectName = game.wire.trackedActivationTypeProperties.reaction.condition;
+            if (ceApi?.hasEffectApplied(effectName, uuid)) {
+                await ceApi?.removeEffect({ effectName, uuid });
+            }
+        }
+
         await handleTurn(currentActor, currentToken, true);
     }
 }
@@ -70,7 +88,7 @@ async function handleTurn(actor, token, isStart) {
                 else if (condition.condition.startsWith("creature")) { dispositionCheck = true; }
 
                 if (dispositionCheck) {
-                    const updater = makeUpdater(condition, effect, item, token.actor, { actorUuid: actor.uuid });
+                    const updater = makeUpdater(condition, effect, item, { externalTargetActor: token.actor, details: { actorUuid: actor.uuid } });
                     await updater?.process();
                 }
             }

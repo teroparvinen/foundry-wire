@@ -1,5 +1,26 @@
 # Changes by version number
 
+### 0.10.9
+
+Changes
+- Hovering over a token in the chat cards now highlights the token on the canvas.
+- Condition triggered effects will have access to details about the triggering event in the effect value field formulas through the `@condition` variable. Generally, the interesting parts are available through `@condition.details`, which is the same details object that was passed to custom updaters.
+    - Currently, probably the most useful application is that the "This attack hits", "Hits with [specifier] attack" and "Is hit by [specifier] attack" conditions pass information about the attack damage total through `@condition.details.damage.total`
+    - An example of where this is useful is the Life Drain attack of the Specter
+- Added a new roll formula function `substring`, that performs a non case sensitive comparison of the two strings passed as arguments and returns 1 if one of them contains the other as a substring and 0 otherwise.
+- Reaction and Bonus Action tracking can now be enabled from the settings
+    - If reaction tracking is enabled, using an item with a reaction activation cost will add a Convenient Effect called "Reaction" to the actor. Trying to use another reaction will prompt a warning at that point. The condition will be automatically removed at the start of each turn.
+    - Bonus action tracking works similarly, using the "Bonus Action" condition. The condition is automatically removed at the end of each turn.
+    - There is also an option to treat every action outside a character's turn as a reaction. This will add the condition on the first such use and prompt a warning consecutively. This can be useful for opportunity attacks and so on.
+    - The conditions can also be manually added or removed and will be included in this processing.
+
+Fixes
+
+- Fixed a couple of issues with bonus healing handling. Now you can make a damage spell give some healing (which doesn't make sense), but also make healing spells give temp hp or a mix of heal bonus + temp hp.
+- The activation configuration will get `spellLevel` and `upcastLevel` set even when spells are cast as innate or at-will. They will, in these cases, be set to the base level of the spell.
+- Fixed a synchronization issue that could occur with saving throws
+- Fixed an issue that would prevent some formula variables from working on effects created directly on characters
+
 ### 0.10.8
 
 Changes

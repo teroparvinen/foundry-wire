@@ -75,6 +75,17 @@ Hooks.once("setup", () => {
 });
 
 Hooks.once("ready", async () => {
+    game.wire.trackedActivationTypeProperties = {
+        bonus: {
+            condition: CONFIG.DND5E.abilityActivationTypes.bonus,
+            setting: "track-bonus-actions"
+        },
+        reaction: {
+            condition: CONFIG.DND5E.abilityActivationTypes.reaction,
+            setting: "track-reactions"
+        }
+    }
+
     readyCharacterSheetWrappers();
 
     await checkBetaWarning();

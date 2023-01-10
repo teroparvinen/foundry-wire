@@ -21,7 +21,7 @@ export class Activation {
 
     static async _createConditionMessage(
         condition, item, effect, flow, 
-        { revealToPlayers = false, externalTargetActor = null, suppressPlayerMessage = false, speakerIsEffectOwner = false } = {}
+        { revealToPlayers = false, externalTargetActor = null, suppressPlayerMessage = false, speakerIsEffectOwner = false, activationConfig = null } = {}
     ) {
         const messageData = await item.displayCard({ createMessage: false });
         messageData.content = await ItemCard.renderHtml(item, null, { isSecondary: true });
@@ -44,7 +44,7 @@ export class Activation {
                 await activation._createPlayerMessage();
             }
 
-            await activation._initialize(item, flow, { condition, sourceEffect: effect, externalEffectTarget: externalTargetActor });
+            await activation._initialize(item, flow, { condition, sourceEffect: effect, externalEffectTarget: externalTargetActor, activationConfig: activationConfig });
             await activation._activate();
         }
     }
@@ -112,6 +112,7 @@ export class Activation {
         return {
             actor: fudgeToActor(fromUuid(e.actorUuid)),
             roll: CONFIG.Dice.D20Roll.fromData(e.roll),
+            isPC: e.isPC,
             auto: e.auto
         };
     })}
@@ -213,7 +214,7 @@ export class Activation {
         }
     }
 
-    async _initialize(item, flow, { condition = null, sourceEffect = null, externalEffectTarget = null, isSecondary = false } = {}) {
+    async _initialize(item, flow, { condition = null, sourceEffect = null, externalEffectTarget = null, isSecondary = false, activationConfig = null } = {}) {
         foundry.utils.setProperty(this.data, "itemUuid", item.uuid);
         foundry.utils.setProperty(this.data, "applicationType", flow.applicationType);
 
@@ -222,7 +223,7 @@ export class Activation {
             foundry.utils.setProperty(this.data, "sourceEffectUuid", sourceEffect.uuid);
             foundry.utils.setProperty(this.data, "isSecondary", true);
 
-            foundry.utils.setProperty(this.data, "config", sourceEffect.flags.wire?.activationConfig);
+            foundry.utils.setProperty(this.data, "config", sourceEffect.flags.wire?.activationConfig || activationConfig);
             if (sourceEffect.flags.wire?.isMasterEffect) {
                 foundry.utils.setProperty(this.data, "masterEffectUuid", sourceEffect.uuid);
             } else {
@@ -233,6 +234,7 @@ export class Activation {
             foundry.utils.setProperty(this.data, "targetUuids", targetUuids);
         } else if (condition) {
             foundry.utils.setProperty(this.data, "condition", condition);
+            foundry.utils.setProperty(this.data, "config", activationConfig);
             const targetUuids = determineUpdateTargets(item, sourceEffect, condition, externalEffectTarget)?.map(a => a.uuid);
             foundry.utils.setProperty(this.data, "targetUuids", targetUuids);
         } else {
@@ -518,7 +520,11 @@ export class Activation {
         if (updateCard) {
             await this._updateCard();
         }
-        await wireSocket.executeForOthers("refreshActivation", this.message.uuid, this.data, updateCard);
+
+        const messageUuid = this.message.uuid;
+        runInQueue(async () => {
+            await wireSocket.executeForOthers("refreshActivation", messageUuid, updateCard);
+        });
     }
 
     async wait() {
@@ -564,9 +570,13 @@ export class Activation {
     }
 
     async applySave(actor, roll, { auto = undefined, interactive = true } = {}) {
+        await wireSocket.executeAsGM("registerSave", this.message.uuid, { actorUuid: actor.uuid, roll: roll.toJSON(), isPC: actor.hasPlayerOwner, auto }, interactive);
+    }
+
+    async _applySaveAsGM(saveData, interactive) {
         const saves = this.data.saves || [];
-        if (!saves.find(s => s.actorUuid === actor.uuid)) {
-            saves.push({ actorUuid: actor.uuid, roll: roll.toJSON(), isPC: actor.hasPlayerOwner, auto });
+        if (!saves.find(s => s.actorUuid === saveData.actorUuid)) {
+            saves.push(saveData);
             foundry.utils.setProperty(this.data, "saves", saves);
 
             await this._update();
@@ -574,7 +584,7 @@ export class Activation {
     
             if (interactive) {
                 await this._step();
-                wireSocket.executeForOthers("refreshActivation", this.message.uuid, this.data);
+                wireSocket.executeForOthers("refreshActivation", this.message.uuid, true);
             }
         }
     }

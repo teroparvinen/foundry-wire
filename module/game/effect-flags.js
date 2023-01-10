@@ -173,9 +173,10 @@ function evaluateAttackFlag(values, attacker, defender, config) {
 
     return values.some(value => {
         const item = fromUuid(value.origin);
-        if (item && item instanceof CONFIG.Item.documentClass) {
-            const isAttacker = item.actor === attacker ? 1 : 0;
-            const isDefender = item.actor === defender ? 1 : 0;
+        const actor = item instanceof CONFIG.Item.documentClass ? item.actor : item
+        if (item && actor instanceof CONFIG.Actor.documentClass) {
+            const isAttacker = actor === attacker ? 1 : 0;
+            const isDefender = actor === defender ? 1 : 0;
         
             const rollData = {
                 attacker: attacker?.getRollData() || {},

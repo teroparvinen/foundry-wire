@@ -28,6 +28,12 @@ export function isInCombat(actor) {
     return (game.combat?.turns.some(combatant => combatant.actor?.id === actor.id));
 }
 
+export function getItemTurnAdjustedActivationType(item) {
+    const currentCombatActor = game.combat?.turns.find(t => t.id == game.combat?.current?.combatantId)?.actor;
+    const isOutOfTurn = isInCombat(item.actor) && currentCombatActor !== item.actor;
+    return (isOutOfTurn && game.settings.get("wire", "out-of-turn-reactions")) ? "reaction" : item.system.activation?.type;
+}
+
 export function effectDurationFromItemDuration(itemDuration, inActorInCombat) {
     if (!itemDuration) { return {}; }
 
@@ -168,9 +174,10 @@ export function copyEffectChanges(effect) {
     })
 }
 
-export function substituteEffectConfig(actor, config, changes) {
+export function substituteEffectConfig(actor, config, condition, changes) {
     const rollData = actor.getRollData();
     rollData.config = config;
+    rollData.condition = condition;
     return changes.map(c => {
         return {
             key: c.key,
@@ -319,7 +326,7 @@ export async function triggerConditions(actor, condition, { externalTargetActor 
         for (let condition of conditions) {
             const item = fromUuid(effect.origin);
             if (!isActorImmune(actor, item)) {
-                const updater = makeUpdater(condition, effect, item, externalTargetActor, details);
+                const updater = makeUpdater(condition, effect, item, { externalTargetActor, details });
                 result = await updater?.process();
             }
         }

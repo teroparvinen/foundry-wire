@@ -2,7 +2,7 @@ import { wireSocket } from "../socket.js";
 import { checkEffectDurationOverride, copyConditions, copyEffectChanges, copyEffectDuration, effectDurationFromItemDuration, effectMatchesVariant, fromUuid, isEffectEnabled, isInCombat, rollChangeValues, substituteEffectConfig } from "../utils.js";
 import { checkConditionImmunity } from "./effect-flags.js";
 
-export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config, extraData) {
+export async function applyTargetEffects(item, applicationType, allTargetActors, effectiveTargetActors, masterEffect, config, condition, extraData) {
     const actor = item.actor;
 
     const staticDuration = effectDurationFromItemDuration(item.system.duration, isInCombat(actor));
@@ -15,7 +15,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
     const effectiveTargetsEffects = effects.filter(e => !e.getFlag("wire", "applyOnSaveOrMiss"));
 
     const makeEffectDataAndRolls = (effect) => {
-        const { changes, rolls } = rollChangeValues(substituteEffectConfig(actor, config, copyEffectChanges(effect)), effect.flags.wire?.rollEffects);
+        const { changes, rolls } = rollChangeValues(substituteEffectConfig(actor, config, condition, copyEffectChanges(effect)), effect.flags.wire?.rollEffects);
         
         const data = foundry.utils.mergeObject(
             {

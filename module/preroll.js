@@ -46,7 +46,7 @@ export async function preRollConfig(item, options = {}, event) {
         activationConfig.variant = options.variant;
     }
     activationConfig.variantOptions = options.variantOptions;
-    if (requireSpellSlot) {
+    if (isSpell) {
         activationConfig.spellLevel = id.level;
         activationConfig.upcastLevel = 0;
     }

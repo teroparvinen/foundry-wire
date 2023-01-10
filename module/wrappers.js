@@ -4,7 +4,7 @@ import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
 import { preRollCheck, preRollConfig } from "./preroll.js";
-import { fromUuid, i18n, isItemActorOnCanvas, triggerConditions } from "./utils.js";
+import { fromUuid, getItemTurnAdjustedActivationType, i18n, isItemActorOnCanvas, triggerConditions } from "./utils.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.use", onItemUse, "MIXED");
@@ -29,6 +29,24 @@ async function onItemUse(wrapped, options, event) {
     }
 
     console.log("ROLLING ITEM", item, options);
+
+    const activationType = getItemTurnAdjustedActivationType(item);
+    const properties = game.wire.trackedActivationTypeProperties[activationType]
+    if (properties && game.settings.get("wire", properties.setting)) {
+        const ceApi = game.dfreds?.effectInterface;
+        const uuid = item.actor.uuid;
+        const effect = item.actor.effects.find(effect => effect.label === properties.condition);
+        const originItem = fromUuid(effect?.origin);
+        if (effect) {
+            const originName = originItem?.name ?? i18n("wire.ui.unknown-tracked-item");
+            if (!await Dialog.confirm({
+                title: i18n(`wire.ui.${activationType}-used-dialog-title`),
+                content: i18n(`wire.ui.${activationType}-used-dialog-content`, { originName })
+            })) {
+                return;
+            }
+        }
+    }
 
     const concentrationEffect = item.actor.effects.find(effect => effect.getFlag("wire", "isConcentration"));
     if (concentrationEffect && item.system.components?.concentration) {

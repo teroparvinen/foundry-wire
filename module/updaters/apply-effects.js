@@ -3,8 +3,8 @@ import { determineUpdateTargets } from "../updater-utility.js";
 import { Updater } from "./base-updater.js";
 
 export class ApplyEffectsUpdater extends Updater {
-    constructor(condition, effect, item, externalTargetActor, details) {
-        super(condition, effect, item, externalTargetActor, details);
+    constructor(condition, effect, item, externalTargetActor, details, activationConfig) {
+        super(condition, effect, item, externalTargetActor, details, activationConfig);
 
         const applicationTypes = {
             "apply-effects-immediate": "immediate",
@@ -16,8 +16,9 @@ export class ApplyEffectsUpdater extends Updater {
 
     async process() {
         const masterEffect = this.item.actor.effects.find(e => e.origin === this.item.uuid && e.flags.wire?.isMasterEffect);
-        const activationConfig = this.effect?.flags.wire?.activationConfig;
+        const activationConfig = this.effect?.flags.wire?.activationConfig || this.activationConfig;
+        const condition = foundry.utils.mergeObject(this.condition, this.details ? { details: this.details } : {}, { inplace: false });
         const targets = determineUpdateTargets(this.item, this.effect, this.condition, this.externalTargetActor);
-        await applyTargetEffects(this.item, this.applicationType, targets, targets, masterEffect, activationConfig);
+        await applyTargetEffects(this.item, this.applicationType, targets, targets, masterEffect, activationConfig, condition);
     }
 }

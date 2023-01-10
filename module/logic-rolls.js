@@ -15,6 +15,11 @@ Math.includes = function(...args) {
     const v = args.pop()
     return args.includes(v) ? 1 : 0;
 }
+Math.substring = function(a, b) {
+    const al = a.toLowerCase();
+    const bl = b.toLowerCase();
+    return al.includes(bl) ? 1 : 0;
+}
 
 export function setupLogicRolls() {
     libWrapper.ignore_conflicts("wire", "dae", "Roll.replaceFormulaData");

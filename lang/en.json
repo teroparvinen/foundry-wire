@@ -27,6 +27,11 @@
             "no-damage": "No damage was done",
             "end-concentration-dialog-title": "End Concentration?",
             "end-concentration-dialog-content": "You are concentrating on {originName}. Are you sure you want to cast another concentration spell to replace it?",
+            "bonus-used-dialog-title": "Bonus Action already used",
+            "bonus-used-dialog-content": "You have already used your bonus action on {originName}. Do you want to continue?",
+            "reaction-used-dialog-title": "Reaction already used",
+            "reaction-used-dialog-content": "You have already used your reaction on {originName}. Do you want to continue?",
+            "unknown-tracked-item": "something",
             "activate-reaction": "Take a reaction",
             "activate-action": "Take an action",
             "concentration-save-header": "Concentration Save DC {dc}",
@@ -213,7 +218,13 @@
             "change-turn-focus-npc": "When an NPC's turn starts, focus on the token",
             "change-turn-control-npc": "When an NPC's turn starts, select the token",
             "auto-drop-concentration": "Automatically drop concentration at 0 hp",
-            "auto-drop-concentration-hint": "If this is not selected, a card will be displayed prompting to drop concentration."
+            "auto-drop-concentration-hint": "If this is not selected, a card will be displayed prompting to drop concentration.",
+            "track-reactions": "Track reactions",
+            "track-reactions-hint": "With this selected, completing a reaction will apply the \"Reaction\" condition to a character. It will be removed at the beginning of the character's next turn. Until then, attempting to activate another reaction will cause a warning.",
+            "track-bonus-actions": "Track bonus actions",
+            "track-bonus-actions-hint": "With this selected, completing a bonus action will apply the \"Bonus Action\" condition to a character. It will be removed at the end of the character's turn. Until then, attempting to activate another bonus action will cause a warning.",
+            "out-of-turn-reactions": "Treat all out of turn actions as reactions",
+            "out-of-turn-reactions-hint": "Any action taken outside the character's turn will be counted as a reaction. Useful for opportunity attacks and similar."
         },
         "keybindings": {
             "next-turn": "Next turn",

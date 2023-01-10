@@ -16,6 +16,8 @@ import { makeUpdater } from "./updater-utility.js";
 import { areAllied, areEnemies, evaluateFormula, fromUuid, fudgeToActor, fudgeToToken, getActorToken, i18n, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, isItemActorOnCanvas, tokenSeparation, triggerConditions } from "./utils.js";
 
 export function initHooks() {
+    let highlightedToken;
+
     Hooks.on("renderChatLog", (app, html, data) => {
         ItemCard.activateListeners(html)
         DamageCard.activateListeners(html);
@@ -25,6 +27,18 @@ export function initHooks() {
         html.on("click", ".clickable-token", function(event) {
             const token = fromUuid(event.target.dataset.tokenUuid)?.object;
             token?.control({ releaseOthers: true });
+        });
+        html.on("mouseenter", ".clickable-token", function(event) {
+            const token = fromUuid(event.target.dataset.tokenUuid)?.object;
+            if (token?.isVisible) {
+                if (!token.controlled) token._onHoverIn(event);
+                highlightedToken = token;
+            }
+        });
+        html.on("mouseleave", ".clickable-token", function(event) {
+            const token = fromUuid(event.target.dataset.tokenUuid)?.object;
+            if (highlightedToken) highlightedToken._onHoverOut(event);
+            highlightedToken = null;
         });
     });
     Hooks.on("renderChatPopout", (app, html, data) => ItemCard.activateListeners(html));
@@ -126,7 +140,7 @@ export function initHooks() {
     async function triggerTransferEffect(effect) {
         const condition = effect.flags.wire?.conditions?.find(c => c.condition === "effect-created");
         if (condition) {
-            const updater = makeUpdater(condition, effect, fromUuid(effect.origin), null, { effectUuid: effect.uuid });
+            const updater = makeUpdater(condition, effect, fromUuid(effect.origin), { details: { effectUuid: effect.uuid } });
             await updater?.process();
         }
     }

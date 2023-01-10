@@ -12,6 +12,7 @@ export function setupSocket() {
     wireSocket.register("activationUpdated", activationUpdated);
     wireSocket.register("activationTemplateCreated", activationTemplateCreated);
     wireSocket.register("refreshActivation", refreshActivation);
+    wireSocket.register("registerSave", registerSave);
     wireSocket.register("updateMessage", updateMessage);
     wireSocket.register("scrollBottom", scrollBottom);
     wireSocket.register("runCustomUpdater", runCustomUpdater);
@@ -52,7 +53,7 @@ async function activationTemplateCreated(templateUuid) {
     }
 }
 
-async function refreshActivation(messageUuid, data, updateCard) {
+async function refreshActivation(messageUuid, updateCard) {
     const message = fromUuid(messageUuid);
 
     if (message) {
@@ -62,14 +63,22 @@ async function refreshActivation(messageUuid, data, updateCard) {
                 const gmMessageUuid = message.getFlag("wire", "gmMessageUuid");
                 if (gmMessageUuid) {
                     const gmMessage = fromUuid(gmMessageUuid);
-                    const activation = new Activation(gmMessage, data);
+                    const activation = new Activation(gmMessage);
                     await activation._updateCard();
                 }
             } else if (message.isAuthor || originatorUserId === game.user.id) {
-                const activation = new Activation(message, data);
+                const activation = new Activation(message);
                 if (updateCard) await activation._updateCard();
             }
         }
+    }
+}
+
+async function registerSave(messageUuid, saveData, interactive) {
+    const message = fromUuid(messageUuid);
+    if (message) {
+        const activation = new Activation(message);
+        await activation._applySaveAsGM(saveData, interactive);
     }
 }
 

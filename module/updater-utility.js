@@ -6,27 +6,27 @@ import { EndUpdater } from "./updaters/end.js";
 import { RunCustomUpdater } from "./updaters/run-custom.js";
 import { fromUuid, isCastersTurn } from "./utils.js";
 
-export function makeUpdater(condition, effect, item, externalTargetActor = null, details = null) {
+export function makeUpdater(condition, effect, item, { externalTargetActor = null, details = null, activationConfig = null } = {}) {
     switch (condition.update) {
     case "apply-immediate":
     case "apply-delayed":
     case "apply-overtime":
-        return new ApplySecondaryUpdater(condition, effect, item, externalTargetActor, details);
+        return new ApplySecondaryUpdater(condition, effect, item, externalTargetActor, details, activationConfig);
     case "apply-effects-immediate":
     case "apply-effects-delayed":
     case "apply-effects-overtime":
-        return new ApplyEffectsUpdater(condition, effect, item, externalTargetActor, details);
+        return new ApplyEffectsUpdater(condition, effect, item, externalTargetActor, details, activationConfig);
     case "end":
-        return new EndUpdater(condition, effect, item, externalTargetActor, details);
+        return new EndUpdater(condition, effect, item, externalTargetActor, details, activationConfig);
     case "end-on-save":
     case "end-on-check":
-        return new EndOnSaveUpdater(condition, effect, item, externalTargetActor, details);
+        return new EndOnSaveUpdater(condition, effect, item, externalTargetActor, details, activationConfig);
     default:
         const flow = new Flow(item, "none");
         flow.evaluate();
         const updater = flow.customUpdaters[condition.update]
         if (updater) {
-            return new RunCustomUpdater(condition, effect, item, externalTargetActor, details, updater);
+            return new RunCustomUpdater(condition, effect, item, externalTargetActor, details, activationConfig, updater);
         } else {
             console.warn("MISSING UPDATER", condition.update);
         }

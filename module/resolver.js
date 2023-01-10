@@ -7,7 +7,7 @@ import { getAttackOptions } from "./game/effect-flags.js";
 import { hasApplicationsOfType, hasDamageOfType, hasEffectsOfType, hasOnlyUnavoidableApplicationsOfType, hasUnavoidableDamageOfType, isAttack, isInstantaneous, isSpell } from "./item-properties.js";
 import { createTemplate } from "./templates.js";
 import { makeUpdater } from "./updater-utility.js";
-import { areAllied, effectDurationFromItemDuration, fromUuid, fudgeToActor, getActorToken, i18n, isActorImmune, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
+import { areAllied, effectDurationFromItemDuration, fromUuid, fudgeToActor, getActorToken, getItemTurnAdjustedActivationType, i18n, isActorImmune, isCasterDependentEffect, isInCombat, localizedWarning, playAutoAnimation, runAndAwait, triggerConditions } from "./utils.js";
 
 export class Resolver {
     constructor(activation) {
@@ -447,6 +447,7 @@ export class Resolver {
                 console.log("UNKNOWN STATE", this.activation.state, ". Maybe run a macro?");
             }
         } else if (!this.activation.state) {
+            // Done
             if (this.activation.attackResult) {
                 await this._triggerAttackConditions();
             }
@@ -470,8 +471,25 @@ export class Resolver {
                 }
             });
 
+            this._checkActions();
+
             if (this.activation.config.deleteItem) {
                 await item.delete();
+            }
+        }
+    }
+
+    _checkActions() {
+        const item = this.activation.item;
+        const activationType = getItemTurnAdjustedActivationType(item);
+        const properties = game.wire.trackedActivationTypeProperties[activationType]
+        if (properties && game.settings.get("wire", properties.setting)) {
+            const ceApi = game.dfreds?.effectInterface;
+            const uuid = item.actor.uuid;
+            if (ceApi?.findEffectByName(properties.condition)) {
+                if (!ceApi?.hasEffectApplied(properties.condition, uuid)) {
+                    ceApi?.addEffect({ effectName: properties.condition, uuid, origin: item.uuid });
+                }
             }
         }
     }
@@ -640,6 +658,7 @@ export class Resolver {
             effectiveTargets.map(t => t.actor),
             this.activation.masterEffect,
             this.activation.config,
+            this.activation.condition,
             {
                 "flags.wire.originatorUserId": originatorUserId
             }
@@ -667,6 +686,11 @@ export class Resolver {
         const attackTarget = this.activation.attackTarget?.actor;
 
         if (attackTarget) {
+            const damage = {
+                parts: this.activation.damageParts,
+                total: this.activation.damageParts?.total
+            };
+
             const attackOptions = { 
                 ignoredEffects: this.activation.createdEffects,
                 details: { attackTargetUuid: attackTarget.uuid }
@@ -674,6 +698,20 @@ export class Resolver {
             const targetOptions = { 
                 ignoredEffects: this.activation.createdEffects,
                 details: { attackerUuid: attacker.uuid }
+            };
+            const hitAttackOptions = { 
+                ignoredEffects: this.activation.createdEffects,
+                details: {
+                    damage,
+                    attackTargetUuid: attackTarget.uuid
+                }
+            };
+            const hitTargetOptions = { 
+                ignoredEffects: this.activation.createdEffects,
+                details: {
+                    damage,
+                    attackerUuid: attacker.uuid
+                }
             };
     
             await triggerConditions(attacker, "target-attacks.all", attackOptions);
@@ -684,15 +722,21 @@ export class Resolver {
     
             if (this.activation.effectiveTargets.length) {
                 await triggerConditions(attacker, "target-hits.all", attackOptions);
-                await triggerConditions(attacker, `target-hits.${attackType}`, attackOptions);
+                await triggerConditions(attacker, `target-hits.${attackType}`, hitAttackOptions);
     
                 await triggerConditions(attackTarget, "target-is-hit.all", targetOptions);
-                await triggerConditions(attackTarget, `target-is-hit.${attackType}`, targetOptions);
+                await triggerConditions(attackTarget, `target-is-hit.${attackType}`, hitTargetOptions);
     
                 const item = this.activation.item;
                 const conditions = item.flags.wire?.conditions?.filter(c => c.condition === "this-attack-hits") ?? [];
                 for (let condition of conditions) {
-                    const updater = makeUpdater(condition, null, item, attackTarget);
+                    const details = {
+                        damage,
+                        attackTargetUuid: attackTarget.uuid
+                    }
+                    const externalTargetActor = attackTarget;
+                    const activationConfig = this.activation.config;
+                    const updater = makeUpdater(condition, null, item, { externalTargetActor, details, activationConfig });
                     await updater?.process();
                 }
             }

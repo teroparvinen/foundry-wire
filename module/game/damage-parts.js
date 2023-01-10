@@ -127,9 +127,10 @@ export class DamageParts {
                     }
                 }
                 const nonOperatorTermsWithMults = termsWithMults.filter(tm => !(tm.term instanceof OperatorTerm));
-                const allTypesValid = nonOperatorTermsWithMults.every(tm => !tm.term.flavor || CONFIG.DND5E.damageTypes[tm.term.flavor]);
+                const damageTypes = [...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"];
+                const allTypesValid = nonOperatorTermsWithMults.every(tm => !tm.term.flavor || damageTypes.includes(tm.term.flavor));
                 if (isValid && allTypesValid) {
-                    const recognizedTermsWithMults = nonOperatorTermsWithMults.filter(tm => !tm.term.flavor || CONFIG.DND5E.damageTypes[tm.term.flavor]);
+                    const recognizedTermsWithMults = nonOperatorTermsWithMults.filter(tm => !tm.term.flavor || damageTypes.includes(tm.term.flavor));
                     for (let tm of recognizedTermsWithMults) {
                         parts.push({
                             formula: tm.term.formula,
@@ -341,9 +342,9 @@ export class DamageParts {
 
         return components.reduce((prev, c) => {
             return {
-                damage: prev.damage + c.damage || 0,
-                healing: prev.healing + c.healing || 0,
-                temphp: prev.temphp + c.temphp || 0,
+                damage: prev.damage + (c.damage || 0),
+                healing: prev.healing + (c.healing || 0),
+                temphp: prev.temphp + (c.temphp || 0),
                 di: prev.di + c.di || 0,
                 dr: prev.dr + c.dr || 0,
                 dv: prev.dv + c.dv || 0,

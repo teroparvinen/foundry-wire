@@ -3,8 +3,8 @@ import { handleError, runAndAwait } from "../utils.js";
 import { Updater } from "./base-updater.js";
 
 export class RunCustomUpdater extends Updater {
-    constructor(condition, effect, item, externalTargetActor, details, handlerProperties) {
-        super(condition, effect, item, externalTargetActor, details);
+    constructor(condition, effect, item, externalTargetActor, details, activationConfig, handlerProperties) {
+        super(condition, effect, item, externalTargetActor, details, activationConfig);
 
         this.handlerProperties = handlerProperties;
     }

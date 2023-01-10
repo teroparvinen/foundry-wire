@@ -151,4 +151,43 @@ export function initSettings() {
             default: false
         }
     );
+
+    game.settings.register(
+        "wire",
+        "track-bonus-actions",
+        {
+            name: "wire.settings.track-bonus-actions",
+            hint: "wire.settings.track-bonus-actions-hint",
+            scope: "world",
+            config: true,
+            type: Boolean,
+            default: false
+        }
+    );
+
+    game.settings.register(
+        "wire",
+        "track-reactions",
+        {
+            name: "wire.settings.track-reactions",
+            hint: "wire.settings.track-reactions-hint",
+            scope: "world",
+            config: true,
+            type: Boolean,
+            default: false
+        }
+    );
+
+    game.settings.register(
+        "wire",
+        "out-of-turn-reactions",
+        {
+            name: "wire.settings.out-of-turn-reactions",
+            hint: "wire.settings.out-of-turn-reactions-hint",
+            scope: "world",
+            config: true,
+            type: Boolean,
+            default: false
+        }
+    );
 }
