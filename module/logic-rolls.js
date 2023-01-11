@@ -24,6 +24,9 @@ Math.substring = function(a, b) {
 export function setupLogicRolls() {
     libWrapper.ignore_conflicts("wire", "dae", "Roll.replaceFormulaData");
     libWrapper.register("wire", "Roll.replaceFormulaData", replaceFormulaData, "OVERRIDE");
+    libWrapper.register("wire", "Roll.safeEval", safeEval, "OVERRIDE");
+    libWrapper.register("wire", "Roll.prototype._evaluateTotal", evaluateTotal, "OVERRIDE");
+    libWrapper.register("wire", "StringTerm.prototype.evaluate", stringTermEvaluate, "OVERRIDE");
 }
 
 function formatReplacementResult(value) {
@@ -31,12 +34,13 @@ function formatReplacementResult(value) {
         return value.length ? value.map(v => formatReplacementResult(v)).join() : "undefined";
     } else {
         const str = String(value).trim();
-        const isQuotable = str.match(/^[a-z][\w\.-]*$/i);
+        const isQuotable = str.match(/^[a-z][\w\s\.-]*$/i);
         return isQuotable ? `"${str}"` : str;
     }
 }
 
 function replaceFormulaData(formula, data, {missing, warn=false}={}) {
+    // Duplicated: core / Roll.replaceFormulaData
     let dataRgx = new RegExp(/@([a-z.0-9_\-]+)/gi);
     return formula.replace(dataRgx, (match, term) => {
         let value = foundry.utils.getProperty(data, term);
@@ -47,4 +51,40 @@ function replaceFormulaData(formula, data, {missing, warn=false}={}) {
         const res = formatReplacementResult(value);
         return res;
     });
+}
+
+function castPrimitive(input) {
+    if (input && !Number.isNumeric(input)) {
+        if (String(input)[0] == '"') {
+            return input;
+        } else {
+            return `"${input}"`;
+        }
+    }
+    return input;
+}
+
+function safeEval(expression) {
+    // Duplicated: core / Roll.safeEval
+    let result;
+    try {
+        const src = 'with (sandbox) { return ' + expression + '}';
+        const evl = new Function('sandbox', src);
+        result = evl(this.MATH_PROXY);
+    } catch {
+        result = undefined;
+    }
+    return castPrimitive(result);
+}
+
+function evaluateTotal() {
+    // Duplicated: core / Roll._evaluateTotal
+    const expression = this.terms.map(t => t.total).join(" ");
+    const total = this.constructor.safeEval(expression);
+    return castPrimitive(total);
+}
+
+function stringTermEvaluate() {
+    this.term = castPrimitive(this.term);
+    return this;
 }

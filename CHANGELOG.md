@@ -1,5 +1,11 @@
 # Changes by version number
 
+### 0.10.10
+
+Fixes
+
+- Evaluating damage formulas with the extended roll formula capabilities was giving some trouble. Implemented some improvements to how string values are treated in the formulas.
+
 ### 0.10.9
 
 Changes
