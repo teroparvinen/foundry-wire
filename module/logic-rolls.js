@@ -34,7 +34,7 @@ function formatReplacementResult(value) {
         return value.length ? value.map(v => formatReplacementResult(v)).join() : "undefined";
     } else {
         const str = String(value).trim();
-        const isQuotable = str.match(/^[a-z][\w\s\.-]*$/i);
+        const isQuotable = str.match(/^[a-z][\w\s\.-]*$/i) || str === "";
         return isQuotable ? `"${str}"` : str;
     }
 }

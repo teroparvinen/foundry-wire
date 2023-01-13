@@ -1,10 +1,12 @@
 import { hasSaveableApplicationsOfType, isAreaTargetable, isAttack, isSelfTarget } from "./item-properties.js";
 import { createTemplate } from "./templates.js";
-import { localizedWarning, runAndAwait } from "./utils.js";
+import { isCharacterActor, localizedWarning, runAndAwait } from "./utils.js";
 
 export function preRollCheck(item) {
     if (isAttack(item) && !item.hasAreaTarget && game.user.targets.size != 1) {
         return localizedWarning("wire.warn.select-single-target-for-attack");
+    } else if (isAttack(item) && !item.hasAreaTarget && !isCharacterActor(game.user.targets.first()?.actor)) {
+        return localizedWarning("wire.warn.select-character-target-for-attack");
     } else if (!isSelfTarget(item) && hasSaveableApplicationsOfType(item, "immediate") && !item.hasAreaTarget && game.user.targets.size == 0) {
         return localizedWarning("wire.warn.select-targets-for-effect");
     }

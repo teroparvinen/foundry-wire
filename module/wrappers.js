@@ -4,7 +4,7 @@ import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
 import { preRollCheck, preRollConfig } from "./preroll.js";
-import { fromUuid, getItemTurnAdjustedActivationType, i18n, isItemActorOnCanvas, triggerConditions } from "./utils.js";
+import { fromUuid, getItemTurnAdjustedActivationType, i18n, isCharacterActor, isItemActorOnCanvas, triggerConditions } from "./utils.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.use", onItemUse, "MIXED");
@@ -123,6 +123,7 @@ async function onActorPreUpdate(wrapped, change, options, user) {
     wrapped.apply(this, [change, options, user]);
 
     const actor = this;
+    if (!isCharacterActor(actor)) { return; }
 
     const hpUpdate = getProperty(change, "system.attributes.hp.value");
     const maxHpUpdate = getProperty(change, "system.attributes.hp.max");

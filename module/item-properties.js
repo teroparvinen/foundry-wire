@@ -2,7 +2,7 @@ import { compositeDamageParts, damagePartMatchesVariant, isEffectEnabled } from 
 
 const durationUnits = ["day", "hour", "minute", "month", "round", "turn", "year", "perm"];
 const attackTypes = ["msak", "mwak", "rsak", "rwak"];
-const tokenTargetables = ["ally", "creature", "enemy", ""];
+const tokenTargetables = ["ally", "creature", "enemy", "", null];
 
 export function hasConcentration(item) {
     return item.system.components?.concentration;

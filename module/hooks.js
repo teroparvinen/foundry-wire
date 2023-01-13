@@ -5,7 +5,7 @@ import { DamageCard } from "./cards/damage-card.js";
 import { DeathSaveCard } from "./cards/death-save-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { resetVisitedTemplates } from "./conditions/area-effects.js";
-import { updateCombatTurnEndConditions, updateCombatTurnStartConditions } from "./conditions/combat-turns.js";
+import { updateCombatTurnEnd, updateCombatTurnStart } from "./conditions/combat-turns.js";
 import { checkCombatDurations } from "./durations.js";
 import { applySingleEffect } from "./game/active-effects.js";
 import { getDisplayableAttackComponents } from "./game/attack-components.js";
@@ -331,7 +331,7 @@ export function initHooks() {
     Hooks.on("updateCombat", async (combat, change, options, userId) => {
         if (game.user.isGM && combat.started) {
             if (combat.current.combatantId !== lastKnownCombatantId) {
-                await updateCombatTurnEndConditions();
+                await updateCombatTurnEnd();
             }
 
             await runInQueue(async () => {
@@ -380,7 +380,7 @@ export function initHooks() {
                     await card.make();
                 }
     
-                await updateCombatTurnStartConditions();
+                await updateCombatTurnStart();
             }
 
             lastKnownRound = combat.round;

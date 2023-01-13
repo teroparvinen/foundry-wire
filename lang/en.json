@@ -196,6 +196,7 @@
         },
         "warn": {
             "select-single-target-for-attack": "Select a target for the attack",
+            "select-character-target-for-attack": "Select a valid character target for the attack",
             "select-targets-for-effect": "Make a target selection",
             "damage-roll-has-no-parts": "There is no damage to roll!",
             "could-not-parse-bonus-damage": "Could not parse bonus damage!",

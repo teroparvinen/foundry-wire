@@ -2,14 +2,14 @@ import { Activation } from "../activation.js";
 import { Flow } from "../flow.js";
 import { takeAnActionFlow } from "../flows/take-an-action.js";
 import { makeUpdater } from "../updater-utility.js";
-import { areAllied, areAreaConditionsBlockedForActor, areEnemies, fromUuid, getTokenTemplateIds, isActorImmune, isEffectEnabled, triggerConditions } from "../utils.js";
+import { areAllied, areAreaConditionsBlockedForActor, areEnemies, fromUuid, getTokenTemplateIds, isActorImmune, isCharacterActor, isEffectEnabled, triggerConditions } from "../utils.js";
 
-export async function updateCombatTurnEndConditions() {
+export async function updateCombatTurnEnd() {
     const previousToken = canvas.tokens.get(game.combat.previous.tokenId);
     const previousCombatant = game.combat.turns.find(t => t.id === game.combat.previous.combatantId);
     const previousActor = previousCombatant?.actor;
 
-    if (previousActor && previousToken) {
+    if (previousActor && previousToken && isCharacterActor(previousActor)) {
         if (game.settings.get("wire", "track-bonus-actions")) {
             const ceApi = game.dfreds?.effectInterface;
             const uuid = previousActor.uuid;
@@ -23,12 +23,12 @@ export async function updateCombatTurnEndConditions() {
     }
 }
 
-export async function updateCombatTurnStartConditions() {
+export async function updateCombatTurnStart() {
     const currentToken = canvas.tokens.get(game.combat.current.tokenId);
     const currentCombatant = game.combat.turns.find(t => t.id === game.combat.current.combatantId);
     const currentActor = currentCombatant.actor;
 
-    if (currentActor && currentToken) {
+    if (currentActor && currentToken && isCharacterActor(currentActor)) {
         if (game.settings.get("wire", "track-reactions")) {
             const ceApi = game.dfreds?.effectInterface;
             const uuid = currentActor.uuid;

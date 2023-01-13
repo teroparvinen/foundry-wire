@@ -1,6 +1,6 @@
 import { runInQueue } from "../action-queue.js";
 import { isInstantaneous } from "../item-properties.js";
-import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, fudgeToActor, getActorToken, getTokenSquarePositions, isActorEffect, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
+import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, fudgeToActor, getActorToken, getTokenSquarePositions, isActorEffect, isCharacterActor, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
 
 export function getWireFlags() {
     return [
@@ -247,16 +247,22 @@ export function getStaticAttackOptions(item, defender, config) {
 
 export async function getAttackOptions(item, defender, config) {
     let { advantage, disadvantage } = getStaticAttackOptions(item, defender, config);
-    const { parts, rollData } = item.getAttackToHit() || {};
-
-    if (config.attack?.bonus) {
-        parts.push(config.attack.bonus);
-    }
 
     advantage = !config.attack?.disadvantage && !config.attack.normal && (advantage || config.attack?.advantage);
     disadvantage = !config.attack?.advantage && !config.attack.normal && (disadvantage || config.attack?.disadvantage);
 
-    return { advantage, disadvantage, parts, data: rollData };
+    if (foundry.utils.isNewerVersion(game.system.version, "2.1")) {
+        const parts = config.attack?.bonus ? [config.attack.bonus] : [];
+        return { advantage, disadvantage, parts };
+    } else {
+        const { parts, rollData } = item.getAttackToHit() || {};
+
+        if (config.attack?.bonus) {
+            parts.push(config.attack.bonus);
+        }
+    
+        return { advantage, disadvantage, parts, data: rollData };
+    }
 }
 
 export function getDamageInflictingMultiplier(item, actor, target, damageType) {
@@ -773,7 +779,7 @@ function checkActorTokenSize(actor) {
 function onActorPrepareData(wrapped) {
     wrapped();
 
-    if (game.user.isGM) {
+    if (game.user.isGM && isCharacterActor(this)) {
         checkActorTokenSizeAdjustment(this);
         checkActorTokenSize(this);
         applyConditionImmunities(this);
@@ -787,13 +793,18 @@ function onActiveEffectDisplayScrollingStatus(wrapped, enabled) {
     wrapped(enabled);
 }
 
-async function makeRollParts(parts) {
-    if (parts && Array.isArray(parts) && parts.length) {
-        await Dialog.prompt({
-            title: "Irrecoverable bug in the DND5E system",
-            content: "Due to a bug in the system, additional bonuses can't be applied to skill, ability check or save rolls. The bonus has been ignored. This will be reverted once the bug has been addressed."
-        })
+async function addRollParts(options, parts) {
+    if (foundry.utils.isNewerVersion(game.system.version, "2.1")) {
+        options.parts = parts;
+    } else {
+        if (parts && Array.isArray(parts) && parts.length) {
+            await Dialog.prompt({
+                title: "Irrecoverable bug in the DND5E system",
+                content: "Due to a bug in the system, additional bonuses can't be applied to skill, ability check or save rolls. The bonus has been ignored. This will be reverted once the bug has been addressed."
+            })
+        }
     }
+    return options;
 }
 
 async function onActorRollSkill(wrapped, skillId, options) {
@@ -817,8 +828,7 @@ async function onActorRollSkill(wrapped, skillId, options) {
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
 
-    const parts = await makeRollParts(bonus ? [bonus] : undefined);
-    return wrapped.apply(this, [skillId, foundry.utils.mergeObject(options, { advantage, disadvantage/*, parts*/ })]);
+    return wrapped.apply(this, [skillId, await addRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), bonus ? [bonus] : [])]);
 }
 
 async function onActorRollAbilityTest(wrapped, abilityId, options) {
@@ -830,8 +840,7 @@ async function onActorRollAbilityTest(wrapped, abilityId, options) {
 
     const bonusParts = bonus ? [bonus] : [];
     const optionParts = options.parts || [];
-    const parts = await makeRollParts([...optionParts, ...bonusParts]);
-    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage/*, parts*/ })]);
+    return wrapped.apply(this, [abilityId, await addRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts])]);
 }
 
 async function onActorRollAbilitySave(wrapped, abilityId, options) {
@@ -843,8 +852,7 @@ async function onActorRollAbilitySave(wrapped, abilityId, options) {
 
     const bonusParts = bonus ? [bonus] : [];
     const optionParts = options.parts || [];
-    const parts = await makeRollParts([...optionParts, ...bonusParts]);
-    return wrapped.apply(this, [abilityId, foundry.utils.mergeObject(options, { advantage, disadvantage/*, parts*/ })]);
+    return wrapped.apply(this, [abilityId, await addRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts])]);
 }
 
 function onActorRollDeathSave(wrapped, options) {

@@ -289,7 +289,7 @@ export function getTokenTemplateIds(token, requireAll = false) {
 export function getTemplateTokens(template, requireAll = true) {
     const templatePositions = canvas.grid.highlightLayers[`MeasuredTemplate.${template.id}`]?.positions;
     if (templatePositions) {
-        const tokens = canvas.tokens.objects.children;
+        const tokens = canvas.tokens.objects.children.filter(t => isCharacterActor(t.actor));
         const result = tokens
             // .filter(t => !t.document.hidden)
             .filter(t => {
@@ -444,7 +444,7 @@ export function deleteTokenFX(token, effect) {
 }
 
 export function isActorDefeated(actor) {
-    return actor.effects.some(e => e.getFlag("core", "statusId") === CONFIG.specialStatusEffects.DEFEATED);
+    return actor.effects?.some(e => e.getFlag("core", "statusId") === CONFIG.specialStatusEffects.DEFEATED);
 }
 
 export function tokenSeparation(token1, token2) {
@@ -480,8 +480,8 @@ export function handleError(error) {
 
 export function actorConditionImmunityTypes(actor) {
     return [
-        ...actor.system.traits?.ci?.value,
-        ...(actor.system.traits?.ci?.custom && actor.system.traits?.ci?.custom?.split(",").map(s => s.trim().toLowerCase()) || [])
+        ...actor.system.traits.ci.value,
+        ...(actor.system.traits.ci.custom && actor.system.traits.ci.custom.split(",").map(s => s.trim().toLowerCase()) || [])
     ]
 }
 
@@ -522,4 +522,8 @@ export function createScrollingText(token, text, floatUp = true) {
             jitter: 0.25
           });
     }
+}
+
+export function isCharacterActor(actor) {
+    return actor && ["character", "npc"].includes(actor.type);
 }
