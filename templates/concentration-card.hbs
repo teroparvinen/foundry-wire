@@ -11,8 +11,16 @@
             <img class="flex0 item-image" src="{{item.img}}" />
             <div class="flex1 actor-name">{{item.name}}</div>
             {{#if this.result}}
-                <div class="flex0 concentration-save-result {{#if (gte result dc)}}success{{else}}fail{{/if}}">
-                    {{result}}
+                <div class="flex0 concentration-save-result {{#if isSuccess}}success{{else}}fail{{/if}}">
+                    {{#if (eq result "success")}}
+                        <i class="fas fa-check"></i>
+                    {{else}}
+                        {{#if (eq result "failure")}}
+                            <i class="fas fa-times"></i>
+                        {{else}}
+                            {{result}}
+                        {{/if}}
+                    {{/if}}
                 </div>
             {{else}}
                 <a data-action="concentration-save" class="flex0 concentration-save"></a>

@@ -66,9 +66,13 @@ export function getWireFlags() {
             "flags.wire.fail.ability.all",
             "flags.wire.fail.ability.check.all",
             "flags.wire.fail.ability.save.all",
+            "flags.wire.fail.concentration",
+            "flags.wire.fail.deathSave",
             "flags.wire.succeed.ability.all",
             "flags.wire.succeed.ability.check.all",
             "flags.wire.succeed.ability.save.all",
+            "flags.wire.succeed.concentration",
+            "flags.wire.succeed.deathSave"
         ],
         ...Object.keys(CONFIG.DND5E.abilities).flatMap(abl => [
             `flags.wire.fail.ability.check.${abl}`,
@@ -343,8 +347,12 @@ export function getSaveOptions(actor, abilityId, activation, { isConcentration }
     const succeedFlags = flags?.succeed || {};
     const failFlags = flags?.fail || {};
 
-    const isSuccess = ef(succeedFlags.ability?.all) || ef(succeedFlags.ability?.save?.all) || (succeedFlags.ability?.save && ef(succeedFlags.ability.save[abilityId]));
-    const isFailure = ef(failFlags.ability?.all) || ef(failFlags.ability?.save?.all) || (failFlags.ability?.save && ef(failFlags.ability.save[abilityId]));
+    const isSuccess = ef(succeedFlags.ability?.all) || ef(succeedFlags.ability?.save?.all) || 
+                      (succeedFlags.ability?.save && ef(succeedFlags.ability.save[abilityId])) ||
+                      (isConcentration && ef(succeedFlags.concentration));
+    const isFailure = ef(failFlags.ability?.all) || ef(failFlags.ability?.save?.all) || 
+                      (failFlags.ability?.save && ef(failFlags.ability.save[abilityId])) ||
+                      (isConcentration && ef(failFlags.concentration));
 
     const success = isSuccess && !isFailure;
     const failure = isFailure && !isSuccess;
@@ -354,6 +362,32 @@ export function getSaveOptions(actor, abilityId, activation, { isConcentration }
 
     const isAdvantage = ef(flags?.advantage?.all) || ef(advFlags.all) || ef(advFlags.save?.all) || (advFlags.save && ef(advFlags.save[abilityId])) || (isConcentration && ef(flags?.advantage?.concentration));
     const isDisdvantage = ef(flags?.disadvantage?.all) || ef(disFlags.all) || ef(disFlags.save?.all) || (disFlags.save && ef(disFlags.save[abilityId])) || (isConcentration && ef(flags?.disadvantage?.concentration));
+
+    const advantage = isAdvantage && !isDisdvantage;
+    const disadvantage = isDisdvantage && !isAdvantage;
+
+    return { success, failure, advantage, disadvantage };
+}
+
+export function getDeathSaveOptions(actor) {
+    const ef = (value) => evaluateActorFlag(value, actor, undefined);
+
+    const flags = getEffectFlags(actor);
+
+    const succeedFlags = flags?.succeed || {};
+    const failFlags = flags?.fail || {};
+
+    const isSuccess = ef(succeedFlags.deathSave);
+    const isFailure = ef(failFlags.deathSave);
+
+    const success = isSuccess && !isFailure;
+    const failure = isFailure && !isSuccess;
+
+    const advFlags = flags?.advantage || {};
+    const disFlags = flags?.disadvantage || {};
+
+    const isAdvantage = ef(advFlags.deathSave);
+    const isDisdvantage = ef(disFlags.deathSave);
 
     const advantage = isAdvantage && !isDisdvantage;
     const disadvantage = isDisdvantage && !isAdvantage;
@@ -856,16 +890,10 @@ async function onActorRollAbilitySave(wrapped, abilityId, options) {
 }
 
 function onActorRollDeathSave(wrapped, options) {
-    const advFlags = getEffectFlags(this)?.advantage || {};
-    const disFlags = getEffectFlags(this)?.disadvantage || {};
+    const saveOptions = getDeathSaveOptions(this);
 
-    const ef = (value) => evaluateActorFlag(value, this);
-
-    const isAdvantage = ef(advFlags.deathSave);
-    const isDisdvantage = ef(disFlags.deathSave);
-
-    const advantage = options.advantage || (isAdvantage && !isDisdvantage);
-    const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
+    const advantage = options.advantage || (saveOptions.advantage && !options.disadvantage && !options.normal);
+    const disadvantage = options.disadvantage || (saveOptions.disadvantage && !options.advantage && !options.normal);
 
     return wrapped.apply(this, [foundry.utils.mergeObject(options, { advantage, disadvantage })]);
 }

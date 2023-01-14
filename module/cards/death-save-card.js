@@ -1,3 +1,4 @@
+import { getDeathSaveOptions } from "../game/effect-flags.js";
 import { fromUuid, fudgeToActor, getActorToken, getSpeaker } from "../utils.js";
 
 export class DeathSaveCard {
@@ -20,14 +21,28 @@ export class DeathSaveCard {
         case "death-save":
             const card = DeathSaveCard.fromMessage(message);
             if (card.actor.isOwner) {
-                const options = { chatMessage: false, fastForward: true };
-                if (event.altKey) { options.advantage = true; }
-                if (event.metaKey || event.ctrlKey) { options.disadvantage = true; }
+                let failed = false;
+                const { success, failure } = getDeathSaveOptions(card.actor);
+                if (success) {
+                    await card.actor.update({ "system.attributes.death.success": Math.min(card.actor.system.attributes.death.success + 1, 3) });
+                    await message.setFlag("wire", "result", "success");
+                    card.result = "success";
+                } else if (failure) {
+                    await card.actor.update({ "system.attributes.death.failure": Math.min(card.actor.system.attributes.death.failure + 1, 3) });
+                    await message.setFlag("wire", "result", "failure");
+                    card.result = "failure";
+                    failed = true;
+                } else {
+                    const options = { chatMessage: false, fastForward: true };
+                    if (event.altKey && (event.metaKey || event.ctrlKey)) { options.normal = true; }
+                    else if (event.altKey) { options.advantage = true; }
+                    else if (event.metaKey || event.ctrlKey) { options.disadvantage = true; }
 
-                const roll = await card.actor.rollDeathSave(options);
-                await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
-                await message.setFlag("wire", "result", roll.total);
-                card.result = roll.total;
+                    const roll = await card.actor.rollDeathSave(options);
+                    await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
+                    await message.setFlag("wire", "result", roll.total);
+                    card.result = roll.total;
+                }
                 const content = await card._renderContent();
                 message.update({ content });
             }
@@ -78,7 +93,9 @@ export class DeathSaveCard {
         const templateData = {
             actor: this.actor,
             token: getActorToken(this.actor),
-            result: this.result
+            result: this.result,
+            isSuccess: this.result === "success" || this.result >= 10,
+            isFailure: this.result === "failure" || this.result < 10
         };
         return await renderTemplate(DeathSaveCard.templateName, templateData);
     }

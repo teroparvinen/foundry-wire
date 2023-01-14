@@ -13,8 +13,16 @@
             <i class="flex0 fas fa-times"></i>
         </div>
         {{#if this.result}}
-            <div class="flex0 death-save-result {{#if (gte result 10)}}success{{else}}fail{{/if}}">
-                {{result}}
+            <div class="flex0 death-save-result {{#if isSuccess}}success{{else}}fail{{/if}}">
+                {{#if (eq result "success")}}
+                    <i class="fas fa-check"></i>
+                {{else}}
+                    {{#if (eq result "failure")}}
+                        <i class="fas fa-times"></i>
+                    {{else}}
+                        {{result}}
+                    {{/if}}
+                {{/if}}
             </div>
         {{else}}
             <a data-action="death-save" class="flex0 death-save"></a>

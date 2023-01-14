@@ -1,3 +1,4 @@
+import { getSaveOptions } from "../game/effect-flags.js";
 import { fromUuid, fudgeToActor, getActorToken, getSpeaker } from "../utils.js";
 
 export async function requestConcentrationSave(actor, dc = 10) {
@@ -28,14 +29,32 @@ export class ConcentrationCard {
         switch (action) {
         case "concentration-save":
             if (card.actor.isOwner) {
-                const roll = await card.actor.rollAbilitySave("con", { chatMessage: false, fastForward: true, isConcentration: true });
-                await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
-                await message.setFlag("wire", "result", roll.total);
-                card.result = roll.total;
+                let failed = false;
+                const { success, failure } = getSaveOptions(card.actor, "con", undefined, { isConcentration: true });
+                if (success) {
+                    await message.setFlag("wire", "result", "success");
+                    card.result = "success";
+                } else if (failure) {
+                    await message.setFlag("wire", "result", "failure");
+                    card.result = "failure";
+                    failed = true;
+                } else {
+                    const options = { chatMessage: false, fastForward: true, isConcentration: true };
+                    if (event.altKey && (event.metaKey || event.ctrlKey)) { options.normal = true; }
+                    else if (event.altKey) { options.advantage = true; }
+                    else if (event.metaKey || event.ctrlKey) { options.disadvantage = true; }
+                    const roll = await card.actor.rollAbilitySave("con", options);
+                    await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
+                    await message.setFlag("wire", "result", roll.total);
+                    card.result = roll.total;
+                    if (roll.total < card.dc) {
+                        failed = true;
+                    }
+                }
                 const content = await card._renderContent();
                 message.update({ content });
 
-                if (roll.total < card.dc) {
+                if (failed) {
                     await card.concentrationEffect.delete();
                 }
             }
@@ -54,7 +73,7 @@ export class ConcentrationCard {
 
     static fromMessage(message) {
         const data = message.flags.wire;
-        return new ConcentrationCard(fudgeToActor(fromUuid(data.actorUuid)), fromUuid(data.concentrationEffectUuid), data.damageAmount);
+        return new ConcentrationCard(fudgeToActor(fromUuid(data.actorUuid)), fromUuid(data.concentrationEffectUuid), { damage: data.damageAmount, dc: data.flatDc });
     }
 
     constructor(actor, concentrationEffect, requirement) {
@@ -99,7 +118,8 @@ export class ConcentrationCard {
             isConcentrationCard: true,
             actorUuid: this.actor.uuid,
             concentrationEffectUuid: this.concentrationEffect.uuid,
-            damageAmount: this.damageAmount
+            damageAmount: this.damageAmount,
+            flatDc: this.flatDc
         };
     }
 
@@ -110,7 +130,9 @@ export class ConcentrationCard {
             damageAmount: this.damageAmount,
             item: fromUuid(this.concentrationEffect.origin),
             dc: this.dc,
-            result: this.result
+            result: this.result,
+            isSuccess: this.result === "success" || this.result >= this.dc,
+            isFailure: this.result === "failure" || this.result < this.dc
         };
         return await renderTemplate(ConcentrationCard.templateName, templateData);
     }

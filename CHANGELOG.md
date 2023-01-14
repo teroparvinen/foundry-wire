@@ -2,9 +2,16 @@
 
 ### 0.10.10
 
+Changes
+
+- Added flags for concentration and death save automatic failure and success: `flags.wire.fail.concentration`, `flags.wire.succeed.concentration`, `flags.wire.fail.deathSave`, `flags.wire.succeed.deathSave`.
+
 Fixes
 
+- Initial batch of fixes for dnd5e 2.1
 - Evaluating damage formulas with the extended roll formula capabilities was giving some trouble. Implemented some improvements to how string values are treated in the formulas.
+- Fixed an issue with concentration DCs
+- Alt and Ctrl/Cmd work for advantage/disadvantage as concentration roll click modifiers
 
 ### 0.10.9
 

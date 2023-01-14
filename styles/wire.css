@@ -562,6 +562,7 @@
     align-items: center;
     gap: 10px;
     padding-bottom: 2px;
+    min-height: 52px;
 }
 
 .concentration-card .actor-image, .death-save-card .actor-image {
