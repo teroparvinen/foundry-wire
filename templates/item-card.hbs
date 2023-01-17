@@ -250,7 +250,7 @@
                     {{#if activation.damage.allowVersatile}}
                         <button class="flex1" data-action="wire-damage-versatile">{{localize "DND5E.Versatile"}}</button>
                     {{/if}}
-                    <button class="flex0" data-action="wire-damage-configure">
+                    <button class="flex0" data-action="wire-damage-configure" data-can-crit="{{#if (eq activation.state "waiting-for-attack-damage-roll")}}true{{else}}false{{/if}}">
                         <i class="fas fa-ellipsis-h"></i>
                     </button>
                 </div>

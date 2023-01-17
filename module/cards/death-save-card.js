@@ -1,5 +1,7 @@
+import { ConfigureSave } from "../apps/configure-save.js";
 import { getDeathSaveOptions } from "../game/effect-flags.js";
-import { fromUuid, fudgeToActor, getActorToken, getSpeaker } from "../utils.js";
+import { wireSocket } from "../socket.js";
+import { fromUuid, fudgeToActor, getActorToken, getSpeaker, i18n } from "../utils.js";
 
 export class DeathSaveCard {
 
@@ -19,32 +21,49 @@ export class DeathSaveCard {
 
         switch (action) {
         case "death-save":
+        case "death-save-config":
             const card = DeathSaveCard.fromMessage(message);
             if (card.actor.isOwner) {
                 let failed = false;
+                const updates = {};
                 const { success, failure } = getDeathSaveOptions(card.actor);
                 if (success) {
                     await card.actor.update({ "system.attributes.death.success": Math.min(card.actor.system.attributes.death.success + 1, 3) });
-                    await message.setFlag("wire", "result", "success");
+                    updates["flags.wire.result"] = "success";
                     card.result = "success";
                 } else if (failure) {
                     await card.actor.update({ "system.attributes.death.failure": Math.min(card.actor.system.attributes.death.failure + 1, 3) });
-                    await message.setFlag("wire", "result", "failure");
+                    updates["flags.wire.result"] = "failure";
                     card.result = "failure";
                     failed = true;
                 } else {
                     const options = { chatMessage: false, fastForward: true };
-                    if (event.altKey && (event.metaKey || event.ctrlKey)) { options.normal = true; }
-                    else if (event.altKey) { options.advantage = true; }
-                    else if (event.metaKey || event.ctrlKey) { options.disadvantage = true; }
+                    if (action === "death-save-config") {
+                        const dialogOptions = {
+                            top: event ? event.clientY - 80 : null,
+                            left: window.innerWidth - 610,
+                            title: i18n("wire.configure-check.death-save-title")
+                        }
+                        const app = new ConfigureSave(card.actor, "death", undefined, dialogOptions);
+                        const result = await app.render(true);
+                        foundry.utils.mergeObject(options, result);
+                    } else {
+                        if (event.altKey && (event.metaKey || event.ctrlKey)) { options.normal = true; }
+                        else if (event.altKey) { options.advantage = true; }
+                        else if (event.metaKey || event.ctrlKey) { options.disadvantage = true; }
+                    }
 
                     const roll = await card.actor.rollDeathSave(options);
                     await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
-                    await message.setFlag("wire", "result", roll.total);
+                    updates["flags.wire.result"] = roll.total;
                     card.result = roll.total;
                 }
-                const content = await card._renderContent();
-                message.update({ content });
+                updates["content"] = await card._renderContent();
+                if (message.isOwner) {
+                    message.update(updates);
+                } else {
+                    wireSocket.executeAsGM("updateSaveCardContent", message.uuid, updates);
+                }
             }
             break;
         default:

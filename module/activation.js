@@ -106,6 +106,7 @@ export class Activation {
     get attackTargetUuid() { return this.data.attack?.targetActorUuid; }
     get attackRoll() { return this.data.attack?.roll ? CONFIG.Dice.D20Roll.fromData(this.data.attack.roll) : null; }
     get attackResult() { return this.data.attack?.result; }
+    get isCritical() { return DamageParts.isCritical(this); }
     get attackOptions() { return this.data.attack?.options; }
     get damageParts() { return this.data.damage?.parts ? DamageParts.fromData(this.data.damage.parts) : null; }
     get saveResults() { return this.data.saves?.map(e => {
@@ -610,18 +611,22 @@ export class Activation {
 
     async _rollDamage(config = {}, doDialog, dialogOptions) {
         let additionalDamage;
+        let overrideCritical;
 
         const situationalBonus = await triggerConditions(this.item.actor, "prepare-damage-roll");
 
         if (doDialog) {
             const configuration = new ConfigureDamage(this, dialogOptions, situationalBonus);
-            additionalDamage = await configuration.render(true);
+            const { damage, isCritical } = await configuration.render(true);
+            additionalDamage = damage;
+            overrideCritical = isCritical
         } else {
             additionalDamage = situationalBonus;
         }
 
         foundry.utils.setProperty(this.data, 'config', foundry.utils.mergeObject(this.data.config || {}, config));
         foundry.utils.setProperty(this.data, 'config.damageBonus', additionalDamage);
+        foundry.utils.setProperty(this.data, 'config.criticalOverride', overrideCritical);
         await this._update();
 
         if (this.data.state === "waiting-for-attack-damage-roll") {

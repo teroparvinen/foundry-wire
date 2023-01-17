@@ -1,5 +1,22 @@
 # Changes by version number
 
+### 0.10.11
+
+Changes
+
+- Reworked the configuration dialogs for attacks, saves, checks and damage a little. They now have more easily accessible mode buttons (advantage/disadvantage, normal/crit) and a bit friendlier titles.
+- Concentration saves and death saves can now make modifications to the roll through the configuration dialog.
+- Added API method `game.wire.DamageParts.multiValue` that takes an array of objects with `formula` and `type` keys. This can be passed to `activation.applyDamageRollParts` in flow step macros.
+- Added a settings option to clear targets at the end of each turn.
+- Damage rolls now have access to an `isCritical` variable, which is 1 if the attack was a crit and 0 otherwise.
+
+Fixes
+
+- Fixed a regression bug that crept in to aura effects in the last update
+- Fixed an issue that would cause some damage vulnerability/resistance/immunity calculations not to be shown in the damage card (a visual issue).
+- Fixed a permission issue with concentration and death saves
+- Fixed an issue with actor token size updates with tiny characters
+
 ### 0.10.10
 
 Changes

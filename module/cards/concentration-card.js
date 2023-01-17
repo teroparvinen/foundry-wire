@@ -1,5 +1,7 @@
 import { getSaveOptions } from "../game/effect-flags.js";
-import { fromUuid, fudgeToActor, getActorToken, getSpeaker } from "../utils.js";
+import { fromUuid, fudgeToActor, getActorToken, getSpeaker, i18n } from "../utils.js";
+import { ConfigureSave } from "../apps/configure-save.js";
+import { wireSocket } from "../socket.js";
 
 export async function requestConcentrationSave(actor, dc = 10) {
     const concentrationEffect = actor.effects.find(e => e.flags.wire?.isConcentration);
@@ -28,31 +30,48 @@ export class ConcentrationCard {
 
         switch (action) {
         case "concentration-save":
-            if (card.actor.isOwner) {
+        case "concentration-save-config":
+                if (card.actor.isOwner) {
                 let failed = false;
+                const updates = {};
                 const { success, failure } = getSaveOptions(card.actor, "con", undefined, { isConcentration: true });
                 if (success) {
-                    await message.setFlag("wire", "result", "success");
+                    updates["flags.wire.result"] = "success";
                     card.result = "success";
                 } else if (failure) {
-                    await message.setFlag("wire", "result", "failure");
+                    updates["flags.wire.result"] = "failure";
                     card.result = "failure";
                     failed = true;
                 } else {
                     const options = { chatMessage: false, fastForward: true, isConcentration: true };
-                    if (event.altKey && (event.metaKey || event.ctrlKey)) { options.normal = true; }
-                    else if (event.altKey) { options.advantage = true; }
-                    else if (event.metaKey || event.ctrlKey) { options.disadvantage = true; }
+                    if (action === "concentration-save-config") {
+                        const dialogOptions = {
+                            top: event ? event.clientY - 80 : null,
+                            left: window.innerWidth - 610,
+                            title: i18n("wire.configure-check.concentration-title")
+                        }
+                        const app = new ConfigureSave(card.actor, "con", undefined, dialogOptions);
+                        const result = await app.render(true);
+                        foundry.utils.mergeObject(options, result);
+                    } else {
+                        if (event.altKey && (event.metaKey || event.ctrlKey)) { options.normal = true; }
+                        else if (event.altKey) { options.advantage = true; }
+                        else if (event.metaKey || event.ctrlKey) { options.disadvantage = true; }
+                    }
                     const roll = await card.actor.rollAbilitySave("con", options);
                     await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
-                    await message.setFlag("wire", "result", roll.total);
+                    updates["flags.wire.result"] = roll.total;
                     card.result = roll.total;
                     if (roll.total < card.dc) {
                         failed = true;
                     }
                 }
-                const content = await card._renderContent();
-                message.update({ content });
+                updates["content"] = await card._renderContent();
+                if (message.isOwner) {
+                    message.update(updates);
+                } else {
+                    wireSocket.executeAsGM("updateSaveCardContent", message.uuid, updates);
+                }
 
                 if (failed) {
                     await card.concentrationEffect.delete();

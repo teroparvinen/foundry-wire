@@ -1,6 +1,7 @@
 import { Activation } from "../activation.js";
 import { ConfigureCheck } from "../apps/configure-check.js";
 import { ConfigureSave } from "../apps/configure-save.js";
+import { DamageParts } from "../game/damage-parts.js";
 import { fromUuid, fudgeToActor, getActorToken } from "../utils.js";
 
 export class ItemCard {
@@ -110,9 +111,13 @@ export class ItemCard {
                 break;
             case "wire-damage-configure":
                 await confirmHitIfNecessary();
+                const canCrit = button.dataset.canCrit === "true";
+                const isCrit = DamageParts.isCritical(activation);
                 const options = {
                     top: event ? event.clientY - 80 : null,
-                    left: window.innerWidth - 610
+                    left: window.innerWidth - 610,
+                    canCrit,
+                    isCrit
                 }
                 activation._rollDamage({}, true, options);
                 break;

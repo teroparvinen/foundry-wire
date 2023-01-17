@@ -19,7 +19,9 @@ export function getSaveComponents(actor, abilityId) {
     const parts = {};
 
     // Add ability modifier
-    parts.ability = abl?.mod ?? 0;
+    if (abl) {
+        parts.ability = abl?.mod ?? 0;
+    }
 
     // Include proficiency bonus
     if (abl?.saveProf.hasProficiency) {

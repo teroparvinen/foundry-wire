@@ -19,6 +19,7 @@ export function setupSocket() {
     wireSocket.register("createDamageCard", createDamageCard);
     wireSocket.register("refreshDamageCard", refreshDamageCard);
     wireSocket.register("updateDamageCardEntry", updateDamageCardEntry);
+    wireSocket.register("updateSaveCardContent", updateSaveCardContent);
     wireSocket.register("requestRemoveChildEffects", requestRemoveChildEffects);
     wireSocket.register("requestCreateChildEffects", requestCreateChildEffects);
 }
@@ -147,6 +148,13 @@ async function updateDamageCardEntry(messageUuid, actorUuid, update) {
     if (message && actor) {
         const card = new DamageCard(message);
         await card.updateActorEntry(actor, update);
+    }
+}
+
+async function updateSaveCardContent(messageUuid, updates) {
+    const message = fromUuid(messageUuid);
+    if (message && (message.flags.wire?.isConcentrationCard || message.flags.wire?.isDeathSaveCard)) {
+        message.update(updates);
     }
 }
 

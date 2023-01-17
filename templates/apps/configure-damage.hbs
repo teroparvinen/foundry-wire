@@ -6,11 +6,14 @@
                 <div class="configure-damage__formula flex2">{{formula}}</div>
             </div>
         {{/each}}
-        <input class="configure-damage__custom-damage" placeholder="{{localize "wire.configure-damage.custom-placeholder"}}" type="text" />
-    </div>
-    <div class="dialog-buttons">
-        <button type="submit" class="dialog-button" data-button="roll">
-            {{localize "wire.configure-damage.roll"}}
-        </button>
+        <input class="configure-damage__custom-damage" name="bonus" autofocus="true" placeholder="{{localize "wire.configure-damage.custom-placeholder"}}" type="text" />
     </div>
 </form>
+<div class="dialog-buttons">
+    {{#each buttons as |button id|}}
+        <button class="dialog-button {{cssClass}}" data-button="{{id}}" {{disabled button.disabled}}>
+            {{{button.icon}}}
+            {{{button.label}}}
+        </button>
+    {{/each}}
+</div>

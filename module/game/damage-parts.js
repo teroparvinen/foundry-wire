@@ -25,6 +25,11 @@ export class DamageParts {
             isCritical = true;
         }
 
+        // Override
+        if (activation.config.criticalOverride === true) {
+            isCritical = true;
+        }
+
         return isCritical;
     }
 
@@ -68,6 +73,7 @@ export class DamageParts {
         const rollData = item.getRollData();
         if (spellLevel) rollData.item.level = spellLevel;
         rollData.config = activation.config;
+        rollData.isCritical = isCritical ? 1 : 0;
 
         // Add target info to roll data
         if (singleTarget) {
@@ -266,7 +272,32 @@ export class DamageParts {
             die.options.flavor = pr.part.type;
         });
 
-        return new DamageParts([pr]);
+        const result = new DamageParts([pr])
+        await result.roll3dDice();
+        return result;
+    }
+
+    static async multiValue(formulasWithTypes) {
+        const parts = formulasWithTypes.map(ft => ({
+            formula: ft.formula,
+            type: ft.type,
+            halving: "none",
+            applicationType: "immediate"
+        }));
+        const pr = await Promise.all(parts.map(async part => {
+            const roll = new CONFIG.Dice.DamageRoll(part.formula, {}, {})
+
+            await roll.evaluate({ async: true });
+            roll.dice.forEach(die => {
+                die.options.flavor = part.type;
+            });
+
+            return { part, roll };
+        }));
+
+        const result = new DamageParts(pr);
+        await result.roll3dDice();
+        return result;
     }
 
     constructor(partsWithRolls) {
@@ -345,9 +376,9 @@ export class DamageParts {
                 damage: prev.damage + (c.damage || 0),
                 healing: prev.healing + (c.healing || 0),
                 temphp: prev.temphp + (c.temphp || 0),
-                di: prev.di + c.di || 0,
-                dr: prev.dr + c.dr || 0,
-                dv: prev.dv + c.dv || 0,
+                di: prev.di + (c.di || 0),
+                dr: prev.dr + (c.dr || 0),
+                dv: prev.dv + (c.dv || 0),
                 damagereduction: prev.damagereduction
             }
         }, { damage: 0, healing: 0, temphp: 0, di: 0, dr: 0, dv: 0, damagereduction: reductionApplied });

@@ -190,4 +190,17 @@ export function initSettings() {
             default: false
         }
     );
+
+    game.settings.register(
+        "wire",
+        "end-of-turn-untarget",
+        {
+            name: "wire.settings.end-of-turn-untarget",
+            hint: "wire.settings.end-of-turn-untarget-hint",
+            scope: "world",
+            config: true,
+            type: Boolean,
+            default: false
+        }
+    );
 }

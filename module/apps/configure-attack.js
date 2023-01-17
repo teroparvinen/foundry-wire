@@ -1,25 +1,55 @@
 import { getDisplayableAttackComponents } from "../game/attack-components.js";
 import { getStaticAttackOptions } from "../game/effect-flags.js";
-import { makeModifier } from "../utils.js";
+import { i18n, makeModifier } from "../utils.js";
 
-export class ConfigureAttack extends Application {
+export class ConfigureAttack extends Dialog {
     constructor(item, config, options) {
-        super(options);
+        super({}, options);
 
         this.item = item;
         this.config = config;
+
+        const target = game.user.targets.first()?.actor;
+        const attackOptions = getStaticAttackOptions(item, target, config);
+        const advantage = !config.attack?.disadvantage && (attackOptions.advantage || config.attack?.advantage);
+        const disadvantage = !config.attack?.advantage && (attackOptions.disadvantage || config.attack?.disadvantage);
+
+        const defaultMode = advantage ? "advantage" : (disadvantage ? "disadvantage" : "normal");
+
+        this.data = {
+            buttons: {
+                advantage: {
+                    label: game.i18n.localize("DND5E.Advantage"),
+                    callback: html => this.resolve(this._onSubmitRoll(html, "advantage"))
+                },
+                normal: {
+                    label: game.i18n.localize("DND5E.Normal"),
+                    callback: html => this.resolve(this._onSubmitRoll(html, "normal"))
+                },
+                disadvantage: {
+                    label: game.i18n.localize("DND5E.Disadvantage"),
+                    callback: html => this.resolve(this._onSubmitRoll(html, "disadvantage"))
+                }
+            },
+            default: defaultMode,
+        }
     }
 
     static get defaultOptions() {
         return foundry.utils.mergeObject(super.defaultOptions, {
-            title: "wire.configure-check.attack-title",
             template: "modules/wire/templates/apps/configure-check.hbs",
             classes: ["dialog", "configure-check", "configure-attack"],
-            width: 300
+            width: 350
         });
+    }
+
+    get title() {
+        return i18n("wire.configure-check.attack-title", { name: this.item.name });
     }
     
     getData(opts) {
+        const { buttons } = super.getData(opts);
+
         const situationalComponents = this.config.attack?.bonus ? [{
             i18nKey: "wire.roll-component.situational",
             value: makeModifier(this.config.attack.bonus)
@@ -27,38 +57,20 @@ export class ConfigureAttack extends Application {
 
         const item = this.item;
         const components = [ ...getDisplayableAttackComponents(item), ...situationalComponents ];
-        const modeOptions = {
-            advantage: "wire.roll-component.advantage",
-            normal: "wire.roll-component.normal",
-            disadvantage: "wire.roll-component.disadvantage",
-        };
-        const target = game.user.targets.first()?.actor;
-        const options = getStaticAttackOptions(item, target, this.config);
-
-        const advantage = !this.config.attack?.disadvantage && (options.advantage || this.config.attack?.advantage);
-        const disadvantage = !this.config.attack?.advantage && (options.disadvantage || this.config.attack?.disadvantage);
-
-        const defaultMode = advantage ? "advantage" : (disadvantage ? "disadvantage" : "normal");
 
         const showHint = true;
 
         return {
             components,
-            modeOptions,
-            defaultMode,
-            showHint
+            showHint,
+            buttons
         };
     }
 
-    activateListeners(html) {
-        html.find('.configure-check__custom-bonus').focus();
-        html.submit(this._onSubmit.bind(this));
-    }
+    _onSubmitRoll(html, mode) {
+        const form = html[0].querySelector("form");
 
-    _onSubmit(event) {
-        event.preventDefault();
-        const bonusInput = $(this.element).find('.configure-check__custom-bonus').val();
-        const mode = $(this.element).find('.configure-check__mode-select').val();
+        const bonusInput = form.bonus.value;
 
         const advantage = mode === "advantage";
         const disadvantage = mode === "disadvantage";

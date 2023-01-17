@@ -560,8 +560,9 @@
 
 .concentration-card .concentration-row, .death-save-card .death-save-row {
     align-items: center;
-    gap: 10px;
+    gap: 4px;
     padding-bottom: 2px;
+    padding-right: 10px;
     min-height: 52px;
 }
 
@@ -582,6 +583,7 @@
 .concentration-card .actor-name, .death-save-card .actor-name {
     font-size: 16px;
     font-weight: 500;
+    padding: 0 6px;
 }
 
 .concentration-card .concentration-save, .death-save-card .death-save {
@@ -687,6 +689,16 @@
 
 .configure-damage .configure-damage__custom-damage::placeholder, .configure-attack .configure-check__custom-bonus::placeholder {
     opacity: 0.5;
+}
+
+.configure-damage .dialog-buttons .dialog-button, .configure-check .dialog-buttons .dialog-button {
+    border: 1px solid var(--light-color);
+    border-radius: 5px;
+    background: transparent;
+}
+
+.configure-damage .dialog-buttons .dialog-button.default, .configure-check .dialog-buttons .dialog-button.default {
+    border: 2px solid var(--color-border-light-tertiary);
 }
 
 .configure-check__hint {

@@ -93,7 +93,7 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
     const makeEffectData = (effect) => {
         return foundry.utils.mergeObject(
             {
-                changes: substituteEffectConfig(actor, config, copyEffectChanges(effect)),
+                changes: substituteEffectConfig(actor, config, undefined, copyEffectChanges(effect)),
                 origin: item.uuid,
                 disabled: false,
                 icon: effect.icon,

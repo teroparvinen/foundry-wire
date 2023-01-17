@@ -329,63 +329,74 @@ export function initHooks() {
     let lastKnownCombatantId;
 
     Hooks.on("updateCombat", async (combat, change, options, userId) => {
-        if (game.user.isGM && combat.started) {
-            if (combat.current.combatantId !== lastKnownCombatantId) {
-                await updateCombatTurnEnd();
-            }
-
-            await runInQueue(async () => {
-                await checkCombatDurations(combat);
-            });
-
-            if (change.round && change.round !== lastKnownRound && game.settings.get("wire", "round-change-notifications")) {
-                ChatMessage.create({
-                    content: await renderTemplate("modules/wire/templates/round-change-card.hbs", { round: change.round }),
-                    whisper: null,
-                    emote: true,
-                    flags: { "wire.hideSpeakerFields": true }
-                })
-            }
-
-            const combatant = combat.combatants.get(combat.current.combatantId);
-            if (combat.current.combatantId !== lastKnownCombatantId && combatant) {
-                await resetVisitedTemplates();
-
-                if (combatant.isNPC && !combatant.isDefeated) {
-                    if (game.settings.get("wire", "change-turn-control-npc")) {
-                        combatant.token?.object?.control();
-                    }
-                    if (game.settings.get("wire", "change-turn-focus-npc")) {
-                        canvas.animatePan({ x: combatant.token?._object?.x, y: combatant.token?._object?.y })
-                    }
+        if (combat.started) {
+            if (game.user.isGM) {
+                if (combat.current.combatantId !== lastKnownCombatantId) {
+                    await updateCombatTurnEnd();
                 }
     
-                if (!combatant.isDefeated && game.settings.get("wire", "turn-change-notifications")) {
-                    const revealNpcs = game.settings.get("wire", "reveal-npc-turn-change");
-                    const isHidden = combatant.hidden
-                    const shouldWhisper = combatant.isNPC && (!revealNpcs || isHidden);
-
+                await runInQueue(async () => {
+                    await checkCombatDurations(combat);
+                });
+    
+                if (change.round && change.round !== lastKnownRound && game.settings.get("wire", "round-change-notifications")) {
                     ChatMessage.create({
-                        content: await renderTemplate("modules/wire/templates/turn-change-card.hbs", { token: combatant.token.object }),
-                        whisper: shouldWhisper ? [game.user.id] : null,
+                        content: await renderTemplate("modules/wire/templates/round-change-card.hbs", { round: change.round }),
+                        whisper: null,
                         emote: true,
                         flags: { "wire.hideSpeakerFields": true }
-                    })              
-                }
-
-                const death = combatant.actor?.system.attributes.death;
-                const needsDeathSave = !combatant.isNPC && combatant.actor?.system.attributes.hp.value == 0 && death?.failure < 3 && death?.success < 3;
-                if (needsDeathSave) {
-                    const card = new DeathSaveCard(combatant.actor);
-                    await card.make();
+                    })
                 }
     
-                await updateCombatTurnStart();
+                const combatant = combat.combatants.get(combat.current.combatantId);
+                if (combat.current.combatantId !== lastKnownCombatantId && combatant) {
+                    await resetVisitedTemplates();
+    
+                    if (combatant.isNPC && !combatant.isDefeated) {
+                        if (game.settings.get("wire", "change-turn-control-npc")) {
+                            combatant.token?.object?.control();
+                        }
+                        if (game.settings.get("wire", "change-turn-focus-npc")) {
+                            canvas.animatePan({ x: combatant.token?._object?.x, y: combatant.token?._object?.y })
+                        }
+                    }
+        
+                    if (!combatant.isDefeated && game.settings.get("wire", "turn-change-notifications")) {
+                        const revealNpcs = game.settings.get("wire", "reveal-npc-turn-change");
+                        const isHidden = combatant.hidden
+                        const shouldWhisper = combatant.isNPC && (!revealNpcs || isHidden);
+    
+                        ChatMessage.create({
+                            content: await renderTemplate("modules/wire/templates/turn-change-card.hbs", { token: combatant.token.object }),
+                            whisper: shouldWhisper ? [game.user.id] : null,
+                            emote: true,
+                            flags: { "wire.hideSpeakerFields": true }
+                        })              
+                    }
+    
+                    const death = combatant.actor?.system.attributes.death;
+                    const needsDeathSave = !combatant.isNPC && combatant.actor?.system.attributes.hp.value == 0 && death?.failure < 3 && death?.success < 3;
+                    if (needsDeathSave) {
+                        const card = new DeathSaveCard(combatant.actor);
+                        await card.make();
+                    }
+        
+                    await updateCombatTurnStart();
+                }
             }
 
-            lastKnownRound = combat.round;
-            lastKnownCombatantId = combat.current.combatantId;
+            if (combat.current.combatantId !== lastKnownCombatantId && game.settings.get("wire", "end-of-turn-untarget")) {
+                const previousActor = canvas.tokens.get(game.combat.previous.tokenId).actor;
+                if ((game.user.isGM && !previousActor.hasPlayerOwner) || (!game.user.isGM && previousActor.isOwner)) {
+                    if (game.user.targets.size) {
+                        [...game.user.targets][0].setTarget(false);
+                    }
+                }
+            }
         }
+
+        lastKnownRound = combat.round;
+        lastKnownCombatantId = combat.current.combatantId;
     });
 
     Hooks.on("ready", () => {

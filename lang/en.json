@@ -161,16 +161,19 @@
             "prompt": "Select a variant"
         },
         "configure-check": {
-            "attack-title": "Configure Attack",
-            "save-title": "Configure Save",
-            "check-title": "Configure Ability Check",
+            "attack-title": "{name} - Attack Roll",
+            "save-title": "{name} Save",
+            "concentration-title": "Concentration Save",
+            "death-save-title": "Death Save",
+            "check-title": "{name} Check",
             "custom-placeholder": "e.g. 2 / 1d4",
             "roll": "Roll",
             "fast-forward-hint": "Shift-click or right-click the item to skip this dialog"
         },
         "configure-damage": {
-            "title": "Configure Damage",
-            "roll": "Roll Damage",
+            "title": "{name} - Damage",
+            "roll": "Normal",
+            "critical": "Critical",
             "custom-placeholder": "e.g. 2 / 1d4 / 1d6[fire]"
         },
         "roll-component": {
@@ -225,7 +228,9 @@
             "track-bonus-actions": "Track bonus actions",
             "track-bonus-actions-hint": "With this selected, completing a bonus action will apply the \"Bonus Action\" condition to a character. It will be removed at the end of the character's turn. Until then, attempting to activate another bonus action will cause a warning.",
             "out-of-turn-reactions": "Treat all out of turn actions as reactions",
-            "out-of-turn-reactions-hint": "Any action taken outside the character's turn will be counted as a reaction. Useful for opportunity attacks and similar."
+            "out-of-turn-reactions-hint": "Any action taken outside the character's turn will be counted as a reaction. Useful for opportunity attacks and similar.",
+            "end-of-turn-untarget": "Remove targets at the end of a turn",
+            "end-of-turn-untarget-hint": "With this enabled, all targets a user has are released whenever a character they can control ends its turn."
         },
         "keybindings": {
             "next-turn": "Next turn",

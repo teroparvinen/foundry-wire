@@ -709,12 +709,12 @@ function checkActorTokenSize(actor) {
     if (!token) return;
 
     const subsquareExistingSize = Math.max(token.document._source.width, token.document._source.height);
-    const existingSize = parseInt(subsquareExistingSize);
+    const existingSize = Math.ceil(subsquareExistingSize);
+
+    const gs = canvas.grid.size;
+    const hs = gs * 0.5;
 
     if (targetSize != existingSize) {
-        const gs = canvas.grid.size;
-        const hs = gs * 0.5;
-
         function getExpandedPosition(x, y, size, dx, dy) {
             const corner = {
                 x: dx < 0 ? x + hs : x + size * gs - hs,
@@ -765,7 +765,8 @@ function checkActorTokenSize(actor) {
         let positionsByDistance;
         let currentSize = existingSize;
         if (targetSize > existingSize) {
-            let validPositions = [{ x: token.document.x, y: token.document.y }];
+            const [x, y] = canvas.grid.grid.getTopLeft(token.document.x, token.document.y);
+            let validPositions = [{ x, y }];
 
             while (currentSize < targetSize) {
                 const expandedPositions = validPositions.flatMap(p => getExpandedPositions(p.x, p.y, currentSize));
@@ -806,7 +807,8 @@ function checkActorTokenSize(actor) {
 
         token.document.update({ x: position.x, y: position.y, width: currentSize, height: currentSize});
     } else if (subsquareExistingSize != subsquareTargetSize) {
-        token.document.update({ x: token.document.x, y: token.document.y, width: subsquareTargetSize, height: subsquareTargetSize});
+        const [x, y] = canvas.grid.grid.getTopLeft(token.document.x, token.document.y);
+        token.document.update({ x, y, width: subsquareTargetSize, height: subsquareTargetSize});
     }
 }
 
@@ -821,22 +823,23 @@ function onActorPrepareData(wrapped) {
 }
 
 function onActiveEffectDisplayScrollingStatus(wrapped, enabled) {
-    if (isActorEffect(this) && fromUuid(this.origin)?.system.duration?.units === "inst" && !this.flags.wire?.independentDuration) {
+    if (isActorEffect(this) && fudgeToActor(fromUuid(this.origin))?.system.duration?.units === "inst" && !this.flags.wire?.independentDuration) {
         return;
     }
     wrapped(enabled);
 }
 
-async function addRollParts(options, parts) {
+async function setRollParts(options, parts) {
     if (foundry.utils.isNewerVersion(game.system.version, "2.1")) {
         options.parts = parts;
     } else {
         if (parts && Array.isArray(parts) && parts.length) {
             await Dialog.prompt({
                 title: "Irrecoverable bug in the DND5E system",
-                content: "Due to a bug in the system, additional bonuses can't be applied to skill, ability check or save rolls. The bonus has been ignored. This will be reverted once the bug has been addressed."
+                content: "Due to a bug in this version of the system, additional bonuses can't be applied to skill, ability check or save rolls. The bonus has been ignored. The 2.1 version of the system has fixed this issue, but please make sure all your modules support it before upgrading."
             })
         }
+        delete options.parts;
     }
     return options;
 }
@@ -862,7 +865,7 @@ async function onActorRollSkill(wrapped, skillId, options) {
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
 
-    return wrapped.apply(this, [skillId, await addRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), bonus ? [bonus] : [])]);
+    return wrapped.apply(this, [skillId, await setRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), bonus ? [bonus] : [])]);
 }
 
 async function onActorRollAbilityTest(wrapped, abilityId, options) {
@@ -874,7 +877,7 @@ async function onActorRollAbilityTest(wrapped, abilityId, options) {
 
     const bonusParts = bonus ? [bonus] : [];
     const optionParts = options.parts || [];
-    return wrapped.apply(this, [abilityId, await addRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts])]);
+    return wrapped.apply(this, [abilityId, await setRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts])]);
 }
 
 async function onActorRollAbilitySave(wrapped, abilityId, options) {
@@ -886,7 +889,7 @@ async function onActorRollAbilitySave(wrapped, abilityId, options) {
 
     const bonusParts = bonus ? [bonus] : [];
     const optionParts = options.parts || [];
-    return wrapped.apply(this, [abilityId, await addRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts])]);
+    return wrapped.apply(this, [abilityId, await setRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts])]);
 }
 
 function onActorRollDeathSave(wrapped, options) {
