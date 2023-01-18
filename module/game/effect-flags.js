@@ -694,7 +694,7 @@ function checkActorTokenSizeAdjustment(actor) {
         const newSize = sizes[newIndex];
         
         foundry.utils.setProperty(actor, "system.traits.size", newSize);
-        foundry.utils.setProperty(actor.overrides, "system.traits.size", newSize);
+        foundry.utils.setProperty(actor, "overrides.system.traits.size", newSize);
     }
 }
 

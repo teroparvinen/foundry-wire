@@ -38,7 +38,7 @@ export function targetsSingleToken(item) {
 }
 
 export function isSelfTarget(item) {
-    return item.system.target.type === "self";
+    return item.system.target?.type === "self";
 }
 
 export function isSelfRange(item) {
