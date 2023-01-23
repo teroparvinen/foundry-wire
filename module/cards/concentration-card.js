@@ -1,6 +1,6 @@
 import { getSaveOptions } from "../game/effect-flags.js";
 import { fromUuid, fudgeToActor, getActorToken, getSpeaker, i18n } from "../utils.js";
-import { ConfigureSave } from "../apps/configure-save.js";
+import { getDisplayableSaveComponents } from "../game/check-and-save-components.js";
 import { wireSocket } from "../socket.js";
 
 export async function requestConcentrationSave(actor, dc = 10) {
@@ -31,7 +31,7 @@ export class ConcentrationCard {
         switch (action) {
         case "concentration-save":
         case "concentration-save-config":
-                if (card.actor.isOwner) {
+            if (card.actor.isOwner) {
                 let failed = false;
                 const updates = {};
                 const { success, failure } = getSaveOptions(card.actor, "con", undefined, { isConcentration: true });
@@ -43,22 +43,27 @@ export class ConcentrationCard {
                     card.result = "failure";
                     failed = true;
                 } else {
-                    const options = { chatMessage: false, fastForward: true, isConcentration: true };
-                    if (action === "concentration-save-config") {
-                        const dialogOptions = {
+                    const useDialog = action === "concentration-save-config";
+                    const options = { chatMessage: false, fastForward: !useDialog, isConcentration: true };
+
+                    if (useDialog) {
+                        options.dialogOptions = {
                             top: event ? event.clientY - 80 : null,
                             left: window.innerWidth - 610,
-                            title: i18n("wire.configure-check.concentration-title")
+                            title: i18n("wire.configure-check.concentration-title"),
+                            wire: {
+                                rollType: "save",
+                                components: getDisplayableSaveComponents(card.actor, "con")
+                            }
                         }
-                        const app = new ConfigureSave(card.actor, "con", undefined, dialogOptions);
-                        const result = await app.render(true);
-                        foundry.utils.mergeObject(options, result);
                     } else {
                         if (event.altKey && (event.metaKey || event.ctrlKey)) { options.normal = true; }
                         else if (event.altKey) { options.advantage = true; }
                         else if (event.metaKey || event.ctrlKey) { options.disadvantage = true; }
                     }
+
                     const roll = await card.actor.rollAbilitySave("con", options);
+                    if (!roll) { return; }
                     await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
                     updates["flags.wire.result"] = roll.total;
                     card.result = roll.total;

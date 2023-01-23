@@ -1,14 +1,18 @@
-<form>
-    <div class="dialog-content">
+<div class="dialog-content">
+    <form>
         {{#each damageParts}}
-            <div class="configure-damage__damage-row flexrow">
-                <div class="configure-damage__type flex1">{{lookup ../damageLabels type}}</div>
-                <div class="configure-damage__formula flex2">{{formula}}</div>
+            <div class="form-group">
+                <div class="configure-damage__damage-row flexrow">
+                    <div class="configure-damage__type flex1">{{lookup ../damageLabels type}}</div>
+                    <div class="configure-damage__formula flex2">{{formula}}</div>
+                </div>
             </div>
         {{/each}}
-        <input class="configure-damage__custom-damage" name="bonus" autofocus="true" placeholder="{{localize "wire.configure-damage.custom-placeholder"}}" type="text" />
-    </div>
-</form>
+        <div class="form-group">
+            <input class="configure-damage__custom-damage" name="bonus" autofocus="true" placeholder="{{localize "wire.configure-damage.custom-placeholder"}}" type="text" />
+        </div>
+    </form>
+</div>
 <div class="dialog-buttons">
     {{#each buttons as |button id|}}
         <button class="dialog-button {{cssClass}}" data-button="{{id}}" {{disabled button.disabled}}>

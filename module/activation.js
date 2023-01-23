@@ -1,9 +1,10 @@
 import { runInQueue } from "./action-queue.js";
-import { ConfigureDamage } from "./apps/configure-damage.js";
 import { ItemCard } from "./cards/item-card.js";
 import { DocumentProxy } from "./document-proxy.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
+import { getDisplayableAttackComponents, getSituationalAttackComponents } from "./game/attack-components.js";
+import { getDisplayableCheckComponents, getDisplayableSaveComponents } from "./game/check-and-save-components.js";
 import { DamageParts } from "./game/damage-parts.js";
 import { getAbilityCheckOptions, getSaveOptions } from "./game/effect-flags.js";
 import { isSelfTarget } from "./item-properties.js";
@@ -165,6 +166,7 @@ export class Activation {
     async _getChatTemplateData() {
         const attackRoll = this.attackRoll;
         const attackRollTooltip = await attackRoll?.getTooltip();
+        const attackRollBonuses = [...getDisplayableAttackComponents(this.item), ...getSituationalAttackComponents(this.config, true)];
         const attackRollResultType = getAttackRollResultType(attackRoll);
         const damageRoll = await this.getCombinedDamageRoll();
         const damageRollTooltip = await damageRoll?.getTooltip();
@@ -191,6 +193,7 @@ export class Activation {
             attack: {
                 roll: attackRoll,
                 tooltip: attackRollTooltip,
+                bonuses: attackRollBonuses,
                 resultType: attackRollResultType,
                 result: this.attackResult,
                 target: this.attackTarget,
@@ -610,23 +613,7 @@ export class Activation {
     }
 
     async _rollDamage(config = {}, doDialog, dialogOptions) {
-        let additionalDamage;
-        let overrideCritical;
-
-        const situationalBonus = await triggerConditions(this.item.actor, "prepare-damage-roll");
-
-        if (doDialog) {
-            const configuration = new ConfigureDamage(this, dialogOptions, situationalBonus);
-            const { damage, isCritical } = await configuration.render(true);
-            additionalDamage = damage;
-            overrideCritical = isCritical
-        } else {
-            additionalDamage = situationalBonus;
-        }
-
-        foundry.utils.setProperty(this.data, 'config', foundry.utils.mergeObject(this.data.config || {}, config));
-        foundry.utils.setProperty(this.data, 'config.damageBonus', additionalDamage);
-        foundry.utils.setProperty(this.data, 'config.criticalOverride', overrideCritical);
+        foundry.utils.setProperty(this.data, 'config', foundry.utils.mergeObject(this.data.config || {}, { ...config, damage: { doDialog, dialogOptions } }));
         await this._update();
 
         if (this.data.state === "waiting-for-attack-damage-roll") {
@@ -658,11 +645,28 @@ export class Activation {
             await this.applySave(actor, roll, { auto });
         } else {
             let roll;
+
+            const dialogOptions = foundry.utils.mergeObject(options.dialogOptions || {}, {
+                wire: {
+                    rollType: usedCheck ? "check" : "save",
+                    components: usedCheck ?
+                        getDisplayableCheckComponents(this.item.actor, usedCheck) :
+                        getDisplayableSaveComponents(this.item.actor, usedSave)
+                }
+            });
+
             if (usedCheck) {
-                roll = await actor.rollAbilityTest(usedCheck, foundry.utils.mergeObject(rollOptions, { chatMessage: false, fastForward: true, "data.condition": this.condition, "data.config": this.config }));
+                roll = await actor.rollAbilityTest(usedCheck, foundry.utils.mergeObject(
+                    { chatMessage: false, fastForward: !options.useDialog, "data.condition": this.condition, "data.config": this.config },
+                    { ...rollOptions, dialogOptions }
+                ));
             } else {
-                roll = await actor.rollAbilitySave(usedSave, foundry.utils.mergeObject(rollOptions, { chatMessage: false, fastForward: true, "data.condition": this.condition, "data.config": this.config }));
+                roll = await actor.rollAbilitySave(usedSave, foundry.utils.mergeObject(
+                    { chatMessage: false, fastForward: !options.useDialog, "data.condition": this.condition, "data.config": this.config },
+                    { ...rollOptions, dialogOptions }
+                ));
             }
+            if (!roll) { return; }
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.applySave(actor, roll);
         }

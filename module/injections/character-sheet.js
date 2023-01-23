@@ -26,7 +26,7 @@ function onItemUse(wrapped, event) {
     event.preventDefault();
     const itemId = event.currentTarget.closest(".item").dataset.itemId;
     const item = this.actor.items.get(itemId);
-    if ( item ) return item.use({}, event);
+    if ( item ) return item.use({}, { event });
 }
 
 function onItemImageRightClick(event) {
@@ -35,7 +35,7 @@ function onItemImageRightClick(event) {
         event.stopPropagation();
         const itemId = event.currentTarget.closest(".item").dataset.itemId;
         const item = this.items.get(itemId);
-        if ( item ) return item.use({}, event);
+        if ( item ) return item.use({}, { event });
     }
 }
 

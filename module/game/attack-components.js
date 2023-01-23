@@ -10,6 +10,20 @@ export function getDisplayableAttackComponents(item, short = false) {
             }
         });
     }
+    return [];
+}
+
+export function getSituationalAttackComponents(config, deterministicOnly = false) {
+    if (config.attack?.bonus) {
+        const bonus = config.attack.bonus;
+        if (!deterministicOnly || new Roll(bonus).isDeterministic) {
+            return [{
+                i18nKey: "wire.roll-component.situational",
+                value: makeModifier(bonus)
+            }]
+        }
+    }
+    return [];
 }
 
 export function getAttackComponents(item) {

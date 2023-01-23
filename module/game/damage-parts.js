@@ -1,6 +1,7 @@
 import { isAttackMagical } from "../item-properties.js";
-import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant, typeCheckedNumber } from "../utils.js";
+import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant, triggerConditions, typeCheckedNumber } from "../utils.js";
 import { getDamageInflictingMultiplier, getDamageInflictingOptions, getDamageReceivingOptions, getDamageReduction, getEffectFlags } from "./effect-flags.js";
+import { ConfigureDamage } from "../apps/configure-damage.js";
 
 
 export class DamageParts {
@@ -39,7 +40,6 @@ export class DamageParts {
         const spellLevel = activation.config?.spellLevel;
         const variant = activation.config?.variant;
         const onlyUnavoidable = activation.effectiveTargets.length == 0;
-        const additionalDamage = activation.config.damageBonus;
         const isOffhand = activation.config.damageOffhand;
         const isVersatile = activation.config.damageVersatile;
 
@@ -156,11 +156,6 @@ export class DamageParts {
         const actorBonus = getProperty(actorData, `bonuses.${itemData.actionType}`) || {};
         handleDamageString(actorBonus.damage);
 
-        // Add additional custom damage
-        if (additionalDamage) {
-            handleDamageString(additionalDamage);
-        }
-    
         // Handle ammunition damage
         let ammoParts = [];
         const ammoItem = item._ammo;
@@ -169,14 +164,60 @@ export class DamageParts {
             delete item._ammo;
         }
 
+
+        // Fake a dnd5e.preRollDamage hook
+        const doDialog = activation.config.damage?.doDialog;
+        const dialogOptions = activation.config.damage?.dialogOptions || {};
+        const hookConfig = {
+            actor: item.actor,
+            critical: isCritical,
+            data: foundry.utils.mergeObject({ "item.level": spellLevel }, rollData),
+            parts: [],
+            dialogOptions
+        };
+        Hooks.call("dnd5e.preRollDamage", item, hookConfig);
+
+        if (hookConfig.critical !== undefined) { isCritical = hookConfig.critical; }
+        primaryModifiers.push(...hookConfig.parts);
+
+        // Situational bonus
+        const situationalBonus = await triggerConditions(activation.item.actor, "prepare-damage-roll");
+
+        let additionalDamage;
+        if (doDialog) {
+            const damageRows = [...parts, ...ammoParts].filter(p => p.formula).flatMap((part, n) => {
+                if (n === 0) {
+                    const type = part.type;
+                    const mainRow = { formula: Roll.replaceFormulaData(part.formula, rollData), type };
+                    const modifierRows = primaryModifiers.map(m => ({ formula: Roll.replaceFormulaData(m, rollData), type }));
+                    return [mainRow, ...modifierRows];
+                } else {
+                    return [{ formula: Roll.replaceFormulaData(part.formula, rollData), type: part.type }];
+                }
+            });
+            const configuration = new ConfigureDamage(activation, dialogOptions, damageRows, situationalBonus);
+            const result = await configuration.render(true);
+            if (!result) return;
+            const { damage, isCritical: overrideCritical } = result;
+            additionalDamage = damage;
+            isCritical = overrideCritical;
+        }
+
+        if (situationalBonus) {
+            handleDamageString(situationalBonus);
+        }
+        if (additionalDamage) {
+            handleDamageString(additionalDamage);
+        }
+
         // Effect damage multiplier
         parts = parts.map( part => ({ ...part, multiplier: getDamageInflictingMultiplier(item, item.actor, singleTarget, part.type) }));
     
         // Factor in extra critical damage dice from the Barbarian's "Brutal Critical"
-        const criticalBonusDice = itemData.actionType === "mwak" ? item.actor.getFlag("dnd5e", "meleeCriticalDamageDice") ?? 0 : 0;
+        const criticalBonusDice = (itemData.actionType === "mwak" ? item.actor.getFlag("dnd5e", "meleeCriticalDamageDice") ?? 0 : 0) + (hookConfig.criticalBonusDice ?? 0);
     
         // Factor in extra weapon-specific critical damage
-        const criticalBonusDamage = itemData.critical?.damage;
+        const criticalBonusDamage = itemData.critical?.damage + (hookConfig.criticalBonusDamage ? ` + ${hookConfig.criticalBonusDamage}` : '');
 
         // Construct the DamageRoll instances for each part
         const partsWithRolls = [...parts, ...ammoParts].filter(p => p.formula).map((part, n) => {

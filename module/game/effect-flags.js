@@ -1,5 +1,4 @@
 import { runInQueue } from "../action-queue.js";
-import { isInstantaneous } from "../item-properties.js";
 import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, fudgeToActor, getActorToken, getTokenSquarePositions, isActorEffect, isCharacterActor, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
 
 export function getWireFlags() {
@@ -694,7 +693,7 @@ function checkActorTokenSizeAdjustment(actor) {
         const newSize = sizes[newIndex];
         
         foundry.utils.setProperty(actor, "system.traits.size", newSize);
-        foundry.utils.setProperty(actor.overrides, "system.traits.size", newSize);
+        foundry.utils.setProperty(actor, "overrides.system.traits.size", newSize);
     }
 }
 
@@ -823,7 +822,7 @@ function onActorPrepareData(wrapped) {
 }
 
 function onActiveEffectDisplayScrollingStatus(wrapped, enabled) {
-    if (isActorEffect(this) && fudgeToActor(fromUuid(this.origin))?.system.duration?.units === "inst" && !this.flags.wire?.independentDuration) {
+    if (isActorEffect(this) && fromUuid(this.origin)?.system?.duration?.units === "inst" && !this.flags.wire?.independentDuration) {
         return;
     }
     wrapped(enabled);

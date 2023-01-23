@@ -1,4 +1,5 @@
 import { Activation } from "./activation.js";
+import { ConfigureCheck } from "./apps/configure-check.js";
 import { ConcentrationCard } from "./cards/concentration-card.js";
 import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
@@ -11,12 +12,14 @@ export function setupWrappers() {
     libWrapper.register("wire", "ClientKeybindings._onDismiss", onEscape, "OVERRIDE");
     libWrapper.register("wire", "CONFIG.ui.chat.prototype.scrollBottom", onChatLogScrollBottom, "MIXED");
     libWrapper.register("wire", "CONFIG.Actor.documentClass.prototype._preUpdate", onActorPreUpdate, "MIXED");
+    libWrapper.register("wire", "CONFIG.Dice.D20Roll.prototype.configureDialog", configureD20RollDialog, "MIXED");
 }
 
 let templateInfo = null;
 
 async function onItemUse(wrapped, options, event) {
     let configure = true;
+    if (event?.event) { event = event.event; }
     if (event?.shiftKey || event?.altKey || event?.metaKey || event?.ctrlKey || event?.which === 3) {
         configure = false;
     }
@@ -263,5 +266,34 @@ function onChatLogScrollBottom(wrapped, {popout}={}) {
     
         if (log && scrolled < pageHeight) log.scrollTop = log.scrollHeight;
         if (popout) this._popout?.scrollBottom();
+    }
+}
+
+async function configureD20RollDialog(wrapped, rollConfig={}, options={}) {
+    const {title, defaultRollMode, defaultAction=D20Roll.ADV_MODE.NORMAL, chooseModifier=false, defaultAbility, template} = rollConfig;
+
+    if (options.wire?.rollType) {
+        if (options.wire?.rollType === "attack") {
+            delete options.top;
+            delete options.left;
+            delete options.width;
+        }
+    
+        const app = new ConfigureCheck(rollConfig, options);
+        const result = await app.render(true);
+        if (!result) { return null; }
+
+        if (result.bonus) {
+            const bonus = new Roll(result.bonus, this.data);
+            if ( !(bonus.terms[0] instanceof OperatorTerm) ) this.terms.push(new OperatorTerm({operator: "+"}));
+            this.terms = this.terms.concat(bonus.terms);
+        }
+
+        this.options.advantageMode = result.mode;
+        this.configureModifiers();
+
+        return this;
+    } else {
+        return wrapped(rollConfig, options);
     }
 }

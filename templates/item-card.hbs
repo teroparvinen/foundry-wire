@@ -28,7 +28,7 @@
 
     <div class="card-phases">
         {{#unless isGMActorPlayerView}}
-            {{#if (eq activation.state "attack-configured")}}
+            {{#if (eq activation.state "waiting-for-attack-roll")}}
                 <div class="phase-waiting-for-roll">
                     <i class="fas fa-dice-d20 fa-3x anim-pulse"></i>
                 </div>
@@ -49,6 +49,14 @@
                         <div class="flex1 dice-total {{activation.attack.resultType}}">{{activation.attack.roll.total}}</div>
                     </div>
                     <div class="dice-roll">
+                        <div class="dice-tooltip dice-bonuses">
+                            {{#each activation.attack.bonuses}}
+                                <span class="dice-bonus">
+                                    <span class="dice-bonus-label">{{localize i18nKey}}</span>
+                                    <span class="dice-bonus-value">{{value}}</span>
+                                </span>
+                            {{/each}}
+                        </div>
                         {{{activation.attack.tooltip}}}
                     </div>
 

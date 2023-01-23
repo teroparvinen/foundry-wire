@@ -1,7 +1,7 @@
 import { runInQueue } from "./action-queue.js";
-import { ConfigureAttack } from "./apps/configure-attack.js";
 import { DamageCard } from "./cards/damage-card.js";
 import { applyTargetEffects } from "./game/active-effects.js";
+import { getDisplayableAttackComponents, getSituationalAttackComponents } from "./game/attack-components.js";
 import { DamageParts } from "./game/damage-parts.js";
 import { getAttackOptions } from "./game/effect-flags.js";
 import { hasApplicationsOfType, hasDamageOfType, hasEffectsOfType, hasOnlyUnavoidableApplicationsOfType, hasUnavoidableDamageOfType, isAttack, isInstantaneous, isSpell } from "./item-properties.js";
@@ -48,7 +48,6 @@ export class Resolver {
 
     knownStates = [
         "action-trigger-activated",
-        "attack-configured",
         "applyConcentration", 
         "applyDamage", 
         "applyDefaultTargets",
@@ -61,7 +60,6 @@ export class Resolver {
         "applyTargetFromCondition",
         "attackCompleted",
         "confirmTargets",
-        "configure-attack",
         "detachTemplate",
         "idle", 
         "performAttackDamageRoll",
@@ -78,6 +76,7 @@ export class Resolver {
         "targets-confirmed",
         "triggerAction",
         "waiting-for-action-trigger",
+        "waiting-for-attack-roll",
         "waiting-for-attack-damage",
         "waiting-for-attack-damage-roll",
         "waiting-for-attack-result",
@@ -186,30 +185,22 @@ export class Resolver {
                 await this.activation.assignConfig(config);
             }
 
-            if (this.activation.config.attack?.useDialog) {
-                await this.activation.applyState("configure-attack");
-                await this.step(n);
-            } else {
-                await this.activation.applyState("attack-configured", true);
-                await this.step(n);
-            }
-        } else if (isOriginator && this.activation.state === "configure-attack") {
-            const config = this.activation.config;
-            const app = new ConfigureAttack(item, config);
-            const result = await app.render(true);
-
-            if (result != undefined) {
-                await this.activation.assignConfig(result);
-                await this.activation.applyState("attack-configured", true);
-                await this.step(n);
-            }
-        } else if (isOriginator && this.activation.state === "attack-configured") {
             if (!this.activation.singleTarget) {
                 localizedWarning("wire.warn.resolve-performAttackRoll-noTarget");
             }
+
             const options = await getAttackOptions(this.activation.item, this.activation.singleTarget.actor, this.activation.config);
+            const components = [ ...getDisplayableAttackComponents(this.activation.item), ...getSituationalAttackComponents(this.activation.config) ];
+            const roll = await item.rollAttack(foundry.utils.mergeObject(
+                { chatMessage: false, fastForward: !this.activation.config.attack?.useDialog },
+                { ...options, dialogOptions: { wire: { rollType: "attack", components } }}
+            ));
+            if (!roll) {
+                return;
+            }
+
             playAutoAnimation(getActorToken(item.actor), [this.activation.singleTarget.token], item);
-            const roll = await item.rollAttack(foundry.utils.mergeObject({ chatMessage: false, fastForward: true }, options));
+            await this.activation.applyState("waiting-for-attack-roll", true);
             await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
             await this.activation.applyAttackTarget(this.activation.singleTarget.actor);
             await this.activation.applyAttackRoll(roll);
@@ -301,9 +292,12 @@ export class Resolver {
                 await this.step(n);
             }
         } else if (isOriginator && this.activation.state === "rolling-attack-damage") {
-            await this.activation.applyState("waiting-for-attack-damage", true);
-
             const damageParts = await DamageParts.roll(this.activation, true);
+            if (!damageParts) { 
+                return;
+            }
+
+            await this.activation.applyState("waiting-for-attack-damage", true);
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);
@@ -319,9 +313,12 @@ export class Resolver {
                 await this.step(n);
             }
         } else if (isOriginator && this.activation.state === "rolling-save-damage") {
-            await this.activation.applyState("waiting-for-save-damage", true);
-
             const damageParts = await DamageParts.roll(this.activation, false);
+            if (!damageParts) {
+                return;
+            }
+
+            await this.activation.applyState("waiting-for-save-damage", true);
             await damageParts.roll3dDice();
 
             await this.activation.applyDamageRollParts(damageParts);

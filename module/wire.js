@@ -21,6 +21,7 @@ import { initTemplateHooks, placeTemplate, setupTemplateWrappers } from "./templ
 import { setupLogicRolls } from "./logic-rolls.js";
 import { setupDurations } from "./durations.js";
 import { requestConcentrationSave } from "./cards/concentration-card.js";
+import { initArbronSummonerHooks } from "./compatibility/arbron-summoner.js";
 
 Hooks.once("init", () => {
     initHooks();
@@ -36,6 +37,9 @@ Hooks.once("init", () => {
     initRegularRollHooks();
 
     initEffectFlagHooks();
+
+    // Compatibility with other modules
+    initArbronSummonerHooks();
 
     game.wire = {
         DamageParts,

@@ -130,7 +130,9 @@ export function fudgeToActor(candidate) {
     } else if (candidate instanceof CONFIG.Token.objectClass) {
         return candidate.actor;
     } else {
-        console.warn('Could not fudge', candidate, 'to an actor');
+        if (candidate) {
+            console.warn('Could not fudge', candidate, 'to an actor');
+        }
     }
 }
 
@@ -142,7 +144,9 @@ export function fudgeToToken(candidate) {
     } else if (candidate instanceof CONFIG.Actor.documentClass) {
         return getActorToken(candidate);
     } else {
-        console.warn('Could not fudge', candidate, 'to a token');
+        if (candidate) {
+            console.warn('Could not fudge', candidate, 'to a token');
+        }
     }
 }
 

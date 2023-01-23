@@ -15,28 +15,14 @@ export function preRollCheck(item) {
 }
 
 export async function preRollConfig(item, options = {}, event) {
-    const id = item.system;                // Item system data
     const actor = item.actor;
-    const ad = actor.system;               // Actor system data
+    const is = item.system;                // Item system data
+    const as = actor.system;               // Actor system data
 
-    let activationConfig = foundry.utils.mergeObject({}, options.config || {});
-
-    // Reference aspects of the item data necessary for usage
-    const hasArea = isAreaTargetable(item);   // Is the ability usage an AoE?
-    const resource = id.consume || {};        // Resource consumption
-    const recharge = id.recharge || {};       // Recharge mechanic
-    const uses = id?.uses ?? {};              // Limited uses
     const isSpell = item.type === "spell";    // Does the item require a spell slot?
-    const requireSpellSlot = isSpell && (id.level > 0) && CONFIG.DND5E.spellUpcastModes.includes(id.preparation.mode);
 
-    // Define follow-up actions resulting from the item usage
-    let doCreateMeasuredTemplate = hasArea && !options.skipTemplatePlacement;       // Trigger a template creation
-    let doConsumeRecharge = !!recharge.value;     // Consume recharge
-    let doConsumeResource = !!resource.target && (!item.hasAttack || (resource.type !== "ammo")); // Consume a linked (non-ammo) resource
-    let consumedUsageCount = uses.per ? 1 : 0;              // Consume limited uses
-    let consumedItemQuantity = uses.autoDestroy;     // Consume quantity of the item in lieu of uses
-    let consumedSpellLevel = null;               // Consume a specific category of spell slot
-    if (requireSpellSlot) consumedSpellLevel = id.preparation.mode === "pact" ? "pact" : `spell${id.level}`;
+    // Activation config
+    let activationConfig = foundry.utils.mergeObject({}, options.config || {});
 
     if (options.variantOptions && !options.variant && !options.skipVariantSelection) {
         const variant = await new game.wire.SelectVariantDialog(item, options.variantOptions).render(true);
@@ -49,14 +35,33 @@ export async function preRollConfig(item, options = {}, event) {
     }
     activationConfig.variantOptions = options.variantOptions;
     if (isSpell) {
-        activationConfig.spellLevel = id.level;
+        activationConfig.spellLevel = is.level;
         activationConfig.upcastLevel = 0;
     }
 
+    // Reference aspects of the item data necessary for usage
+    const resource = is.consume || {};        // Resource consumption
+    const requireSpellSlot = isSpell && (is.level > 0) && CONFIG.DND5E.spellUpcastModes.includes(is.preparation.mode);
+    const createMeasuredTemplate = isAreaTargetable(item) && !options.skipTemplatePlacement;
+
+    // Define follow-up actions resulting from the item usage
     const useConfig = {
-        doConsumeRecharge, doConsumeResource, consumedSpellLevel, consumedUsageCount, consumedItemQuantity
+        createMeasuredTemplate: isAreaTargetable(item),
+        consumeQuantity: is.uses?.autoDestroy ?? false,
+        consumeRecharge: !!is.recharge?.value,
+        consumeResource: !!resource.target && (!item.hasAttack || (resource.type !== "ammo")),
+        consumeSpellLevel: requireSpellSlot ? is.preparation.mode === "pact" ? "pact" : is.level : null,
+        consumeSpellSlot: requireSpellSlot,
+        consumeUsage: !!is.uses?.per
     };
-    
+    const hookOptions = {
+        activationConfig,
+        flags: {}
+    };
+
+    // Display a configuration dialog to customize the usage
+    useConfig.needsConfiguration = useConfig.consumeRecharge || useConfig.consumeResource || useConfig.consumeSpellSlot || useConfig.consumeUsage;
+
     if (options.customConfigurationCallback) {
         const cbResult = await runAndAwait(options.customConfigurationCallback, item, useConfig);
 
@@ -67,49 +72,51 @@ export async function preRollConfig(item, options = {}, event) {
         }
     }
 
-    // Display a configuration dialog to customize the usage
-    const needsConfiguration =
-        doConsumeRecharge || doConsumeResource || requireSpellSlot || useConfig.consumedUsageCount;
-    if (needsConfiguration && !options.skipConfigurationDialog && !useConfig.skipDefaultDialog) {
+    if (Hooks.call("dnd5e.preUseItem", item, useConfig, hookOptions) === false ) return;
+
+    // Display configuration dialog
+    if (useConfig.needsConfiguration && !options.skipConfigurationDialog && !useConfig.skipDefaultDialog) {
         const configuration = await game.dnd5e.applications.item.AbilityUseDialog.create(item);
         if (!configuration) return;
+        foundry.utils.mergeObject(useConfig, configuration);
+    }
 
-        // Determine consumption preferences
-        useConfig.consumedUsageCount = Boolean(configuration.consumeUsage) ? 1 : 0;
-        useConfig.doConsumeRecharge = Boolean(configuration.consumeRecharge);
-        useConfig.doConsumeResource = Boolean(configuration.consumeResource);
-
-        // Handle spell upcasting
-        if (requireSpellSlot) {
-            useConfig.consumedSpellLevel = configuration.consumeSpellLevel === "pact" ? "pact" : `spell${configuration.consumeSpellLevel}`;
-            if (configuration.consumeSpellSlot === false) useConfig.consumedSpellLevel = null;
-            const upcastLevel = configuration.consumeSpellLevel === "pact" ? ad.spells.pact.level : parseInt(configuration.consumeSpellLevel);
-
+    // Handle spell upcasting
+    if (isSpell && (useConfig.consumeSpellSlot || useConfig.consumeSpellLevel)) {
+        const upcastLevel = useConfig.consumeSpellLevel === "pact" ? as.spells.pact.level : parseInt(useConfig.consumeSpellLevel);
+        if (upcastLevel && (upcastLevel !== is.level)) {
             activationConfig.spellLevel = upcastLevel;
-            activationConfig.upcastLevel = upcastLevel - id.level;
+            activationConfig.upcastLevel = upcastLevel - is.level;
         }
     }
 
+    if (Hooks.call("dnd5e.preItemUsageConsumption", item, useConfig, hookOptions) === false) return;
+    
     // Determine whether the item can be used by testing for resource consumption
-    const usage = getUsageUpdates(item, useConfig);
+    const usage = _getUsageUpdates(item, useConfig);
     if (!usage) return;
-    const { actorUpdates, itemUpdates, resourceUpdates } = usage;
+
+    if (Hooks.call("dnd5e.itemUsageConsumption", item, useConfig, hookOptions, usage) === false) return;
 
     // Commit pending data updates
+    const { actorUpdates, itemUpdates, resourceUpdates } = usage;
     if (!foundry.utils.isEmpty(itemUpdates)) await item.update(itemUpdates);
-    if (consumedItemQuantity && (item.system.quantity === 0)) { activationConfig.deleteItem = true }
+    if (useConfig.consumeQuantity && (item.system.quantity === 0)) { activationConfig.deleteItem = true }
     if (!foundry.utils.isEmpty(actorUpdates)) await actor.update(actorUpdates);
     if (resourceUpdates.length) await actor.updateEmbeddedDocuments("Item", resourceUpdates);
 
+
     // Initiate measured template creation
     let templateData;
-    if (doCreateMeasuredTemplate) {
+    if (createMeasuredTemplate) {
         templateData = await createTemplate(item, activationConfig, "immediate", options);
         if (!templateData) { return; }
     }
 
     // Create or return the Chat Message data
     const messageData = await item.displayCard({ rollMode: null, createMessage: false });
+
+    Hooks.callAll("dnd5e.useItem", item, useConfig, hookOptions, null);
 
     return {
         messageData: messageData,
@@ -118,17 +125,15 @@ export async function preRollConfig(item, options = {}, event) {
     };
 }
 
-function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedSpellLevel, consumedUsageCount, consumedItemQuantity }) {
-
-    // Reference item data
-    const id = item.system;
+// Custom version allowing more than 1 usages to be spent
+function _getUsageUpdates(item, { consumeQuantity, consumeRecharge, consumeResource, consumeSpellSlot, consumeSpellLevel, consumeUsage, consumedUsageCount=1}) {
     const actorUpdates = {};
     const itemUpdates = {};
     const resourceUpdates = [];
 
     // Consume Recharge
-    if (doConsumeRecharge) {
-        const recharge = id.recharge || {};
+    if (consumeRecharge) {
+        const recharge = item.system.recharge || {};
         if (recharge.charged === false) {
             ui.notifications.warn(game.i18n.format("DND5E.ItemNoUses", { name: item.name }));
             return false;
@@ -137,40 +142,39 @@ function getUsageUpdates(item, { doConsumeRecharge, doConsumeResource, consumedS
     }
 
     // Consume Limited Resource
-    if (doConsumeResource) {
+    if (consumeResource) {
         const canConsume = item._handleConsumeResource(itemUpdates, actorUpdates, resourceUpdates);
         if (canConsume === false) return false;
     }
 
     // Consume Spell Slots
-    if (consumedSpellLevel) {
-        if (Number.isNumeric(consumedSpellLevel)) consumedSpellLevel = `spell${consumedSpellLevel}`;
-        const level = item.actor?.system.spells[consumedSpellLevel];
+    if (consumeSpellSlot && consumeSpellLevel) {
+        if (Number.isNumeric(consumeSpellLevel)) consumeSpellLevel = `spell${consumeSpellLevel}`;
+        const level = item.actor?.system.spells[consumeSpellLevel];
         const spells = Number(level?.value ?? 0);
         if (spells === 0) {
-            const label = game.i18n.localize(consumedSpellLevel === "pact" ? "DND5E.SpellProgPact" : `DND5E.SpellLevel${id.level}`);
+            const labelKey = consumeSpellLevel === "pact" ? "DND5E.SpellProgPact" : `DND5E.SpellLevel${item.system.level}`;
+            const label = game.i18n.localize(labelKey);
             ui.notifications.warn(game.i18n.format("DND5E.SpellCastNoSlots", { name: item.name, level: label }));
             return false;
         }
-        actorUpdates[`system.spells.${consumedSpellLevel}.value`] = Math.max(spells - 1, 0);
+        actorUpdates[`system.spells.${consumeSpellLevel}.value`] = Math.max(spells - 1, 0);
     }
 
     // Consume Limited Usage
-    if (consumedUsageCount) {
-        const uses = id.uses || {};
+    if (consumeUsage) {
+        const uses = item.system.uses || {};
         const available = Number(uses.value ?? 0);
         let used = false;
-
-        // Reduce usages
         const remaining = Math.max(available - consumedUsageCount, 0);
         if (available >= consumedUsageCount) {
             used = true;
             itemUpdates["system.uses.value"] = remaining;
         }
 
-        // Reduce quantity if not reducing usages or if usages hit 0 and we are set to consumeQuantity
-        if (consumedItemQuantity && (!used || (remaining === 0))) {
-            const q = Number(id.quantity ?? 1);
+        // Reduce quantity if not reducing usages or if usages hit zero, and we are set to consumeQuantity
+        if (consumeQuantity && (!used || (remaining === 0))) {
+            const q = Number(item.system.quantity ?? 1);
             if (q >= 1) {
                 used = true;
                 itemUpdates["system.quantity"] = Math.max(q - 1, 0);

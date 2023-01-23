@@ -1,15 +1,15 @@
 <div class="dialog-content">
     <form>
-        <div class="dialog-content">
-            {{#each components}}
+        {{#each components}}
+            <div class="form-group">
                 <div class="configure-check__part-row flexrow">
                     <div class="configure-check__part flex1">{{localize i18nKey}}</div>
                     <div class="configure-check__bonus flex2">{{value}}</div>
                 </div>
-            {{/each}}
-            <div class="configure-check__values flexrow">
-                <input class="configure-check__custom-bonus flex2" name="bonus" autofocus="true" placeholder="{{localize "wire.configure-check.custom-placeholder"}}" type="text" />
             </div>
+        {{/each}}
+        <div class="form-group">
+            <input class="configure-check__custom-bonus flex2" name="bonus" autofocus="true" placeholder="{{localize "wire.configure-check.custom-placeholder"}}" type="text" />
         </div>
     </form>
 </div>

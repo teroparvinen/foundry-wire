@@ -91,6 +91,25 @@
     padding-top: 10px;
 }
 
+.item-card .dice-bonuses .dice-bonus {
+    background-color: rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    padding: 3px 10px;
+    margin-right: 2px;
+    border-radius: 13px;
+    line-height: 17px;
+    display: inline-block;
+}
+
+.item-card .dice-bonuses .dice-bonus-label {
+    font-size: 14px;
+}
+
+.item-card .dice-bonuses .dice-bonus-value {
+    font-size: 16px;
+    font-weight: bold;
+}
+
 .item-card .flexrow {
     align-items: center;
     gap: 10px;
@@ -676,7 +695,7 @@
     padding: 2px;
 }
 
-.configure-damage .configure-damage__custom-damage {
+.configure-damage .configure-damage__custom-damage, .configure-check .configure-check__custom-bonus {
     margin-top: 5px;
     margin-bottom: 10px;
 }
@@ -698,7 +717,7 @@
 }
 
 .configure-damage .dialog-buttons .dialog-button.default, .configure-check .dialog-buttons .dialog-button.default {
-    border: 2px solid var(--color-border-light-tertiary);
+    border: 2px solid var(--color-border-light-tertiary) !important;
 }
 
 .configure-check__hint {

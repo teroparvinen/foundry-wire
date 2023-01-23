@@ -2,10 +2,11 @@ import { DamageParts } from "../game/damage-parts.js";
 import { i18n, makeModifier } from "../utils.js";
 
 export class ConfigureDamage extends Dialog {
-    constructor(activation, options, situationalBonus) {
+    constructor(activation, options, damageRows, situationalBonus) {
         super({}, options);
 
         this.activation = activation;
+        this.damageRows = damageRows;
         this.situationalBonus = situationalBonus;
 
         this.data = {
@@ -42,11 +43,10 @@ export class ConfigureDamage extends Dialog {
     getData(opts) {
         const { buttons } = super.getData(opts);
 
-        const damageParts = this.damageParts.result.map(r => {
-            const formula = r.roll.formula.replace(RollTerm.FLAVOR_REGEXP, "");
-            const type = r.part.type;
-            return { formula, type };
-        });
+        const damageParts = this.damageRows.map(r => ({
+            formula: r.formula.replace(RollTerm.FLAVOR_REGEXP, ""),
+            type: r.type
+        }));
         const damageLabels = { ...CONFIG.DND5E.damageTypes, ...CONFIG.DND5E.healingTypes };
 
         if (this.situationalBonus) {
@@ -64,9 +64,9 @@ export class ConfigureDamage extends Dialog {
     _onSubmitRoll(html, mode) {
         const form = html[0].querySelector("form");
 
-        const value = form.bonus.value;
+        const damage = form.bonus.value.trim();
         this.resolve({
-            damage: [this.situationalBonus, value].filter(v => v).join(" + "),
+            damage,
             isCritical: mode == "critical"
         });
         this.close();
@@ -75,7 +75,7 @@ export class ConfigureDamage extends Dialog {
 
     render(force=false, options={}) {
         return new Promise(async (resolve, reject) => {
-            this.damageParts = await DamageParts.roll(this.activation, !!this.activation.attackResult, { evaluateCritical: false });
+            // this.damageParts = await DamageParts.roll(this.activation, !!this.activation.attackResult, { evaluateCritical: false });
             this.resolve = resolve;
             super.render(force, options);
         });

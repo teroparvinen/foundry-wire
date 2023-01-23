@@ -64,6 +64,10 @@ function castPrimitive(input) {
     return input;
 }
 
+function checkResult(result) {
+    return result !== "" && result !== undefined;
+}
+
 function safeEval(expression) {
     // Duplicated: core / Roll.safeEval
     let result;
@@ -74,6 +78,9 @@ function safeEval(expression) {
     } catch {
         result = undefined;
     }
+    if (!checkResult(result)) {
+        throw new Error(`Roll.safeEval produced an invalid result from expression "${expression}"`);
+    }
     return castPrimitive(result);
 }
 
@@ -81,6 +88,9 @@ function evaluateTotal() {
     // Duplicated: core / Roll._evaluateTotal
     const expression = this.terms.map(t => t.total).join(" ");
     const total = this.constructor.safeEval(expression);
+    if (!checkResult(total)) {
+        throw new Error(`The dice roll formula ${this.formula} did not produce a valid outcome.`);
+    }
     return castPrimitive(total);
 }
 

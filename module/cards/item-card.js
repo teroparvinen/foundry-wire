@@ -1,6 +1,4 @@
 import { Activation } from "../activation.js";
-import { ConfigureCheck } from "../apps/configure-check.js";
-import { ConfigureSave } from "../apps/configure-save.js";
 import { DamageParts } from "../game/damage-parts.js";
 import { fromUuid, fudgeToActor, getActorToken } from "../utils.js";
 
@@ -57,10 +55,12 @@ export class ItemCard {
         html.on("click", ".wire-item-card .card-phases a", this._onChatCardAction.bind(this));
 
         html.on("click", ".wire-item-card .card-phases .dice-total", function(event) {
-            const tip = event.target.closest('.roll-container').querySelector('.dice-tooltip');
-            if ( !tip.classList.contains("expanded") ) $(tip).slideDown(200);
-            else $(tip).slideUp(200);
-            tip.classList.toggle("expanded");
+            const tips = event.target.closest('.roll-container').querySelectorAll('.dice-tooltip');
+            for (const tip of tips) {
+                if ( !tip.classList.contains("expanded") ) $(tip).slideDown(200);
+                else $(tip).slideUp(200);
+                tip.classList.toggle("expanded");
+            }
         });
 
         html.on("click", ".wire-item-card .save-popup-toggle", function(event) {
@@ -124,6 +124,7 @@ export class ItemCard {
             case "wire-save":
             case "wire-save-success":
             case "wire-save-failure":
+            case "wire-save-config":
                 const actorUuid = event.target.closest('.saving-throw-target').dataset.actorId;
                 const actor = fudgeToActor(fromUuid(actorUuid));
                 if (actor && (game.user.isGM || actor.isOwner)) {
@@ -136,26 +137,15 @@ export class ItemCard {
                     }
                     if (action === "wire-save-success") saveOptions.success = true;
                     if (action === "wire-save-failure") saveOptions.failure = true;
+                    if (action === "wire-save-config") {
+                        saveOptions.useDialog = true;
+                        saveOptions.dialogOptions = {
+                            top: event ? event.clientY - 80 : null,
+                            left: window.innerWidth - 610
+                        }
+                    }
                     activation._rollSave(actor, saveOptions);
                 }
-                break;
-            case "wire-save-config":
-                await (async () => {
-                    const dialogOptions = {
-                        top: event ? event.clientY - 80 : null,
-                        left: window.innerWidth - 610
-                    }
-                    const actorUuid = event.target.closest('.saving-throw-target').dataset.actorId;
-                    const actor = fudgeToActor(fromUuid(actorUuid));
-                    const usedSave = activation.item.system.save.ability;
-                    const usedCheck = activation.abilityToCheckForSave;
-                    const app = usedCheck ? new ConfigureCheck(actor, usedCheck, activation, dialogOptions) : new ConfigureSave(actor, usedSave, activation, dialogOptions);
-                    const result = await app.render(true);
-        
-                    if (result != undefined) {
-                        activation._rollSave(actor, result);
-                    }
-                })();
                 break;
             case "roll-all-saves":
             case "roll-npc-saves":

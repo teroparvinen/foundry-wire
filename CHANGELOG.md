@@ -1,5 +1,17 @@
 # Changes by version number
 
+### 0.10.12
+
+Module compatibility
+
+- Arbron's Summoning: Implemented compatibility. Any possible configuration parameters registered on the WIRE activation will be available through `@config` on summoned creatures.
+- The hook changes will probably help with generic module compatibility with roll configuration dialogs. Build-a-Bonus seems to work and Advantage Reminder messages should work as well.
+
+Changes
+
+- Implemented some dnd5e hooks that were missing after the transition to Foundry v10. As a result, other modules will probably work better. This change also included refactors to roll configuration dialogs to make the hooks more useful.
+- Added a better attack roll breakdown for static bonuses.
+
 ### 0.10.11
 
 Changes

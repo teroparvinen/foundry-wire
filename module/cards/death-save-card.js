@@ -1,4 +1,4 @@
-import { ConfigureSave } from "../apps/configure-save.js";
+import { getDisplayableSaveComponents } from "../game/check-and-save-components.js";
 import { getDeathSaveOptions } from "../game/effect-flags.js";
 import { wireSocket } from "../socket.js";
 import { fromUuid, fudgeToActor, getActorToken, getSpeaker, i18n } from "../utils.js";
@@ -37,16 +37,19 @@ export class DeathSaveCard {
                     card.result = "failure";
                     failed = true;
                 } else {
-                    const options = { chatMessage: false, fastForward: true };
-                    if (action === "death-save-config") {
-                        const dialogOptions = {
+                    const useDialog = action === "death-save-config";
+                    const options = { chatMessage: false, fastForward: !useDialog };
+
+                    if (useDialog) {
+                        options.dialogOptions = {
                             top: event ? event.clientY - 80 : null,
                             left: window.innerWidth - 610,
-                            title: i18n("wire.configure-check.death-save-title")
+                            title: i18n("wire.configure-check.death-save-title"),
+                            wire: {
+                                rollType: "save",
+                                components: getDisplayableSaveComponents(card.actor, undefined)
+                            }
                         }
-                        const app = new ConfigureSave(card.actor, "death", undefined, dialogOptions);
-                        const result = await app.render(true);
-                        foundry.utils.mergeObject(options, result);
                     } else {
                         if (event.altKey && (event.metaKey || event.ctrlKey)) { options.normal = true; }
                         else if (event.altKey) { options.advantage = true; }
@@ -54,9 +57,11 @@ export class DeathSaveCard {
                     }
 
                     const roll = await card.actor.rollDeathSave(options);
+                    if (!roll) { return; }
                     await game.dice3d?.showForRoll(roll, game.user, !game.user.isGM);
                     updates["flags.wire.result"] = roll.total;
                     card.result = roll.total;
+                    card.targetValue = roll.options.targetValue;
                 }
                 updates["content"] = await card._renderContent();
                 if (message.isOwner) {
@@ -75,11 +80,12 @@ export class DeathSaveCard {
 
     static fromMessage(message) {
         const data = message.flags.wire;
-        return new DeathSaveCard(fudgeToActor(fromUuid(data.actorUuid)));
+        return new DeathSaveCard(fudgeToActor(fromUuid(data.actorUuid)), data.targetValue || 10);
     }
 
-    constructor(actor) {
+    constructor(actor, targetValue = 10) {
         this.actor = actor;
+        this.targetValue = targetValue;
     }
 
     async make() {
@@ -104,7 +110,8 @@ export class DeathSaveCard {
     async _getFlagData() {
         return {
             isDeathSaveCard: true,
-            actorUuid: this.actor.uuid
+            actorUuid: this.actor.uuid,
+            targetValue: 10
         };
     }
 
@@ -113,8 +120,8 @@ export class DeathSaveCard {
             actor: this.actor,
             token: getActorToken(this.actor),
             result: this.result,
-            isSuccess: this.result === "success" || this.result >= 10,
-            isFailure: this.result === "failure" || this.result < 10
+            isSuccess: this.result === "success" || this.result >= this.targetValue,
+            isFailure: this.result === "failure" || this.result < this.targetValue
         };
         return await renderTemplate(DeathSaveCard.templateName, templateData);
     }
