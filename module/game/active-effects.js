@@ -45,6 +45,15 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
             },
             extraData || {}
         );
+        
+        // For compatibility with DF Convenient effect descriptions and Visual Active Effects descriptions
+        if (foundry.utils.hasProperty(effect.flags, "convenientDescription")) {
+            data.flags["convenientDescription"] = effect.flags["convenientDescription"];
+        }
+
+        if (foundry.utils.hasProperty(effect.flags, "visual-active-effects")) {
+            data.flags["visual-active-effects"] = effect.flags["visual-active-effects"];
+        }
 
         return { data, rolls };
     };
