@@ -32,6 +32,8 @@ export function setupLogicRolls() {
 function formatReplacementResult(value) {
     if (Array.isArray(value)) {
         return value.length ? value.map(v => formatReplacementResult(v)).join() : "undefined";
+    } else if (value instanceof Set) {
+        return [...value].map(v => formatReplacementResult(v)).join();
     } else {
         const str = String(value).trim();
         const isQuotable = str.match(/^[a-z][\w\s\.-]*$/i) || str === "";

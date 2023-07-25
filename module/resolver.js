@@ -445,33 +445,39 @@ export class Resolver {
             }
         } else if (!this.activation.state) {
             // Done
-            if (this.activation.attackResult) {
-                await this._triggerAttackConditions();
-            }
-            if (this.activation.isPrimaryRoll && isSpell(item)) {
-                await this._triggerSpellCastConditions();
+            if (isOriginator) {
+                if (this.activation.attackResult) {
+                    await this._triggerAttackConditions();
+                }
+                if (this.activation.isPrimaryRoll && isSpell(item)) {
+                    await this._triggerSpellCastConditions();
+                }
             }
 
-            if (isInstantaneous(item)) {
-                const createdEffects = this.activation.createdEffects.filter(e => e).filter(e => !e.flags.wire?.independentDuration && (e.flags.wire?.applicationType || "immediate") === "immediate");
+            if (isGM) {
+                if (isInstantaneous(item)) {
+                    const createdEffects = this.activation.createdEffects.filter(e => e).filter(e => !e.flags.wire?.independentDuration && (e.flags.wire?.applicationType || "immediate") === "immediate");
+                    runInQueue(async () => {
+                        for (const effect of createdEffects) {
+                            await effect.delete();
+                        }
+                    });
+                }
+    
+                const resolvingEffects = this.activation.createdEffects.filter(e => e).filter(e => e && e.flags.wire?.applicationType === "resolving");
                 runInQueue(async () => {
-                    for (const effect of createdEffects) {
+                    for (const effect of resolvingEffects) {
                         await effect.delete();
                     }
                 });
             }
 
-            const resolvingEffects = this.activation.createdEffects.filter(e => e).filter(e => e && e.flags.wire?.applicationType === "resolving");
-            runInQueue(async () => {
-                for (const effect of resolvingEffects) {
-                    await effect.delete();
+            if (isOriginator) {
+                this._checkActions();
+
+                if (this.activation.config.deleteItem) {
+                    await item.delete();
                 }
-            });
-
-            this._checkActions();
-
-            if (this.activation.config.deleteItem) {
-                await item.delete();
             }
         }
     }

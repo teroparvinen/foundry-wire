@@ -5,7 +5,7 @@ export class ConfigureCheck extends Dialog {
 
         this.config = config;
 
-        const defaultMode = config.advantage ? "advantage" : (config.disadvantage ? "disadvantage" : "normal");
+        const defaultMode = config.defaultAction > 0 ? "advantage" : (config.defaultAction < 0 ? "disadvantage" : "normal");
 
         this.data = {
             buttons: {

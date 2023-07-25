@@ -19,7 +19,7 @@ export function initItemSheetHooks() {
 
         const usageInsertPoint = html.find('.tab.details select[name="system.activation.type"]').closest('.form-group').nextAll('h3:first');
 
-        if (item.system.activation.type) {
+        if (item.system.activation?.type) {
             // Variants
             const variants = item.flags.wire?.variants || [];
             const variantRows = variants.map((v, i) => {

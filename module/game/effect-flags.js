@@ -113,6 +113,8 @@ export function getWireFlags() {
         ...[
             "flags.wire.critical.all",
             "flags.wire.grants.critical.all",
+            "flags.wire.criticalThreshold",
+            "flags.wire.grants.criticalThreshold"
         ],
         ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
             `flags.wire.critical.${at}`,

@@ -1,5 +1,15 @@
 # Changes by version number
 
+### 0.10.13
+
+Fixes
+
+- Fixed an issue passing non-string formulas to `game.wire.DamageParts.multiValue`.
+- Fixed a dnd5e 2.1 compatibility issue with roll formula variables referring to actor traits.
+- Fixed an issue that resolved some item activation clean up steps multiple times. This might cause bonus action and reaction conditions to be applied multiple times.
+- Fixed a regression from the last update causing wrong buttons to highlight in d20 config dialogs.
+- Fixed some issues happening when activating loot type items.
+
 ### 0.10.12
 
 Module compatibility

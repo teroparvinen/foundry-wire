@@ -9,7 +9,7 @@ export function hasConcentration(item) {
 }
 
 export function hasDuration(item) {
-    return durationUnits.includes(item.system.duration.units);
+    return durationUnits.includes(item.system.duration?.units);
 }
 
 export function isInstantaneous(item) {
@@ -30,15 +30,15 @@ export function isSave(item) {
 }
 
 export function isTokenTargetable(item) {
-    return tokenTargetables.includes(item.system.target.type);
+    return tokenTargetables.includes(item.system.target?.type);
 }
 
 export function targetsSingleToken(item) {
-    return (!item.system.target.value || item.system.target.value === 1) && isTokenTargetable(item);
+    return (!item.system.target?.value || item.system.target?.value === 1) && isTokenTargetable(item);
 }
 
 export function isSelfTarget(item) {
-    return item.system.target.type === "self";
+    return item.system.target?.type === "self";
 }
 
 export function isSelfRange(item) {
@@ -54,7 +54,7 @@ export function isAreaTargetable(item) {
 }
 
 export function hasSelfAttachableAreaTarget(item) {
-    return isSelfRange(item) && isAreaTargetable(item) && (item.system.target.type === "sphere" || item.system.target.type === "radius");
+    return isSelfRange(item) && isAreaTargetable(item) && (item.system.target?.type === "sphere" || item.system.target?.type === "radius");
 }
 
 export function hasDamageOfType(item, applicationType, variant) {

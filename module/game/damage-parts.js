@@ -26,11 +26,6 @@ export class DamageParts {
             isCritical = true;
         }
 
-        // Override
-        if (activation.config.criticalOverride === true) {
-            isCritical = true;
-        }
-
         return isCritical;
     }
 
@@ -320,7 +315,7 @@ export class DamageParts {
 
     static async multiValue(formulasWithTypes) {
         const parts = formulasWithTypes.map(ft => ({
-            formula: ft.formula,
+            formula: String(ft.formula),
             type: ft.type,
             halving: "none",
             applicationType: "immediate"
