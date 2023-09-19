@@ -171,13 +171,14 @@ export class Activation {
         const damageRoll = await this.getCombinedDamageRoll();
         const damageRollTooltip = await damageRoll?.getTooltip();
 
+        const healingTypes = Object.keys(CONFIG.DND5E.healingTypes);
         const isTempHps = 
             (this.item.system.damage?.parts?.length && this.item.system.damage?.parts?.every(p => p[1] === "temphp")) ||
             (this.damageParts?.result?.length && this.damageParts?.result?.every(p => p.part.type === "temphp"));
         const isHealing = 
             !isTempHps && 
-            (this.item.system.damage?.parts?.length && this.item.system.damage?.parts?.every(p => ["healing", "temphp"].includes(p[1]))) || 
-            (this.damageParts?.result?.length && this.damageParts?.result?.every(p => ["healing", "temphp"].includes(p.part.type)));
+            (this.item.system.damage?.parts?.length && this.item.system.damage?.parts?.every(p => healingTypes.includes(p[1]))) || 
+            (this.damageParts?.result?.length && this.damageParts?.result?.every(p => healingTypes.includes(p.part.type)));
 
         const allowOffhand = 
             (this.actor.flags.wire?.dualWielder && this.item.type === "weapon" && this.item.system.actionType === "mwak") ||
@@ -533,6 +534,8 @@ export class Activation {
         runInQueue(async () => {
             await wireSocket.executeForOthers("refreshActivation", messageUuid, updateCard);
         });
+
+        Hooks.call("wire.applyState", state, this);
     }
 
     async wait() {

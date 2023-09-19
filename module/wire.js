@@ -13,7 +13,7 @@ import { initItemSheetHooks, setupItemSheetWrappers } from "./injections/item-sh
 import { setupKeybindings } from "./keybindings.js";
 import { setupSocket } from "./socket.js";
 import { setupWrappers } from "./wrappers.js";
-import { createScrollingText, fromUuid, fudgeToActor, fudgeToToken, getActorToken } from "./utils.js";
+import { createScrollingText, fromUuid, fudgeToActor, fudgeToToken, getActorToken, getMasterEffect, isActivationTypeAvailable, markActivationTypeUsed } from "./utils.js";
 import { createChildEffects, removeChildEffects } from "./game/active-effects.js";
 import { initSettings } from "./settings.js";
 import { getAvailablePackImports, importPackItems, setupCompendiumHooks } from "./compendiums.js";
@@ -22,6 +22,8 @@ import { setupLogicRolls } from "./logic-rolls.js";
 import { setupDurations } from "./durations.js";
 import { requestConcentrationSave } from "./cards/concentration-card.js";
 import { initArbronSummonerHooks } from "./compatibility/arbron-summoner.js";
+import { setupScriptEditHooks } from "./script-edit.js";
+import { checkMigration } from "./migration.js";
 
 Hooks.once("init", () => {
     initHooks();
@@ -56,6 +58,9 @@ Hooks.once("init", () => {
         getActorToken,
         placeTemplate,
         removeChildEffects,
+        getMasterEffect,
+        isActivationTypeAvailable,
+        markActivationTypeUsed,
         requestConcentrationSave,
         runInQueue,
 
@@ -74,6 +79,7 @@ Hooks.once("setup", () => {
     setupActionQueue();
     setupKeybindings();
     setupCompendiumHooks();
+    setupScriptEditHooks();
     setupLogicRolls();
     setupDurations();
 });
@@ -92,8 +98,9 @@ Hooks.once("ready", async () => {
 
     readyCharacterSheetWrappers();
 
+    await checkMigration();
+
     await checkBetaWarning();
-    await checkItemMacroSettings();
     await checkTimesUpWarning();
 });
 
@@ -105,22 +112,6 @@ async function checkBetaWarning() {
             yes: () => { game.settings.set("wire", "beta-warning-displayed", true) },
             no: () => {},
             defaultYes: false
-        });
-    }
-}
-
-async function checkItemMacroSettings() {
-    if (game.user.isGM && game.modules.get("itemacro")?.active && (game.settings.get("itemacro", "charsheet") || game.settings.get("itemacro", "defaultmacro"))) {
-        await Dialog.confirm({
-            title: game.i18n.localize("wire.module-check.itemacro-title"),
-            content: game.i18n.localize("wire.module-check.itemacro-content"),
-            yes: () => {
-                game.settings.set("itemacro", "charsheet", false);
-                game.settings.set("itemacro", "defaultmacro", false);
-                setTimeout(() => window.location.reload(), 500);
-            },
-            no: () => {},
-            defaultYes: true
         });
     }
 }

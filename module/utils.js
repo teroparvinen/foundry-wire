@@ -330,12 +330,33 @@ export async function triggerConditions(actor, condition, { externalTargetActor 
         for (let condition of conditions) {
             const item = fromUuid(effect.origin);
             if (!isActorImmune(actor, item)) {
-                const updater = makeUpdater(condition, effect, item, { externalTargetActor, details });
+                const effectDetails = typeof(details) === "function" ? details(effect) : details
+                const updater = makeUpdater(condition, effect, item, { externalTargetActor, details: effectDetails });
                 result = await updater?.process();
             }
         }
     }
     return result;
+}
+
+export async function triggerConditionsWithResults(actor, condition, { externalTargetActor = null, ignoredEffects = [], details = null } = {}) {
+    let results = [];
+    const effects = actor.effects.filter(e => isEffectEnabled(e) && !ignoredEffects.includes(e))
+    for (let effect of effects) {
+        const conditions = effect.flags.wire?.conditions?.filter(c => c.condition === condition) ?? [];
+        for (let condition of conditions) {
+            const item = fromUuid(effect.origin);
+            if (!isActorImmune(actor, item)) {
+                const updater = makeUpdater(condition, effect, item, { externalTargetActor, details });
+                const result = await updater?.process();
+                if (result) {
+                    const effectUuid = effect.uuid;
+                    results.push({ result, effectUuid });
+                }
+            }
+        }
+    }
+    return results;
 }
 
 export function getDisposition(actor) {
@@ -410,6 +431,10 @@ export function isEffectEnabled(effect) {
     return !effect.isSuppressed && !effect.disabled;
 }
 
+export function getMasterEffect(effect) {
+    return fromUuid(effect.flags.wire?.masterEffectUuid);
+}
+
 export function areAreaConditionsBlockedForActor(item, actor) {
     const itemUuid = item.uuid;
     return !!actor.effects.find(e => isEffectEnabled(e) && e.origin === itemUuid && e.flags.wire?.blocksAreaConditions);
@@ -447,8 +472,14 @@ export function deleteTokenFX(token, effect) {
     }
 }
 
+export function runItemMacro(item, event) {
+    if (game.modules.get("itemacro")?.active && item.hasMacro()) {
+        item.executeMacro(event);
+    }
+}
+
 export function isActorDefeated(actor) {
-    return actor.effects?.some(e => e.getFlag("core", "statusId") === CONFIG.specialStatusEffects.DEFEATED);
+    return actor.effects?.some(e => e.statuses.has(CONFIG.specialStatusEffects.DEFEATED));
 }
 
 export function tokenSeparation(token1, token2) {
@@ -530,4 +561,25 @@ export function createScrollingText(token, text, floatUp = true) {
 
 export function isCharacterActor(actor) {
     return actor && ["character", "npc"].includes(actor.type);
+}
+
+export function isActivationTypeAvailable(actor, activationType) {
+    const properties = game.wire.trackedActivationTypeProperties[activationType]
+    if (properties && game.settings.get("wire", properties.setting)) {
+        return !actor.effects.find(effect => effect.label === properties.condition);
+    }
+    return true;
+}
+
+export async function markActivationTypeUsed(activationType, item) {
+    const properties = game.wire.trackedActivationTypeProperties[activationType]
+    if (properties && game.settings.get("wire", properties.setting)) {
+        const ceApi = game.dfreds?.effectInterface;
+        const uuid = item.actor.uuid;
+        if (ceApi?.findEffectByName(properties.condition)) {
+            if (!ceApi?.hasEffectApplied(properties.condition, uuid)) {
+                await ceApi?.addEffect({ effectName: properties.condition, uuid, origin: item.uuid });
+            }
+        }
+    }
 }

@@ -4,13 +4,13 @@
     "description": "Adds active effects handling and workflow improvements to item rolls",
     "authors": [
         {
-            "name": "Tero Parvinen (Whistler#3253)"
+            "name": "Tero Parvinen (tero.p)"
         }
     ],
-    "version": "0.10.13",
+    "version": "0.11.0",
     "compatibility": {
-        "minimum": 10,
-        "verified": 10
+        "minimum": 11,
+        "verified": 11
     },
     "relationships": {
         "systems": [{

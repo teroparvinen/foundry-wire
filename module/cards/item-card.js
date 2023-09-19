@@ -23,7 +23,7 @@ export class ItemCard {
                 isVersatile: item.isVersatile,
                 isSpell: item.type === "spell",
                 activation: activationData,
-                abilityNames: CONFIG.DND5E.abilities,
+                abilityNames: Object.entries(CONFIG.DND5E.abilities).reduce((r, a) => { r[a[0]] = a[1].label; return r; }, {}),
                 isSecondary,
                 settings: {
                     revealSaveDc: game.settings.get("wire", "reveal-save-dc"),

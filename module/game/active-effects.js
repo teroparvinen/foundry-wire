@@ -39,7 +39,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                         masterEffectUuid: (masterEffect && !effect.flags.wire?.independentDuration) ? masterEffect.uuid : null
                     },
                     core: {
-                        statusId: " "
+                        // statusId: " "
                     }
                 }
             },
@@ -113,7 +113,7 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
                         masterEffectUuid: (masterEffect && !effect.flags.wire?.independentDuration) ? masterEffect.uuid : null
                     },
                     core: createStatus ? {
-                        statusId: " "
+                        // statusId: " "
                     } : undefined
                 }
             },

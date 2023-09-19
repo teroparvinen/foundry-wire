@@ -170,13 +170,13 @@ export function initHooks() {
             if (effect.getFlag("wire", "isMasterEffect")) {
                 teardownMasterEffect(effect);
             }
-    
+
             // Turn update linked effect deleted
             const casterUuid = effect.getFlag("wire", "castingActorUuid");
             if (casterUuid) {
                 const caster = fromUuid(casterUuid);
                 const effectUuids = caster?.flags.wire?.turnUpdatedEffectUuids?.filter(uuid => uuid !== effect.uuid);
-                caster.setFlag("wire", "turnUpdatedEffectUuids", effectUuids);
+                caster?.setFlag("wire", "turnUpdatedEffectUuids", effectUuids);
             }
 
             // Aura deleted

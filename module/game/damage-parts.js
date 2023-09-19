@@ -1,5 +1,5 @@
 import { isAttackMagical } from "../item-properties.js";
-import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant, triggerConditions, typeCheckedNumber } from "../utils.js";
+import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant, triggerConditions, triggerConditionsWithResults, typeCheckedNumber } from "../utils.js";
 import { getDamageInflictingMultiplier, getDamageInflictingOptions, getDamageReceivingOptions, getDamageReduction, getEffectFlags } from "./effect-flags.js";
 import { ConfigureDamage } from "../apps/configure-damage.js";
 
@@ -128,7 +128,7 @@ export class DamageParts {
                     }
                 }
                 const nonOperatorTermsWithMults = termsWithMults.filter(tm => !(tm.term instanceof OperatorTerm));
-                const damageTypes = [...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"];
+                const damageTypes = [...Object.keys(CONFIG.DND5E.damageTypes), ...Object.keys(CONFIG.DND5E.healingTypes)];
                 const allTypesValid = nonOperatorTermsWithMults.every(tm => !tm.term.flavor || damageTypes.includes(tm.term.flavor));
                 if (isValid && allTypesValid) {
                     const recognizedTermsWithMults = nonOperatorTermsWithMults.filter(tm => !tm.term.flavor || damageTypes.includes(tm.term.flavor));
@@ -176,7 +176,8 @@ export class DamageParts {
         primaryModifiers.push(...hookConfig.parts);
 
         // Situational bonus
-        const situationalBonus = await triggerConditions(activation.item.actor, "prepare-damage-roll");
+        const situationalBonusResults = await triggerConditionsWithResults(activation.item.actor, "prepare-damage-roll");
+        const situationalBonus = situationalBonusResults.map(r => r.result).filter(r => r).join(" + ");
 
         let additionalDamage;
         if (doDialog) {
@@ -392,8 +393,8 @@ export class DamageParts {
         }));
 
         const components = Object.entries(damageByType).map(([type, caused]) => {
-            if (type === "healing") { return { healing: caused } };
-            if (type === "temphp") { return { temphp: caused } };
+            if (type === "temphp") { return { temphp: caused } }
+            else if (Object.keys(CONFIG.DND5E.healingTypes).includes(type)) { return { healing: caused } }
 
             const di = traits.di.all || [...traits.di.value].includes(type) || nmi ? 0 : 1;
             const dr = traits.dr.all || [...traits.dr.value].includes(type) || nmr ? 0.5 : 1;

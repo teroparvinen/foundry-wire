@@ -554,8 +554,9 @@ export class Resolver {
                 });
             }
 
-            const ceEffect = ceApi.findEffectByName("Concentrating").convertToActiveEffectData({ origin: item.uuid, overlay: false });
-            const effectData = duplicate(ceEffect);
+            const effectData = ceApi.findEffectByName("Concentrating").toObject();
+            effectData.origin = item.uuid;
+            effectData.flags = foundry.utils.mergeObject(effectData.flags, { core: { overlay: false } })
             effectData.duration = effectDurationFromItemDuration(item.system.duration, isInCombat(actor));
             effectData.flags = foundry.utils.mergeObject(effectData.flags, {
                 wire: {
@@ -613,7 +614,7 @@ export class Resolver {
                     conditions
                 },
                 core: {
-                    statusId: " "
+                    // statusId: " "
                 }
             }
         };
@@ -641,7 +642,7 @@ export class Resolver {
                     immuneItemUuid: item.uuid
                 },
                 core: {
-                    statusId: " "
+                    // statusId: " "
                 }
             }
         }]);

@@ -5,7 +5,7 @@ import { ItemCard } from "./cards/item-card.js";
 import { Flow } from "./flow.js";
 import { itemRollFlow } from "./flows/item-roll.js";
 import { preRollCheck, preRollConfig } from "./preroll.js";
-import { fromUuid, getItemTurnAdjustedActivationType, i18n, isCharacterActor, isItemActorOnCanvas, triggerConditions } from "./utils.js";
+import { fromUuid, getItemTurnAdjustedActivationType, i18n, isCharacterActor, isItemActorOnCanvas, runItemMacro, triggerConditions } from "./utils.js";
 
 export function setupWrappers() {
     libWrapper.register("wire", "CONFIG.Item.documentClass.prototype.use", onItemUse, "MIXED");
@@ -20,7 +20,7 @@ let templateInfo = null;
 async function onItemUse(wrapped, options, event) {
     let configure = true;
     if (event?.event) { event = event.event; }
-    if (event?.shiftKey || event?.altKey || event?.metaKey || event?.ctrlKey || event?.which === 3) {
+    if (event?.shiftKey || event?.altKey || event?.metaKey || event?.ctrlKey || event?.which === 3 || options.fastForward) {
         configure = false;
     }
 
@@ -32,6 +32,8 @@ async function onItemUse(wrapped, options, event) {
     }
 
     console.log("ROLLING ITEM", item, options);
+
+    runItemMacro(item, event);
 
     const activationType = getItemTurnAdjustedActivationType(item);
     const properties = game.wire.trackedActivationTypeProperties[activationType]

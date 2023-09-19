@@ -135,11 +135,11 @@
 }
 
 .item-card .phase-attack .token-ac {
-    color: rgba(0, 0, 0, .65); /* var(--secondary-color); */
-    border: 1px solid #b5b3a4; /* var(--color-border-light-primary); */
+    color: rgba(0, 0, 0, .65);
+    border: 1px solid #b5b3a4;
     padding: 5px;
     border-radius: 3px;
-    background: rgba(255, 255, 255, .2); /* var(--faint-white); */
+    background: rgba(255, 255, 255, .2);
 }
 
 .item-card .confirm-buttons {
@@ -152,7 +152,7 @@
 .item-card .confirm-buttons > * {
     flex: 1 50px;
     margin: 0;
-    border: 1px solid #7a7971; /* var(--color-border-light-tertiary); */
+    border: 1px solid #7a7971;
     background-color: rgba(0, 0, 0, 0.1);
     text-align: center;
 }
@@ -192,7 +192,7 @@
 .item-card .phase-waiting-for-roll {
     padding: 10px;
     text-align: center;
-    color: rgba(0, 0, 0, .4); /* var(--icon-font); */
+    color: rgba(0, 0, 0, .4);
 }
 
 @keyframes beat {
@@ -216,7 +216,7 @@
 }
 
 .item-card .waiting-for-hit {
-    color: #444; /* var(--color-text-dark-3); */
+    color: #444;
     padding: 0 20px;
 }
 
@@ -431,7 +431,7 @@
 }
 
 .damage-card .target-buttons > a {
-    border: 1px solid #7a7971; /* var(--color-border-light-tertiary); */
+    border: 1px solid #7a7971;
     background: rgba(0, 0, 0, 0.1);
 }
 
@@ -690,7 +690,7 @@
 
 .configure-damage__formula, .configure-check__bonus {
     text-align: center;
-    background: var(--faint-color);
+    background: rgba(0, 0, 0, 0.1);
     border-radius: 5px;
     padding: 2px;
 }
@@ -711,7 +711,7 @@
 }
 
 .configure-damage .dialog-buttons .dialog-button, .configure-check .dialog-buttons .dialog-button {
-    border: 1px solid var(--light-color);
+    border: 1px solid rgba(0, 0, 0, 0.25);
     border-radius: 5px;
     background: transparent;
 }
@@ -745,7 +745,7 @@
     gap: 5px;
     color: black;
     background: url(/ui/parchment.jpg) repeat;
-    border: 1px solid #000; /* var(--color-border-dark); */
+    border: 1px solid #000;
     border-radius: 3px;
 }
 
@@ -792,8 +792,8 @@
     text-align: center;
     padding: 15px;
     margin-bottom: 10px;
-    background: var(--faintest-color);
-    border: 1px solid var(--faint-color);
+    background: rgba(0, 0, 0, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     border-radius: 5px;
 }
 
@@ -806,7 +806,7 @@
 }
 
 .compendium-upgrade .warning {
-    color: var(--warning-accent);
+    color: rgba(255, 0, 0, .6);
 }
 
 .compendium-upgrade-container {
@@ -828,7 +828,7 @@
 .item-upgrade-row {
     align-items: center;
     gap: 10px;
-    background: var(--faintest-color);
+    background: rgba(0, 0, 0, 0.05);
     margin-bottom: 2px;
     border-radius: 5px;
 }

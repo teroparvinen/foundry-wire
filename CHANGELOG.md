@@ -1,9 +1,22 @@
 # Changes by version number
 
-### 0.10.13
+### 0.11
+
+Breaking changes
+
+- Moved all WIRE scripts away from Item Macro and into data that is owned by WIRE. There is a migration process that will move the content of all item macros into WIRE scripts when a world is started using this version.
+- With this change, Item Macro is no longer a recommended module to use with WIRE. In most cases it probably only adds confusion so at the moment it is recommended only if you must use it for something else that should trigger in parallel with what WIRE does. If an item has an Item Macro, WIRE will execute it when an item is rolled.
+
+Changes
+
+- Updated things to Foundry V11
+- Guidance et al. were not working nicely with respect to when an effect was deleted as a result of a check or save having been completed. To address this, three new conditions were added, "Complete a skill check", "Complete an ability check" and "Complete an ability save". These will be triggered when the respective roll has been made and the `details` parameter will equal what was returned from the preparation condition. With this change several effects can also now affect a single roll with their own modifiers.
+- There is a "WIRE Script" button at the top of each item sheet that can be used to access the WIRE script. This dialog has separate buttons for "Save" and "Save and close" allowing macro editing to continue while testing scripts as well as an "Activate item" button that activates the item rather than trying to execute the script as independent code.
 
 Fixes
 
+- Updated to the new version of the Convenient Effects API
+- WIRE will now properly handle custom healing types outside the standard selection of `healing` and `temphp`.
 - Fixed an issue passing non-string formulas to `game.wire.DamageParts.multiValue`.
 - Fixed a dnd5e 2.1 compatibility issue with roll formula variables referring to actor traits.
 - Fixed an issue that resolved some item activation clean up steps multiple times. This might cause bonus action and reaction conditions to be applied multiple times.

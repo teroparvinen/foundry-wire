@@ -13,11 +13,10 @@ export class Flow {
         this.allowMacro = allowMacro;
         this.isConditionTrigger = isConditionTriggered;
 
-        const macroData = item?.flags.itemacro?.macro;
-        const macroCommand = macroData?.command?.trim() || macroData?.data?.command?.trim(); // Support for failed V9 item macro migration 
-        if (macroCommand) {
+        const scriptContent = item?.flags.wire?.script?.trim();
+        if (scriptContent) {
             try {
-                this.macroFunction = new Function(macroCommand);
+                this.macroFunction = new Function(scriptContent);
             } catch (error) {
                 handleError(error);
             }

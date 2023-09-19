@@ -57,6 +57,9 @@ const conditionList = [
     ["prepare-ability-save", "all"],
     ["prepare-attack-roll", "all"],
     ["prepare-damage-roll", "all"],
+    ["complete-skill-check", "all"],
+    ["complete-ability-check", "all"],
+    ["complete-ability-save", "all"],
     ["effect-created", "effect"],
     ["effect-ends", "all"]
 ];

@@ -1,0 +1,17 @@
+<form class="{{cssClass}} flexcol" autocomplete="off">
+    <header class="sheet-header">
+        <img src="{{item.img}}" title="{{item.name}}" height="64" width="64"/>
+        <h1>{{item.name}}</h1>
+    </header>
+
+    <div class="form-group stacked command">
+        <label>Command</label>
+        <textarea name="command">{{data.command}}</textarea>
+    </div>
+
+    <footer class="sheet-footer flexrow">
+        <button class="save" type="button"><i class="fas fa-save"></i> {{ localize "wire.edit-script.save" }}</button>
+        <button class="save-and-close" type="button"><i class="fas fa-save"></i> {{ localize "wire.edit-script.save-and-close" }}</button>
+        <button class="activate" type="button"><i class="fas fa-dice-d20"></i> {{ localize "wire.edit-script.activate" }}</button>
+    </footer>
+</form>

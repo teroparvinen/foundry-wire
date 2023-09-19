@@ -50,7 +50,8 @@
             "successful-save-immunity": "Successful save gives immunity",
             "confirm-no-targets-title": "Confirm Targets",
             "confirm-no-targets-content": "<p>You did not select any targets. Do you want to continue?</p>",
-            "no-targets": "No targets"
+            "no-targets": "No targets",
+            "edit-script": "WIRE Script"
         },
         "item": {
             "damage-none": "None on save/miss",
@@ -122,6 +123,9 @@
             "condition-prepare-ability-save": "Prepare a saving throw",
             "condition-prepare-attack-roll": "Prepare an attack roll",
             "condition-prepare-damage-roll": "Prepare a damage roll",
+            "condition-complete-skill-check": "Complete a skill check",
+            "condition-complete-ability-check": "Complete an ability check",
+            "condition-complete-ability-save": "Complete a saving throw",
             "condition-effect-created": "The effect is created",
             "condition-effect-ends": "The effect ends",
             "update-apply-immediate": "Activate immediate damage and effects",
@@ -175,6 +179,12 @@
             "roll": "Normal",
             "critical": "Critical",
             "custom-placeholder": "e.g. 2 / 1d4 / 1d6[fire]"
+        },
+        "edit-script": {
+            "save": "Save",
+            "save-and-close": "Save and close",
+            "activate": "Activate Item",
+            "title": "{name} - Script"
         },
         "roll-component": {
             "item": "Item",
@@ -268,10 +278,11 @@
             "content": "<p>This is a large and ambitious module and it has only seen a very limited amount of testing among a wider public. There will be bugs, potentially game stopping ones. Please keep this in mind as you try it out.</p><p>I appreciate any interest in using the module and good bug reports in the module repository issue tracker can help get issues fixed for all the interested users.</p><p>As this is a complex module, reading the documentation on github (both the README and the wiki) is strongly recommended. Missing or unclear documentation can also be reported on the issue tracker.</p><p>I want to specifically mention that any unforeseen problems following public release might require changes that are not compatible with some items set up to work with WIRE and future updates might require you to redo some of the customization you've done already. I will try to keep this to a minimum and apologize in advance for any inconvenience this might cause.</p><p>Thank you for checking WIRE out. Clicking Yes below will hide this message in the future.</p>"
         },
         "module-check": {
-            "itemacro-title": "Item Macro settings warning",
-            "itemacro-content": "<p>The following Item Macro settings should be off for WIRE and Item Macro to work correctly together.</p><ul><li>Character Sheet Hook</li><li>Override default macro execution</li></ul><p>At least one of them is currently enabled. Do you want to use the recommended settings?</p>",
             "times-up-title": "Times Up module conflict",
             "times-up-content": "<p>Times Up is no longer recommended to be used with WIRE. WIRE now has its own duration tracking adopted to best fit the module's needs. Continuing to use Times Up may cause unpredictable behavior.</p><p>Do you want to disable Times Up?</p>"
+        },
+        "migration": {
+            "itemacro-to-script": "Migrated Item Macro scripts to WIRE scripts. {count} items were affected. See the update notes for details and the console for a list of changes."
         }
     }
 }

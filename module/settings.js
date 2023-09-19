@@ -203,4 +203,13 @@ export function initSettings() {
             default: false
         }
     );
+
+    game.settings.register(
+        "wire",
+        "migratedVersion",
+        {
+            scope: "world",
+            type: String
+        }
+    );
 }

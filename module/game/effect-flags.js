@@ -1,5 +1,5 @@
 import { runInQueue } from "../action-queue.js";
-import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, fudgeToActor, getActorToken, getTokenSquarePositions, isActorEffect, isCharacterActor, isEffectEnabled, triggerConditions, typeCheckedNumber } from "../utils.js";
+import { actorConditionImmunityTypes, addTokenFX, deleteTokenFX, evaluateFormula, fromUuid, fudgeToActor, getActorToken, getTokenSquarePositions, isActorEffect, isCharacterActor, isEffectEnabled, triggerConditions, triggerConditionsWithResults, typeCheckedNumber } from "../utils.js";
 
 export function getWireFlags() {
     return [
@@ -92,7 +92,7 @@ export function getWireFlags() {
             `flags.wire.receive.max.damage.${at}`,
             `flags.wire.receive.min.damage.${at}`
         ]),
-        ...[...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"].flatMap(dt => [
+        ...[...Object.keys(CONFIG.DND5E.damageTypes), ...Object.keys(CONFIG.DND5E.healingTypes)].flatMap(dt => [
             `flags.wire.max.damage.${dt}`,
             `flags.wire.min.damage.${dt}`,
             `flags.wire.receive.max.damage.${dt}`,
@@ -106,7 +106,7 @@ export function getWireFlags() {
         ...Object.keys(CONFIG.DND5E.itemActionTypes).flatMap(at => [
             `flags.wire.damagereduction.${at}`,
         ]),
-        ...[...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"].flatMap(dt => [
+        ...[...Object.keys(CONFIG.DND5E.damageTypes), ...Object.keys(CONFIG.DND5E.healingTypes)].flatMap(dt => [
             `flags.wire.damagereduction.${dt}`,
         ]),
 
@@ -133,7 +133,7 @@ export function getWireFlags() {
             `flags.wire.damage.multiplier.creature.${ct}`,
             `flags.wire.grants.damage.multiplier.creature.${ct}`
         ]),
-        ...[...Object.keys(CONFIG.DND5E.damageTypes), "healing", "temphp"].flatMap(dt => [
+        ...[...Object.keys(CONFIG.DND5E.damageTypes), ...Object.keys(CONFIG.DND5E.healingTypes)].flatMap(dt => [
             `flags.wire.damage.multiplier.type.${dt}`,
             `flags.wire.grants.damage.multiplier.type.${dt}`
         ]),
@@ -440,10 +440,10 @@ function applyConditionImmunities(actor) {
 
     const statuses = actor.effects
         .filter(effect => {
-            const statusId = effect.flags.core?.statusId;
-            const isConvenient = effect.flags.isConvenient;
+            const isImmuneToStatus = new Set([...immunities].filter((x) => effect.statuses.has(x))).size > 0;
+            const isConvenient = effect.flags["dfreds-convenient-effects"]?.isConvenient;
 
-            if (isConvenient && immunities.includes(effect.label.toLowerCase()) || immunities.includes(statusId)) {
+            if (isConvenient && immunities.includes(effect.label.toLowerCase()) || isImmuneToStatus) {
                 return true;
             }
         });
@@ -846,7 +846,7 @@ async function setRollParts(options, parts) {
 }
 
 async function onActorRollSkill(wrapped, skillId, options) {
-    const bonus = await triggerConditions(this, "prepare-skill-check");
+    const bonusResults = await triggerConditionsWithResults(this, "prepare-skill-check");
 
     const skill = this.system.skills[skillId];
     const abilityId = skill.ability;
@@ -866,31 +866,59 @@ async function onActorRollSkill(wrapped, skillId, options) {
     const advantage = options.advantage || (isAdvantage && !isDisdvantage);
     const disadvantage = options.disadvantage || (isDisdvantage && !isAdvantage);
 
-    return wrapped.apply(this, [skillId, await setRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), bonus ? [bonus] : [])]);
+    const bonusParts = bonusResults.map(r => r.result);
+    const rollOptions = await setRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), bonusParts);
+    const roll = await wrapped.apply(this, [skillId, rollOptions]);
+    if (roll) {
+        await triggerConditions(
+            this,
+            "complete-skill-check",
+            { details: (effect) => bonusResults.find(r => r.effectUuid == effect.uuid)?.result }
+        );
+    }
+    return roll;
 }
 
 async function onActorRollAbilityTest(wrapped, abilityId, options) {
-    const bonus = await triggerConditions(this, "prepare-ability-check");
+    const bonusResults = await triggerConditionsWithResults(this, "prepare-ability-check");
 
     const checkOptions = getAbilityCheckOptions(this, abilityId);
     const advantage = options.advantage || (checkOptions.advantage && !options.disadvantage && !options.normal);
     const disadvantage = options.disadvantage || (checkOptions.disadvantage && !options.advantage && !options.normal);
 
-    const bonusParts = bonus ? [bonus] : [];
+    const bonusParts = bonusResults.map(r => r.result);
     const optionParts = options.parts || [];
-    return wrapped.apply(this, [abilityId, await setRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts])]);
+    const rollOptions = await setRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts]);
+    const roll = await wrapped.apply(this, [abilityId, rollOptions]);
+    if (roll) {
+        await triggerConditions(
+            this,
+            "complete-ability-check",
+            { details: (effect) => bonusResults.find(r => r.effectUuid == effect.uuid)?.result }
+        );
+    }
+    return roll;
 }
 
 async function onActorRollAbilitySave(wrapped, abilityId, options) {
-    const bonus = await triggerConditions(this, "prepare-ability-save");
+    const bonusResults = await triggerConditionsWithResults(this, "prepare-ability-save");
 
     const saveOptions = getSaveOptions(this, abilityId, undefined, options);
     const advantage = options.advantage || (saveOptions.advantage && !options.disadvantage && !options.normal);
     const disadvantage = options.disadvantage || (saveOptions.disadvantage && !options.advantage && !options.normal);
 
-    const bonusParts = bonus ? [bonus] : [];
+    const bonusParts = bonusResults.map(r => r.result);
     const optionParts = options.parts || [];
-    return wrapped.apply(this, [abilityId, await setRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts])]);
+    const rollOptions = await setRollParts(foundry.utils.mergeObject(options, { advantage, disadvantage }), [...optionParts, ...bonusParts]);
+    const roll = await wrapped.apply(this, [abilityId, rollOptions]);
+    if (roll) {
+        await triggerConditions(
+            this,
+            "complete-ability-save",
+            { details: (effect) => bonusResults.find(r => r.effectUuid == effect.uuid)?.result }
+        );
+    }
+    return roll;
 }
 
 function onActorRollDeathSave(wrapped, options) {

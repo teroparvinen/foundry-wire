@@ -218,7 +218,7 @@ export function initItemSheetHooks() {
 
         // Checked ability and save immunity
         const checkedAbility = item.flags.wire?.checkedAbility;
-        const abilityOptions = Object.entries(CONFIG.DND5E.abilities).map(a => `<option value="${a[0]}" ${selected(checkedAbility, a[0])}>${a[1]}</option>`)
+        const abilityOptions = Object.entries(CONFIG.DND5E.abilities).map(a => `<option value="${a[0]}" ${selected(checkedAbility, a[0])}>${a[1].label}</option>`)
         html.find('.damage-parts').nextAll('.input-select').first().after(`
             <div class="form-group input-select">
                 <label>${i18n("wire.ui.ability-check")}</label>
