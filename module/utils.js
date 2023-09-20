@@ -1,3 +1,4 @@
+import { setInternalTemplateTargeting } from "./templates.js";
 import { makeUpdater } from "./updater-utility.js";
 
 export function fromUuid(uuid) {
@@ -291,7 +292,7 @@ export function getTokenTemplateIds(token, requireAll = false) {
 }
 
 export function getTemplateTokens(template, requireAll = true) {
-    const templatePositions = canvas.grid.highlightLayers[`MeasuredTemplate.${template.id}`]?.positions;
+    const templatePositions = canvas.grid.highlightLayers[`MeasuredTemplate.${template.id ?? "null.preview"}`]?.positions;
     if (templatePositions) {
         const tokens = canvas.tokens.objects.children.filter(t => isCharacterActor(t.actor));
         const result = tokens
@@ -395,6 +396,8 @@ export function isCastersTurn(item) {
 export async function setTemplateTargeting(state) {
     if (game.modules.get("df-templates")?.active) {
         await game.settings.set("df-templates", "template-targeting-toggle", state);
+    } else {
+        setInternalTemplateTargeting(state);
     }
 }
 
@@ -581,5 +584,19 @@ export async function markActivationTypeUsed(activationType, item) {
                 await ceApi?.addEffect({ effectName: properties.condition, uuid, origin: item.uuid });
             }
         }
+    }
+}
+
+export function throttle(cb, delay = 250) {
+    let shouldWait = false
+
+    return (...args) => {
+        if (shouldWait) return
+
+        cb(...args)
+        shouldWait = true
+        setTimeout(() => {
+            shouldWait = false
+        }, delay)
     }
 }

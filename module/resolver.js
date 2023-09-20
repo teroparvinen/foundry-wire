@@ -483,15 +483,17 @@ export class Resolver {
     }
 
     _checkActions() {
-        const item = this.activation.item;
-        const activationType = getItemTurnAdjustedActivationType(item);
-        const properties = game.wire.trackedActivationTypeProperties[activationType]
-        if (properties && game.settings.get("wire", properties.setting)) {
-            const ceApi = game.dfreds?.effectInterface;
-            const uuid = item.actor.uuid;
-            if (ceApi?.findEffectByName(properties.condition)) {
-                if (!ceApi?.hasEffectApplied(properties.condition, uuid)) {
-                    ceApi?.addEffect({ effectName: properties.condition, uuid, origin: item.uuid });
+        if (!this.activation.condition) {
+            const item = this.activation.item;
+            const activationType = getItemTurnAdjustedActivationType(item);
+            const properties = game.wire.trackedActivationTypeProperties[activationType]
+            if (properties && game.settings.get("wire", properties.setting)) {
+                const ceApi = game.dfreds?.effectInterface;
+                const uuid = item.actor.uuid;
+                if (ceApi?.findEffectByName(properties.condition)) {
+                    if (!ceApi?.hasEffectApplied(properties.condition, uuid)) {
+                        ceApi?.addEffect({ effectName: properties.condition, uuid, origin: item.uuid });
+                    }
                 }
             }
         }

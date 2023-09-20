@@ -256,6 +256,7 @@ export function initItemSheetHooks() {
 
 export function setupItemSheetWrappers() {
     libWrapper.register("wire", "game.dnd5e.applications.item.ItemSheet5e.prototype._getSubmitData", onItemSubmit, "MIXED");
+    libWrapper.register("wire", "game.dnd5e.documents.Item5e.prototype._prepareActivation", onItemPrepareActivation, "MIXED");
 }
 
 function onItemSubmit(wrapped, updateData) {
@@ -287,4 +288,14 @@ function onItemSubmit(wrapped, updateData) {
     if (conditions) submitData['flags.wire.conditions'] = Object.values(conditions);
 
     return submitData;
+}
+
+function onItemPrepareActivation(wrapped) {
+    wrapped();
+
+    if (!("activation" in this.system)) return;
+    const C = CONFIG.DND5E;
+
+    let tgt = { ...(this.system.target ?? {}), ...(this.flags.wire?.override?.target ?? {}) };
+    this.labels.target = tgt.type ? [tgt.value, C.distanceUnits[tgt.units], C.targetTypes[tgt.type]].filterJoin(" ") : "";
 }

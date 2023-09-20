@@ -109,7 +109,15 @@ export function hasOnlyUnavoidableApplicationsOfType(item, applicationType, vari
     return !hasSaveableApplicationsOfType(item, applicationType, variant) && hasUnavoidableApplicationsOfType(item, applicationType, variant);
 }
 
-export function isAttackMagical(item) {
+export function getAttackProperties(item) {
+    const properties = new Set();
     const isActorAttackMagical = item.actor.getFlag("wire", "damage.magical");
-    return (item.type === "weapon" && item.system.properties.mgc) || item.type === "spell" || isActorAttackMagical;
+    const isSpell = item.type === "spell";
+    if (isActorAttackMagical || isSpell) {
+        properties.add("mgc");
+    }
+    if (item.type === "weapon") {
+        Object.keys(item.system.properties).filter(k => item.system.properties[k]).forEach(k => properties.add(k));
+    }
+    return properties;
 }

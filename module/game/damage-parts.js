@@ -1,4 +1,4 @@
-import { isAttackMagical } from "../item-properties.js";
+import { getAttackProperties } from "../item-properties.js";
 import { compositeDamageParts, getAttackRollResultType, localizedWarning, stringMatchesVariant, triggerConditions, triggerConditionsWithResults, typeCheckedNumber } from "../utils.js";
 import { getDamageInflictingMultiplier, getDamageInflictingOptions, getDamageReceivingOptions, getDamageReduction, getEffectFlags } from "./effect-flags.js";
 import { ConfigureDamage } from "../apps/configure-damage.js";
@@ -356,10 +356,17 @@ export class DamageParts {
         }
 
         const traits = actor.system.traits;
-        const isMagical = isAttackMagical(item);
-        const nmi = [...traits.di.value].includes("physical") && !isMagical;
-        const nmr = [...traits.dr.value].includes("physical") && !isMagical;
-        const nmv = [...traits.dv.value].includes("physical") && !isMagical;
+        const attackProperties = getAttackProperties(item);
+        const isMagical = attackProperties.has("mgc");
+
+        function canBypass(type, modifier) {
+            if (Object.keys(CONFIG.DND5E.physicalDamageTypes).includes(type)) {
+                if (new Set([...modifier.bypasses].filter(i => attackProperties.has(i))).size) {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         let damageReduction = getDamageReduction(actor);
         let reductionApplied = 0;
@@ -396,9 +403,9 @@ export class DamageParts {
             if (type === "temphp") { return { temphp: caused } }
             else if (Object.keys(CONFIG.DND5E.healingTypes).includes(type)) { return { healing: caused } }
 
-            const di = traits.di.all || [...traits.di.value].includes(type) || nmi ? 0 : 1;
-            const dr = traits.dr.all || [...traits.dr.value].includes(type) || nmr ? 0.5 : 1;
-            const dv = traits.dv.all || [...traits.dv.value].includes(type) || nmv ? 2 : 1;
+            const di = !canBypass(type, traits.di) && (traits.di.all || [...traits.di.value].includes(type)) ? 0 : 1;
+            const dr = !canBypass(type, traits.dr) && (traits.dr.all || [...traits.dr.value].includes(type)) ? 0.5 : 1;
+            const dv = !canBypass(type, traits.dv) && (traits.dv.all || [...traits.dv.value].includes(type)) ? 2 : 1;
 
             return {
                 damage: Math.floor(caused * di * dr * dv),

@@ -1,6 +1,19 @@
 # Changes by version number
 
-### 0.11
+### 0.11.1
+
+Changes
+
+- DF Template Enhancements has been the recommended way to target tokens using area effect templates. That mod hasn't been updated to support Foundry version 11 yet, so this version of WIRE contains a simple workaround that targets tokens using the Foundry stock templates when they are placed and that module is not active.
+
+Fixes
+
+- Damage immunity/resistance bypass now works correctly
+- The target entry ("1 Creature" etc.) in the item property list on the desription tab will now properly show the value overridden by WIRE.
+- When using the "Treat all out of turn actions as reactions" option, secondary activations (like spells affecting their targets on the target's turn) no longer cause the item owner to be flagged as having used their reaction.
+- When showing the attack configuration dialog, WIRE will now collect all modifiers provided by other modules through hooks to display in the dialog. The bonuses did apply before the fix, but were not shown on the dialog.
+
+### 0.11.0
 
 Breaking changes
 

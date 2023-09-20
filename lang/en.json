@@ -192,6 +192,7 @@
             "prof": "Proficiency",
             "bonus": "Bonus",
             "ammo": "Ammo Bonus",
+            "other": "Other",
             "specificSave": "This save",
             "allSaves": "All saves",
             "specificCheck": "This check",

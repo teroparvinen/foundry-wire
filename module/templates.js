@@ -1,5 +1,5 @@
 import { hasApplicationsOfType, hasSelfAttachableAreaTarget } from "./item-properties.js";
-import { evaluateFormula, getActorToken, getTokenSceneUnitSize, setTemplateTargeting } from "./utils.js";
+import { evaluateFormula, getActorToken, getTemplateTokens, getTokenSceneUnitSize, setTemplateTargeting, throttle } from "./utils.js";
 
 export function initTemplateHooks() {
     Hooks.on("updateToken", async (tokenDoc, changes, options, user) => {
@@ -20,6 +20,10 @@ export function initTemplateHooks() {
 
 export function setupTemplateWrappers() {
     libWrapper.register("wire", "MeasuredTemplate.prototype._refreshRulerText", onTemplateRefreshRulerText, "MIXED");
+
+    if (!game.modules.get("df-templates")?.active) {
+        libWrapper.register("wire", "MeasuredTemplate.prototype.highlightGrid", onTemplateHighlightGrid, "MIXED")
+    }
 }
 
 function onTemplateRefreshRulerText(wrapped) {
@@ -179,4 +183,26 @@ export async function placeTemplate(item, config, { selectTargets = true, preven
         await template.destroy();
         return template.document.toObject();
     }
+}
+
+let isTemplateTargeting = false;
+
+export function setInternalTemplateTargeting(state) {
+    isTemplateTargeting = state;
+}
+
+const refreshHighlight = throttle((template) => {
+    if (isTemplateTargeting) {
+        if (game.user.targets.size) {
+            [...game.user.targets][0].setTarget(false);
+        }
+
+        const tokens = getTemplateTokens(template, false);
+        tokens.forEach(t => t.setTarget(true, { user: game.user, releaseOthers: false, groupSelection: true }));
+    }
+}, 100);
+
+function onTemplateHighlightGrid(wrapped) {
+    wrapped();
+    refreshHighlight(this);
 }

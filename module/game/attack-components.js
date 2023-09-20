@@ -1,16 +1,40 @@
 import { makeModifier } from "../utils.js";
 
+function getExternalAttackComponents(item) {
+    const rollConfig = {
+        actor: item.actor,
+        data: item.getRollData(),
+        critical: item.criticalThreshold,
+        title: "",
+        flavor: "",
+        dialogOptions: {},
+        messageData: {
+            "flags.dnd5e.roll": {type: "attack", itemId: item.id, itemUuid: item.uuid},
+            speaker: ChatMessage.getSpeaker({actor: item.actor})
+        },
+        parts: []
+    };
+  
+    Hooks.call("dnd5e.preRollAttack", item, rollConfig);
+
+    return rollConfig.parts;
+}
+
 export function getDisplayableAttackComponents(item, short = false) {
+    const external = getExternalAttackComponents(item);
     const components = getAttackComponents(item);
-    if (components) {
-        return Object.entries(components).map(([part, value]) => {
-            return {
-                i18nKey: `wire.roll-component.${part}${short ? "-short" : ""}`,
-                value: makeModifier(value)
-            }
-        });
-    }
-    return [];
+    const keyedComponents = Object.entries(components ?? {}).map(([part, value]) => {
+        return {
+            i18nKey: `wire.roll-component.${part}${short ? "-short" : ""}`,
+            value: makeModifier(value)
+        }
+    });
+    return [...keyedComponents, ...external.map(e => {
+        return {
+            i18nKey: 'wire.roll-component.other',
+            value: makeModifier(e)
+        }
+    })];
 }
 
 export function getSituationalAttackComponents(config, deterministicOnly = false) {
