@@ -1,5 +1,11 @@
 # Changes by version number
 
+### 0.11.2
+
+Fixes
+
+- Fixed a regression bug from the v11 update that was preventing some effects from displaying on tokens
+
 ### 0.11.1
 
 Changes

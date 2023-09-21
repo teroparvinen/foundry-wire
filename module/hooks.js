@@ -386,8 +386,8 @@ export function initHooks() {
             }
 
             if (combat.current.combatantId !== lastKnownCombatantId && game.settings.get("wire", "end-of-turn-untarget")) {
-                const previousActor = canvas.tokens.get(game.combat.previous.tokenId).actor;
-                if ((game.user.isGM && !previousActor.hasPlayerOwner) || (!game.user.isGM && previousActor.isOwner)) {
+                const previousActor = canvas.tokens.get(game.combat.previous.tokenId)?.actor;
+                if (previousActor && ((game.user.isGM && !previousActor.hasPlayerOwner) || (!game.user.isGM && previousActor.isOwner))) {
                     if (game.user.targets.size) {
                         [...game.user.targets][0].setTarget(false);
                     }

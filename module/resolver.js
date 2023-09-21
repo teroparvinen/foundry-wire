@@ -616,7 +616,7 @@ export class Resolver {
                     conditions
                 },
                 core: {
-                    // statusId: " "
+                    statusId: " "
                 }
             }
         };
@@ -644,7 +644,7 @@ export class Resolver {
                     immuneItemUuid: item.uuid
                 },
                 core: {
-                    // statusId: " "
+                    statusId: " "
                 }
             }
         }]);

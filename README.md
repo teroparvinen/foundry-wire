@@ -28,10 +28,6 @@ In Foundry, item rolls refer to the activation of items in an actor's inventory,
 
 Dependencies required for operation. Nothing special here.
 
-### Item Macro
-
-The more advanced customization of the item rolls is controlled using a script macro on the item provided by this module. You can get by without it if you only use the UI components or an item library that has everything already built, but I strongly recommend installing this mod.
-
 ### Visual Active Effects / DFreds Effects Panel
 
 Managing and viewing concentration and temporary active effects is quite important when using WIRE. These modules make it really easy to see the effects and to click them off when required. Highly recommended you use one of these with WIRE.
@@ -71,3 +67,7 @@ WIRE has internal effect duration tracking that integrates with WIRE internals b
 ### Active Auras
 
 WIRE contains functionality for automatically attaching a template to the caster as well as auras for passive effects. Having Active Auras on should not be necessary and has not been tested.
+
+### Item Macro
+
+Item Macro is no longer recommended for use with WIRE. It is not conflicting, it is mostly just confusing. Only use Item Macro if you need to run something through script in parallel with WIRE when rolling an item, maybe some sound effects or similar.
