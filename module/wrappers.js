@@ -20,7 +20,7 @@ let templateInfo = null;
 async function onItemUse(wrapped, options, event) {
     let configure = true;
     if (event?.event) { event = event.event; }
-    if (event?.shiftKey || event?.altKey || event?.metaKey || event?.ctrlKey || event?.which === 3 || options.fastForward) {
+    if (event?.shiftKey || event?.altKey || event?.metaKey || event?.ctrlKey || event?.which === 3 || options?.fastForward) {
         configure = false;
     }
 

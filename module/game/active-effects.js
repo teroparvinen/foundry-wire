@@ -25,6 +25,7 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                 icon: effect.icon,
                 label: effect.label,
                 duration: checkEffectDurationOverride(appliedDuration, effect),
+                statuses: [effect.label.slugify()],
                 flags: {
                     wire: {
                         castingActorUuid: actor.uuid,
@@ -36,10 +37,8 @@ export async function applyTargetEffects(item, applicationType, allTargetActors,
                         stackEffects: effect.flags.wire?.stackEffects,
                         independentDuration: effect.flags.wire?.independentDuration,
                         auraTargets: effect.flags.wire?.auraTargets,
-                        masterEffectUuid: (masterEffect && !effect.flags.wire?.independentDuration) ? masterEffect.uuid : null
-                    },
-                    core: {
-                        statusId: " "
+                        masterEffectUuid: (masterEffect && !effect.flags.wire?.independentDuration) ? masterEffect.uuid : null,
+                        changesRolled: true
                     }
                 }
             },
@@ -99,6 +98,7 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
                 icon: effect.icon,
                 label: effect.label,
                 duration: checkEffectDurationOverride(appliedDuration, effect),
+                statuses: createStatus ? [effect.label.slugify()] : undefined,
                 flags: {
                     wire: {
                         castingActorUuid: actor.uuid,
@@ -111,10 +111,7 @@ export async function applySingleEffect(effect, targets, masterEffect, config, e
                         independentDuration: effect.flags.wire?.independentDuration,
                         auraTargets: !skipAuraTransfer && effect.flags.wire?.auraTargets,
                         masterEffectUuid: (masterEffect && !effect.flags.wire?.independentDuration) ? masterEffect.uuid : null
-                    },
-                    core: createStatus ? {
-                        statusId: " "
-                    } : undefined
+                    }
                 }
             },
             extraData || {}

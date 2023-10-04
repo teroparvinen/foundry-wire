@@ -13,7 +13,7 @@ import { getStaticAttackOptions, getWireFlags } from "./game/effect-flags.js";
 import { isAreaTargetable } from "./item-properties.js";
 import { createTemplate } from "./templates.js";
 import { makeUpdater } from "./updater-utility.js";
-import { areAllied, areEnemies, evaluateFormula, fromUuid, fudgeToActor, fudgeToToken, getActorToken, i18n, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, isItemActorOnCanvas, tokenSeparation, triggerConditions } from "./utils.js";
+import { areAllied, areEnemies, copyEffectChanges, evaluateFormula, fromUuid, fudgeToActor, fudgeToToken, getActorToken, i18n, isActorEffect, isAuraEffect, isAuraTargetEffect, isEffectEnabled, isItemActorOnCanvas, rollChangeValues, substituteEffectConfig, tokenSeparation, triggerConditions } from "./utils.js";
 
 export function initHooks() {
     let highlightedToken;
@@ -151,6 +151,14 @@ export function initHooks() {
                 "flags.wire.wasTransferred": true,
                 "flags.wire.isMasterEffect": true
             });
+        }
+        if (data.flags.wire?.rollEffects && !data.flags.wire?.changesRolled) {
+            const { changes, rolls } = rollChangeValues(substituteEffectConfig(effect.parent, null, null, copyEffectChanges(data)), effect.flags.wire?.rollEffects);
+            effect.updateSource({
+                changes,
+                "flags.wire.changesRolled": true
+            });
+            rolls.forEach(roll => game.dice3d?.showForRoll(roll, game.user, !game.user.isGM));
         }
     });
 
@@ -627,11 +635,13 @@ async function updateAuras() {
 
                 for (let token of tokens) {
                     const isInRange = tokenSeparation(auraToken, token) <= range;
-                    const existingEffect = token.actor?.effects.find(effect => effect.origin === source.effect.origin)
+                    const existingEffects = token.actor?.effects.filter(effect => effect.flags.wire?.auraSourceUuid === source.effect.uuid)
 
-                    if (!isInRange && existingEffect) {
-                        await existingEffect.delete();
-                    } else if (isInRange && !existingEffect && token.actor) {
+                    if (!isInRange && existingEffects?.length) {
+                        for (let existingEffect of existingEffects) {
+                            await existingEffect.delete();
+                        }
+                    } else if (isInRange && !existingEffects?.length && token.actor) {
                         let dispositionCheck = false;
                         if (disposition === "ally" && areAllied(auraToken.actor, token.actor)) { dispositionCheck = true; }
                         else if (disposition === "enemy" && areEnemies(auraToken.actor, token.actor)) { dispositionCheck = true; }
@@ -642,6 +652,8 @@ async function updateAuras() {
                         }
                     }
                 }
+
+                targets = targets.filter(tgt => !tgt.effects.find(e => e.origin == source.effect.origin));
 
                 if (targets.length) {
                     const masterEffectUuid = source.effect.flags.wire?.masterEffectUuid;

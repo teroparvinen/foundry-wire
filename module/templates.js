@@ -40,20 +40,6 @@ function onTemplateRefreshRulerText(wrapped) {
     }
 }
 
-async function evaluateTemplateFormulas(item, templateData, config, { distanceOffset = 0 } = {}) {
-    const rollData = foundry.utils.mergeObject(item.getRollData(), config);
-    
-    const targetValue = getProperty(item, "flags.wire.override.target.value") || getProperty(item, "system.target.value");
-    if (targetValue) {
-        let distance = evaluateFormula(targetValue, rollData);
-        if (templateData.t == "rect") {
-            distance = Math.hypot(distance, distance);
-        }
-        distance += distanceOffset;
-        await templateData.updateSource({ distance });
-    }
-}
-
 export async function createTemplate(item, config, applicationType, { disableTemplateTargetSelection = false, preventCancel = false }) {
     const selectTargets = !disableTemplateTargetSelection && hasApplicationsOfType(item, applicationType, config?.variant);
     
@@ -65,8 +51,7 @@ export async function createTemplate(item, config, applicationType, { disableTem
             const destination = canvas.grid.getSnappedPosition(token.x, token.y, 2);
             destination.x = destination.x + token.w / 2;
             destination.y = destination.y + token.h / 2;
-            const preTemplate = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
-            await evaluateTemplateFormulas(item, preTemplate.document, config, { distanceOffset: getTokenSceneUnitSize(token) * 0.5 });
+            const preTemplate = templateFromItem(item, config, { distanceOffset: getTokenSceneUnitSize(token) * 0.5 });
             await preTemplate.document.updateSource(destination);
             
             await preTemplate.draw();
@@ -88,8 +73,7 @@ export async function createTemplate(item, config, applicationType, { disableTem
 export async function placeTemplate(item, config, { selectTargets = true, preventCancel = false, interactive = true } = {}) {
     let template;
     if (item instanceof CONFIG.Item.documentClass) {
-        template = game.dnd5e.canvas.AbilityTemplate.fromItem(item);
-        await evaluateTemplateFormulas(item, template.document, config);
+        template = templateFromItem(item, config);
     } else {
         const cls = CONFIG.MeasuredTemplate.documentClass;
         const templateObject = new cls(item, {parent: canvas.scene});
@@ -205,4 +189,55 @@ const refreshHighlight = throttle((template) => {
 function onTemplateHighlightGrid(wrapped) {
     wrapped();
     refreshHighlight(this);
+}
+
+function templateFromItem(item, config, { distanceOffset = 0 } = {}) {
+    // DUPLICATED: dnd5e AbilityTemplate.fromItem
+    const target = item.system.target ?? {};
+    const templateShape = dnd5e.config.areaTargetTypes[target.type]?.template;
+    if (!templateShape) return null;
+
+    // ADDED: formula evaluation
+    const rollData = foundry.utils.mergeObject(item.getRollData(), config);
+    const targetValue = getProperty(item, "flags.wire.override.target.value") || getProperty(item, "system.target.value");
+    if (!targetValue) { return null; }
+    let distance = evaluateFormula(targetValue, rollData);
+    distance += distanceOffset;
+
+    const templateData = {
+        t: templateShape,
+        user: game.user.id,
+        // MODIFIED: custom value use
+        distance,
+        direction: 0,
+        x: 0,
+        y: 0,
+        fillColor: game.user.color,
+        flags: { dnd5e: { origin: item.uuid } }
+    };
+
+    // Additional type-specific data
+    switch (templateShape) {
+        case "cone":
+            templateData.angle = CONFIG.MeasuredTemplate.defaults.angle;
+            break;
+        case "rect": // 5e rectangular AoEs are always cubes
+            templateData.distance = Math.hypot(distance, distance);
+            templateData.width = target.value;
+            templateData.direction = 45;
+            break;
+        case "ray": // 5e rays are most commonly 1 square (5 ft) in width
+            templateData.width = target.width ?? canvas.dimensions.distance;
+            break;
+        default:
+            break;
+    }
+
+    // Return the template constructed from the item data
+    const cls = CONFIG.MeasuredTemplate.documentClass;
+    const template = new cls(templateData, { parent: canvas.scene });
+    const object = new game.dnd5e.canvas.AbilityTemplate(template);
+    object.item = item;
+    object.actorSheet = item.actor?.sheet || null;
+    return object;
 }

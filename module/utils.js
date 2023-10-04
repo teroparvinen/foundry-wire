@@ -201,8 +201,9 @@ export function rollChangeValues(changes, isRollable) {
             const { key, mode, priority, value } = change;
 
             const roll = Roll.create(value).evaluate({ async: false });
+            const rollTotal = typeof(roll.total) === "string" ? roll.total.replace(/^"(.*)"$/, '$1') : roll.total;
 
-            changeResults.push({ key, mode, priority, value: roll.total });
+            changeResults.push({ key, mode, priority, value: rollTotal });
             if (roll.dice.length) { rolls.push(roll); }
         }
         return { changes: changeResults, rolls };
@@ -457,9 +458,9 @@ export function compositeDamageParts(item) {
     });
 }
 
-export function playAutoAnimation(...args) {
+export function playAutoAnimation(actor, targets, item) {
     if (typeof AutoAnimations !== "undefined") {
-        AutoAnimations.playAnimation(...args);
+        AutoAnimations.playAnimation(actor, item, { targets });
     }
 }
 

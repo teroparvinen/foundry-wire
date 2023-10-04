@@ -563,21 +563,27 @@ export function initEffectFlagHooks() {
             const ceApi = game.dfreds?.effectInterface;
             const actor = effect.parent;
             for (let change of effect.changes) {
-                if (change.key === "wire.custom.statusEffect") {
-                    await runInQueue(async () => {
-                        const effectName = change.value;
-                        const uuid = actor.uuid;
-                        if (ceApi?.hasEffectApplied(effectName, uuid)) {
-                            await ceApi?.removeEffect({ effectName, uuid });
-                        }
-                    });
-                }
-                if (change.key === "wire.custom.tokenFX") {
-                    await runInQueue(async () => {
-                        const effectName = change.value;
-                        const token = getActorToken(actor);
-                        deleteTokenFX(token, effectName);
-                    });
+                const otherStatusSources = actor.effects
+                    .filter(e => e !== effect)
+                    .flatMap(effect => effect.changes.filter(c => c.key == change.key && c.value == change.value));
+
+                if (!otherStatusSources.length) {
+                    if (change.key === "wire.custom.statusEffect") {
+                        await runInQueue(async () => {
+                            const effectName = change.value;
+                            const uuid = actor.uuid;
+                            if (ceApi?.hasEffectApplied(effectName, uuid)) {
+                                await ceApi?.removeEffect({ effectName, uuid });
+                            }
+                        });
+                    }
+                    if (change.key === "wire.custom.tokenFX") {
+                        await runInQueue(async () => {
+                            const effectName = change.value;
+                            const token = getActorToken(actor);
+                            deleteTokenFX(token, effectName);
+                        });
+                    }
                 }
             }
         }

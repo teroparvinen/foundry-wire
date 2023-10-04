@@ -1,5 +1,15 @@
 # Changes by version number
 
+### 0.11.3
+
+Fixes
+
+- Fixed a regression issue with some spell templates causing validation errors
+- Updated to use the latest version of the Automated Animations API
+- Changed the way aura effects track which tokens they affect, improving the way abilities can apply aura-style effects on multiple targets
+- Some effects given through multiple different sources now track better in all cases and do not get inappropriately removed
+- Item effects that have the "Treat the Effect Value as a roll and evaluate it when the effect is activated" option selected now more reliably roll the effect values when applied outside of WIRE rolls
+
 ### 0.11.2
 
 Fixes

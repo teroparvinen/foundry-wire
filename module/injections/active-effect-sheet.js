@@ -6,6 +6,7 @@ export function initActiveEffectSheetHooks() {
         // Remove some DAE fields
         html.find('input[name^="flags.dae"]').closest('.form-group').remove();
         html.find('.special-duration-list').parent().remove();
+        html.find('p.notes').remove();
         
         const s1 = html.find('select[name="flags.dae.stackable"]').closest('.form-group');
         if (s1.length) {

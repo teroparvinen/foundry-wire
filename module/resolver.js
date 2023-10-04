@@ -609,14 +609,12 @@ export class Resolver {
             icon: item.img,
             label: item.name,
             duration: effectDurationFromItemDuration(item.system.duration, isInCombat(actor)),
+            statuses: [item.name.slugify()],
             flags: {
                 wire: {
                     isMasterEffect: true,
                     activationConfig,
                     conditions
-                },
-                core: {
-                    statusId: " "
                 }
             }
         };
@@ -639,12 +637,10 @@ export class Resolver {
             disabled: false,
             icon: "modules/wire/icons/effect-immunity.svg",
             label: label,
+            statuses: [label.slugify()],
             flags: {
                 wire: {
                     immuneItemUuid: item.uuid
-                },
-                core: {
-                    statusId: " "
                 }
             }
         }]);
