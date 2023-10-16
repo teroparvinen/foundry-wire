@@ -460,7 +460,7 @@ export function compositeDamageParts(item) {
 
 export function playAutoAnimation(actor, targets, item) {
     if (typeof AutoAnimations !== "undefined") {
-        AutoAnimations.playAnimation(actor, item, { targets });
+        AutomatedAnimations.playAnimation(actor, item, { targets });
     }
 }
 

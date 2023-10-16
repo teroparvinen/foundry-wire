@@ -1,5 +1,12 @@
 # Changes by version number
 
+### 0.11.4
+
+Fixes
+
+- Fixed an issue with roll formulas containing values from scale values like the monk's damage dice
+- Partially fixed a further issue with the Automated Animations module. A complete fix requires a compatibility patch to the AA module as well, which I have submitted. The issue should be completely addressed after both modules receive the relevant update (this and the upcoming AA update).
+
 ### 0.11.3
 
 Fixes

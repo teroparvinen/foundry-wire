@@ -37,7 +37,8 @@ function formatReplacementResult(value) {
     } else {
         const str = String(value).trim();
         const isQuotable = str.match(/^[a-z][\w\s\.-]*$/i) || str === "";
-        return isQuotable ? `"${str}"` : str;
+        const isScaleValue = value.constructor?.name?.startsWith("ScaleValueType");
+        return (isQuotable && !isScaleValue) ? `"${str}"` : str;
     }
 }
 
