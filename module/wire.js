@@ -7,7 +7,7 @@ import { DamageCard, declareDamage, declareHealing } from "./cards/damage-card.j
 import { initEffectFlagHooks, setupRollFlagWrappers } from "./game/effect-flags.js";
 import { registerHandlebarsHelpers } from "./handlebars.js";
 import { initHooks } from "./hooks.js";
-import { initActiveEffectSheetHooks, setupActiveEffectSheetWrappers } from "./injections/active-effect-sheet.js";
+import { initActiveEffectSheetHooks } from "./injections/active-effect-sheet.js";
 import { readyCharacterSheetWrappers } from "./injections/character-sheet.js";
 import { initItemSheetHooks, setupItemSheetWrappers } from "./injections/item-sheet.js";
 import { setupKeybindings } from "./keybindings.js";
@@ -72,7 +72,6 @@ Hooks.once("init", () => {
 Hooks.once("setup", () => {
     setupWrappers();
     setupItemSheetWrappers();
-    setupActiveEffectSheetWrappers();
     setupRollFlagWrappers();
     setupTemplateWrappers();
     setupSocket();

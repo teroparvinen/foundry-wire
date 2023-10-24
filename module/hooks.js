@@ -152,13 +152,22 @@ export function initHooks() {
                 "flags.wire.isMasterEffect": true
             });
         }
-        if (data.flags.wire?.rollEffects && !data.flags.wire?.changesRolled) {
+        if (data.flags?.wire?.rollEffects && !data.flags?.wire?.changesRolled) {
             const { changes, rolls } = rollChangeValues(substituteEffectConfig(effect.parent, null, null, copyEffectChanges(data)), effect.flags.wire?.rollEffects);
             effect.updateSource({
                 changes,
                 "flags.wire.changesRolled": true
             });
             rolls.forEach(roll => game.dice3d?.showForRoll(roll, game.user, !game.user.isGM));
+        }
+    });
+
+    Hooks.on("preUpdateActiveEffect", (effect, changes, options) => {
+        const conditions = changes.flags?.wire?.conditions;
+        if (conditions) {
+            foundry.utils.setProperty(changes, "flags.wire.conditions", Object.values(conditions));
+        } else {
+            foundry.utils.setProperty(changes, "flags.wire.conditions", []);
         }
     });
 

@@ -1,5 +1,11 @@
 # Changes by version number
 
+### 0.11.5
+
+Fixes
+
+- Addressed an incompatibility with a recent version of the module "Dynamic effects using Active Effects (DAE)"
+
 ### 0.11.4
 
 Fixes

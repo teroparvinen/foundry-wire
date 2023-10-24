@@ -94,32 +94,5 @@ export function initActiveEffectSheetHooks() {
         `;
         html.find('section[data-tab="duration"] .form-group').last().after(durationFields);
     });
+
 }
-
-export function setupActiveEffectSheetWrappers() {
-    if (typeof DAE !== "undefined") {
-        libWrapper.register("wire", "DAE.DAEActiveEffectConfig.prototype._getSubmitData", onItemSubmit, "MIXED");
-    } else {
-        libWrapper.register("wire", "ActiveEffectConfig.prototype._getSubmitData", onItemSubmit, "MIXED");
-    }
-}
-
-function onItemSubmit(wrapped, updateData) {
-    const submitData = wrapped(updateData);
-
-    // Create the expanded update data object
-    const fd = new FormDataExtended(this.form, {editors: this.editors});
-    let data = fd.object;
-    if ( updateData ) data = mergeObject(data, updateData);
-    else data = expandObject(data);
-
-    const conditions = data.flags?.wire?.conditions;
-    if (conditions) {
-        submitData['flags.wire.conditions'] = Object.values(conditions);
-    } else {
-        submitData['flags.wire.conditions'] = [];
-    }
-
-    return submitData;
-}
-
